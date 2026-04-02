@@ -61,6 +61,7 @@ const AdminTransactionsPage = lazyNamed(
 const AdminSettingsPage = lazyNamed(() => import('./pages/admin/AdminSettingsPage'), 'AdminSettingsPage');
 const AdminProfilePage = lazyNamed(() => import('./pages/admin/AdminProfilePage'), 'AdminProfilePage');
 const AdminTwoFactorPage = lazyNamed(() => import('./pages/admin/AdminTwoFactorPage'), 'AdminTwoFactorPage');
+const AdminEmailPage = lazyNamed(() => import('./pages/admin/AdminEmailPage'), 'AdminEmailPage');
 
 const FullPageState = ({ message }: { message: string }) => (
   <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-white">
@@ -216,6 +217,7 @@ function App() {
                 <Route path="settings/general" element={<AdminSettingsPage />} />
                 <Route path="settings/email" element={<AdminSettingsPage />} />
                 <Route path="settings/wallets" element={<AdminSettingsPage />} />
+                <Route path="email" element={<AdminEmailPage />} />
                 <Route path="profile" element={<AdminProfilePage />} />
                 <Route path="2fa" element={<AdminTwoFactorPage />} />
                 <Route path="2fa/setup" element={<AdminTwoFactorPage />} />

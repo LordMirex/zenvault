@@ -23,6 +23,7 @@ const groups = [
       { label: 'Users', to: '/admin/users', icon: Users },
       { label: 'KYC Verification', to: '/admin/kyc', icon: ShieldCheck },
       { label: 'Transactions', to: '/admin/transactions', icon: Wallet },
+      { label: 'Email', to: '/admin/email', icon: Mail },
     ],
   },
   {

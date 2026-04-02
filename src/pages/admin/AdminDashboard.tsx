@@ -1,183 +1,58 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Coins, CreditCard } from 'lucide-react';
+import { Coins, CreditCard, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatCompactUsd, formatUsd } from '../../lib/format';
 import {
   AdminActionBar,
   AdminBadge,
-  AdminButton,
   AdminCard,
   AdminIconAction,
   AdminMetricCard,
-  AdminNotice,
   AdminPageHeading,
-  AdminSelect,
   AdminTableWrap,
-  AdminTextArea,
-  AdminTextInput,
 } from '../../components/admin/AdminUi';
 
 export const AdminDashboard = () => {
   const {
-    adminSettings,
     adminAlerts,
     adminMetrics,
     adminTimeline,
     adminTransactions,
     adminUsers,
-    sendAdminEmail,
   } = useAuth();
+
   const totalCards = adminUsers.reduce((count, user) => count + user.cards.length, 0);
   const totalCryptoValue = adminUsers.reduce(
     (total, user) => total + user.holdings.reduce((subTotal, holding) => subTotal + holding.valueUsd, 0),
     0,
   );
-  const [compose, setCompose] = useState({
-    scope: 'all' as 'all' | 'user',
-    userId: adminUsers[0]?.id ?? '',
-    subject: '',
-    message: '',
-  });
-  const [feedback, setFeedback] = useState('');
-  const [error, setError] = useState('');
-  const [sending, setSending] = useState(false);
-
-  const selectedUser = adminUsers.find((user) => user.id === compose.userId) ?? null;
-  const senderName = String(adminSettings?.email?.fromName ?? adminSettings?.general?.companyName ?? adminSettings?.general?.siteName ?? 'Wallet Operations');
-  const senderAddress = String(adminSettings?.email?.fromAddress ?? adminSettings?.general?.companyEmail ?? '').trim();
-  const recipientCount = compose.scope === 'all' ? adminUsers.length : selectedUser ? 1 : 0;
 
   return (
     <div className="space-y-6">
       <AdminPageHeading
         title="Admin Dashboard"
-        description="Operational metrics, alerts, users, and transactions are now driven by the MySQL-backed admin API."
+        description="Operational metrics, alerts, users, and recent transactions."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminMetricCard label="Total Users" value={String(adminUsers.length)} detail="React view of onboarded accounts" accent="text-violet-600" />
-        <AdminMetricCard label="Total Transactions" value={String(adminTransactions.length)} detail="Recent transaction records synced from the backend" accent="text-sky-600" />
-        <AdminMetricCard label="Active Cards" value={String(totalCards)} detail="Client cards currently visible in stored user records" accent="text-emerald-600" />
-        <AdminMetricCard label="Total Crypto Value" value={formatCompactUsd(totalCryptoValue)} detail="Aggregated holdings from admin-visible wallets" accent="text-amber-600" />
+        <AdminMetricCard label="Total Users" value={String(adminUsers.length)} detail="Onboarded client accounts" accent="text-violet-600" />
+        <AdminMetricCard label="Total Transactions" value={String(adminTransactions.length)} detail="Recent transaction records" accent="text-sky-600" />
+        <AdminMetricCard label="Active Cards" value={String(totalCards)} detail="Cards across all client accounts" accent="text-emerald-600" />
+        <AdminMetricCard label="Total Crypto Value" value={formatCompactUsd(totalCryptoValue)} detail="Aggregated holdings across wallets" accent="text-amber-600" />
       </div>
 
-      {feedback && <AdminNotice tone="success">{feedback}</AdminNotice>}
-      {error && <AdminNotice tone="danger">{error}</AdminNotice>}
-
-      <AdminCard className="p-6">
-        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">Send Email Message</h3>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-500">
-              Send a branded system email to every client account or target one user directly from the admin dashboard.
-            </p>
-
-            <form
-              className="mt-5 grid gap-4"
-              onSubmit={async (event) => {
-                event.preventDefault();
-                setFeedback('');
-                setError('');
-                setSending(true);
-
-                try {
-                  const result = await sendAdminEmail({
-                    scope: compose.scope,
-                    userId: compose.scope === 'user' ? compose.userId : undefined,
-                    subject: compose.subject,
-                    message: compose.message,
-                  });
-                  setFeedback(
-                    result.failedCount
-                      ? `${result.sentCount} email(s) sent. ${result.failedCount} delivery attempt(s) failed.`
-                      : `${result.sentCount} email(s) sent successfully.`,
-                  );
-                  setCompose((current) => ({ ...current, subject: '', message: '' }));
-                } catch (caughtError) {
-                  setError(caughtError instanceof Error ? caughtError.message : 'Unable to send the email message.');
-                } finally {
-                  setSending(false);
-                }
-              }}
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <AdminSelect
-                  label="Audience"
-                  value={compose.scope}
-                  onChange={(event) =>
-                    setCompose((current) => ({
-                      ...current,
-                      scope: event.target.value as 'all' | 'user',
-                      userId: event.target.value === 'user' ? current.userId || adminUsers[0]?.id || '' : current.userId,
-                    }))
-                  }
-                >
-                  <option value="all">All Users</option>
-                  <option value="user">Specific User</option>
-                </AdminSelect>
-
-                <AdminSelect
-                  label="Recipient"
-                  value={compose.userId}
-                  disabled={compose.scope !== 'user'}
-                  onChange={(event) => setCompose((current) => ({ ...current, userId: event.target.value }))}
-                >
-                  {adminUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                    </option>
-                  ))}
-                </AdminSelect>
-              </div>
-
-              <AdminTextInput
-                label="Subject"
-                value={compose.subject}
-                onChange={(event) => setCompose((current) => ({ ...current, subject: event.target.value }))}
-                placeholder="Service update from the operations desk"
-              />
-
-              <AdminTextArea
-                label="Message"
-                rows={8}
-                value={compose.message}
-                onChange={(event) => setCompose((current) => ({ ...current, message: event.target.value }))}
-                placeholder="Write the email message exactly as you want clients to receive it. Separate paragraphs with a blank line."
-              />
-
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <p className="text-sm text-slate-500">
-                  {compose.scope === 'all'
-                    ? `This send will address ${recipientCount} client account(s) one by one.`
-                    : selectedUser
-                      ? `This send will go to ${selectedUser.name} at ${selectedUser.email}.`
-                      : 'Select a user before sending.'}
-                </p>
-                <AdminButton type="submit" disabled={sending}>
-                  {sending ? 'Sending...' : 'Send Email'}
-                </AdminButton>
-              </div>
-            </form>
-          </div>
-
-          <div className="grid gap-4">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Sender</p>
-              <p className="mt-3 text-lg font-semibold text-slate-900">{senderName}</p>
-              <p className="mt-1 text-sm text-slate-600">{senderAddress || 'Sender email is not configured yet.'}</p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Delivery Notes</p>
-              <div className="mt-3 space-y-2 text-sm leading-7 text-slate-600">
-                <p>Messages are wrapped in the system email template before delivery.</p>
-                <p>SMTP host, sender email, and credentials must be saved in Email Settings before any send will work.</p>
-                <p>Automatic signup, KYC, withdrawal, and admin-created-account emails now use the same layout.</p>
-              </div>
-            </div>
-          </div>
+      <AdminCard className="flex items-center justify-between gap-4 p-5">
+        <div>
+          <p className="text-sm font-semibold text-slate-700">Send Email to Users</p>
+          <p className="mt-1 text-sm text-slate-500">Compose and send branded messages to all or specific clients.</p>
         </div>
+        <Link
+          to="/admin/email"
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+        >
+          <Mail className="h-4 w-4" />
+          Go to Email
+        </Link>
       </AdminCard>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -287,13 +162,7 @@ export const AdminDashboard = () => {
 
       <AdminCard className="p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">Recovered clone fidelity</p>
-            <p className="mt-2 text-lg font-semibold text-slate-900">
-              Layout, hierarchy, and operational tables follow the recovered admin pages while remaining fully editable in React.
-            </p>
-          </div>
-          <p className="text-sm font-semibold text-slate-500">{formatUsd(totalCryptoValue)} across visible wallet records</p>
+          <p className="text-sm font-semibold text-slate-700">{formatUsd(totalCryptoValue)} total crypto value across all visible wallet records.</p>
         </div>
       </AdminCard>
     </div>
