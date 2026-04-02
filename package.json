@@ -1,0 +1,51 @@
+{
+  "name": "qfs-wallet",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently --kill-others \"npm run client:dev\" \"npm run api:dev\"",
+    "client:dev": "vite",
+    "api:dev": "node ./server/index.mjs",
+    "db:setup": "node ./server/scripts/setup-db.mjs",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext .js,.mjs,.ts,.tsx --report-unused-disable-directives --max-warnings 0",
+    "test": "node --test",
+    "preview": "vite preview",
+    "start": "node ./server/index.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "framer-motion": "^11.2.10",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^0.395.0",
+    "multer": "^2.1.1",
+    "mysql2": "^3.20.0",
+    "nodemailer": "^8.0.4",
+    "pg": "^8.20.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.23.1",
+    "tailwind-merge": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^7.13.1",
+    "@typescript-eslint/parser": "^7.13.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^9.2.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.7",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.2.2",
+    "vite": "^5.3.1"
+  }
+}

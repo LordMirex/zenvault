@@ -1,2 +1,52 @@
+modules = ["nodejs-20"]
 [agent]
 expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+API_PORT = "4000"
+DB_HOST = "127.0.0.1"
+DB_PORT = "3306"
+DB_USER = "qfs_user"
+DB_NAME = "qfs_wallet"
+CLIENT_ORIGIN = ""
+ACCESS_TOKEN_TTL = "12h"
+PENDING_TOKEN_TTL = "10m"
+VITE_API_BASE_URL = ""
+NODE_ENV = "development"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 4000
+externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
