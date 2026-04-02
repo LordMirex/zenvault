@@ -448,11 +448,24 @@ const getClientBootstrap = async (userId) => {
   
   const settingsWallets = await getSetting('wallets', {});
   const rails = collectWalletRails(settingsWallets, buildWalletRailFallbacksFromHoldings([parseJson(user.holdings_json)]));
-  const effectiveAssets = buildEffectiveWalletAssets({ 
+  const rawAssets = buildEffectiveWalletAssets({ 
     user, 
     holdings: parseJson(user.holdings_json), 
     rails, 
     includeLegacyHoldings: true 
+  });
+
+  const livePrices = priceFeed.getAllPrices();
+  const effectiveAssets = rawAssets.map((asset) => {
+    const live = livePrices[asset.symbol];
+    if (!live) return asset;
+    const livePrice = live.price ?? asset.price;
+    return {
+      ...asset,
+      price: livePrice,
+      change: live.change ?? asset.change,
+      valueUsd: Number((asset.balance * livePrice).toFixed(2)),
+    };
   });
 
   return {

@@ -47,7 +47,7 @@ export const Navbar = () => {
   const accountLabel = clientProfile?.uuid ?? user?.uuid ?? user?.email ?? 'Signed-in member';
   const initials = getInitials(displayName);
   const isLightTheme = theme === 'light';
-  const liveAssets = clientWalletAssets.filter((asset) => asset.enabledByDefault).slice(0, 3);
+  const liveAssets = clientWalletAssets.filter((asset) => asset.enabledByDefault && asset.price > 0).slice(0, 3);
 
   const handleLogout = async () => {
     setMenuOpen(false);
@@ -124,47 +124,41 @@ export const Navbar = () => {
         </div>
 
         <div className="hidden min-w-0 flex-1 items-center justify-center md:flex">
-          <div className={`flex w-full max-w-3xl items-center gap-2 rounded-[1.4rem] border px-3 py-2 ${marketShellClasses}`}>
-            <div className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 ${marketChipClasses}`}>
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">Live</span>
+          <div className={`flex w-full max-w-3xl items-center gap-2 rounded-[1.4rem] border px-2.5 py-1.5 ${marketShellClasses}`}>
+            <div className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 ${marketChipClasses}`}>
+              <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">Live</span>
             </div>
 
-            <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
-              {liveAssets.map((asset) => (
-                <div key={asset.id} className={`flex min-w-0 items-center gap-3 rounded-[1.15rem] border px-3 py-2 ${marketCardClasses}`}>
-                  <img src={asset.icon} alt={asset.name} className="h-8 w-8 shrink-0 object-contain" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={`truncate text-[11px] font-black uppercase tracking-[0.18em] ${marketNameClasses}`}>{asset.symbol}</p>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
-                          asset.change > 0
-                            ? isLightTheme
-                              ? 'bg-emerald-50 text-emerald-600'
-                              : 'bg-success/10 text-success'
-                            : asset.change < 0
-                              ? isLightTheme
-                                ? 'bg-rose-50 text-rose-600'
-                                : 'bg-danger/10 text-danger'
-                              : isLightTheme
-                                ? 'bg-slate-100 text-slate-500'
-                                : 'bg-dark-800 text-gray-400'
-                        }`}
-                      >
-                        {formatPercent(asset.change)}
-                      </span>
-                    </div>
-                    <p className={`truncate text-[10px] ${marketSubtextClasses}`}>{asset.name}</p>
-                    <p className={`mt-1 truncate text-sm font-semibold ${marketPriceClasses}`}>{formatUsd(asset.price)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {liveAssets.length === 0 && (
-              <div className={`flex flex-1 items-center justify-center rounded-[1.15rem] border border-dashed px-3 py-3 text-sm ${marketSubtextClasses}`}>
+            {liveAssets.length === 0 ? (
+              <div className={`flex flex-1 items-center justify-center rounded-[1rem] border border-dashed px-3 py-2 text-xs ${marketSubtextClasses}`}>
                 Market feed unavailable
+              </div>
+            ) : (
+              <div className="flex min-w-0 flex-1 gap-1.5">
+                {liveAssets.map((asset) => {
+                  const changePositive = asset.change > 0;
+                  const changeNegative = asset.change < 0;
+                  const changeBadgeClass = changePositive
+                    ? isLightTheme ? 'bg-emerald-50 text-emerald-600' : 'bg-success/10 text-success'
+                    : changeNegative
+                      ? isLightTheme ? 'bg-rose-50 text-rose-600' : 'bg-danger/10 text-danger'
+                      : isLightTheme ? 'bg-slate-100 text-slate-500' : 'bg-dark-800 text-gray-400';
+                  return (
+                    <div key={asset.id} className={`flex min-w-0 flex-1 items-center gap-2 rounded-[1rem] border px-2 py-1.5 ${marketCardClasses}`}>
+                      <img src={asset.icon} alt={asset.name} className="h-6 w-6 shrink-0 object-contain" />
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="flex items-center gap-1">
+                          <p className={`shrink-0 text-[10px] font-black uppercase tracking-[0.14em] ${marketNameClasses}`}>{asset.symbol}</p>
+                          <span className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold hidden lg:inline-block ${changeBadgeClass}`}>
+                            {formatPercent(asset.change)}
+                          </span>
+                        </div>
+                        <p className={`truncate text-[10px] font-semibold ${marketPriceClasses}`}>{formatUsd(asset.price)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

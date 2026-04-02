@@ -266,6 +266,34 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
   }, []);
 
+  useEffect(() => {
+    if (status !== 'authenticated' || user?.role !== 'user') return;
+
+    const pollPrices = async () => {
+      try {
+        const { prices } = await apiRequest<{ prices: Record<string, { price: number; change: number }> }>('/api/prices');
+        setClientWalletAssets((prev) =>
+          prev.map((asset) => {
+            const live = prices[asset.symbol];
+            if (!live) return asset;
+            const livePrice = live.price ?? asset.price;
+            return {
+              ...asset,
+              price: livePrice,
+              change: live.change ?? asset.change,
+              valueUsd: Number((asset.balance * livePrice).toFixed(2)),
+            };
+          }),
+        );
+      } catch {
+        // silent — keep cached prices on failure
+      }
+    };
+
+    const interval = setInterval(() => void pollPrices(), 30000);
+    return () => clearInterval(interval);
+  }, [status, user?.role]);
+
   const login = async (email: string, password: string) => {
     const payload = await apiRequest<{
       pendingToken?: string;

@@ -45,6 +45,17 @@ The SQLite database file is gitignored. When cloning to a new environment:
 3. Run `npm run db:setup`
 4. Run `npm run dev`
 
+## Live Price Feed
+
+Crypto prices are fetched from CoinGecko (Binance attempted first but is blocked in Replit — CoinGecko is the reliable fallback). Prices update every 60 seconds on the server.
+
+- `GET /api/prices` — public endpoint, returns all cached live prices
+- On login, `getClientBootstrap` applies live prices from the feed to each user wallet asset before returning
+- The frontend polls `/api/prices` every 30 seconds while authenticated and patches `clientWalletAssets` in-memory
+- Navbar live ticker only shows assets with `price > 0` (filters out misconfigured rails with no price data)
+
+Symbols covered: BTC, ETH, USDT, SOL, BNB, DOT, TRX, LTC, BCH, XLM, DASH
+
 ## Seed Accounts
 
 - User: `ofofonobs@gmail.com` / `12345678` / passcode `123456`
