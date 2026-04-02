@@ -2,9 +2,7 @@ const ACCESS_TOKEN_KEY = 'qfs_access_token';
 const PENDING_TOKEN_KEY = 'qfs_pending_token';
 const AUTH_NOTICE_KEY = 'qfs_auth_notice';
 export const AUTH_EXPIRED_EVENT = 'qfs:auth-expired';
-const isLocalRuntime =
-  typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? (isLocalRuntime ? 'http://127.0.0.1:4000' : '')).replace(/\/$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 type RequestOptions = RequestInit & {
   token?: string | null;

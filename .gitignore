@@ -1,2 +1,6 @@
 node_modules
 _archive
+# SQLite database files (environment-specific, never commit)
+*.db
+*.db-wal
+*.db-shm

@@ -1,42 +1,50 @@
-import pg from 'pg';
+import Database from 'better-sqlite3';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const { Pool } = pg;
-let pool;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-export const getPool = () => {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    });
+const DB_PATH = process.env.SQLITE_DB_PATH
+  ? resolve(process.env.SQLITE_DB_PATH)
+  : resolve(__dirname, 'data', 'qfs_wallet.db');
+
+let db;
+
+export const getDb = () => {
+  if (!db) {
+    db = new Database(DB_PATH);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
   }
-  return pool;
+  return db;
 };
 
-function convertNamedParams(sql, params = {}) {
-  const values = [];
-  const text = sql.replace(/:([a-zA-Z_]\w*)/g, (_, name) => {
-    if (!(name in params)) throw new Error(`Missing named param: ${name}`);
-    values.push(params[name]);
-    return `$${values.length}`;
-  });
-  return { text, values };
+function convertNamedParams(sql) {
+  return sql.replace(/:([a-zA-Z_]\w*)/g, '@$1');
 }
 
 export const query = async (sql, params = {}) => {
-  const { text, values } = convertNamedParams(sql, params);
-  const result = await getPool().query(text, values);
-  return result.rows;
+  const text = convertNamedParams(sql);
+  const stmt = getDb().prepare(text);
+  const upper = text.trimStart().toUpperCase();
+  if (upper.startsWith('SELECT') || upper.startsWith('WITH')) {
+    return stmt.all(params);
+  }
+  stmt.run(params);
+  return [];
 };
 
 export const queryOne = async (sql, params = {}) => {
-  const rows = await query(sql, params);
-  return rows[0] ?? null;
+  const text = convertNamedParams(sql);
+  const stmt = getDb().prepare(text);
+  return stmt.get(params) ?? null;
 };
 
-export const closePool = async () => {
-  if (pool) {
-    await pool.end();
-    pool = undefined;
+export const closeDb = () => {
+  if (db) {
+    db.close();
+    db = undefined;
   }
 };

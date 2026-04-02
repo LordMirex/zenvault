@@ -8,8 +8,8 @@ test('buildConfig accepts a secure development configuration', () => {
   });
 
   assert.equal(config.apiPort, 4000);
-  assert.equal(config.dbUser, 'root');
   assert.equal(config.accessTokenTtl, '12h');
+  assert.equal(config.isProduction, false);
 });
 
 test('buildConfig rejects placeholder JWT secrets', () => {
@@ -19,28 +19,24 @@ test('buildConfig rejects placeholder JWT secrets', () => {
   );
 });
 
-test('buildConfig rejects production root database users', () => {
+test('buildConfig rejects missing CLIENT_ORIGIN in production', () => {
   assert.throws(
     () => buildConfig({
       NODE_ENV: 'production',
       JWT_SECRET: '12345678901234567890123456789012-secure',
-      DB_USER: 'root',
-      DB_PASSWORD: 'hard-to-guess-password',
-      CLIENT_ORIGIN: 'https://wallet.example.com',
+      CLIENT_ORIGIN: '',
     }),
-    /DB_USER must not be root in production/,
+    /CLIENT_ORIGIN must be set in production/,
   );
 });
 
-test('buildConfig rejects empty production database passwords', () => {
-  assert.throws(
-    () => buildConfig({
-      NODE_ENV: 'production',
-      JWT_SECRET: '12345678901234567890123456789012-secure',
-      DB_USER: 'wallet_app',
-      DB_PASSWORD: '',
-      CLIENT_ORIGIN: 'https://wallet.example.com',
-    }),
-    /DB_PASSWORD must be set in production/,
-  );
+test('buildConfig accepts valid production configuration', () => {
+  const config = buildConfig({
+    NODE_ENV: 'production',
+    JWT_SECRET: '12345678901234567890123456789012-secure',
+    CLIENT_ORIGIN: 'https://wallet.example.com',
+  });
+
+  assert.equal(config.isProduction, true);
+  assert.equal(config.clientOrigin, 'https://wallet.example.com');
 });

@@ -1,12 +1,12 @@
 # QFS Wallet Full Stack
 
-A full-stack crypto wallet and OTC trading platform built with React + Vite (frontend) and Express (backend), using PostgreSQL for the database.
+A full-stack crypto wallet and OTC trading platform built with React + Vite (frontend) and Express (backend), using SQLite for the database.
 
 ## Architecture
 
 - **Frontend**: React 18 + TypeScript + Vite, running on port 5000
 - **Backend**: Express 5 API, running on port 4000
-- **Database**: PostgreSQL (Replit built-in)
+- **Database**: SQLite via `better-sqlite3` (file: `server/data/qfs_wallet.db`)
 - **Auth**: JWT-based with bcryptjs hashing, two-step (password + passcode)
 
 ## Key Routes
@@ -18,7 +18,9 @@ A full-stack crypto wallet and OTC trading platform built with React + Vite (fro
 
 ## Database
 
-Originally MySQL/MariaDB, ported to PostgreSQL for Replit compatibility. The `db.mjs` layer uses a named-param converter to translate `:param` style queries to PostgreSQL's `$1, $2` positional params.
+Originally MySQL/MariaDB. Migrated to SQLite for portability across environments. The `server/db.mjs` layer uses a named-param converter that translates `:param` style queries to better-sqlite3's `@param` named params.
+
+The database file lives at `server/data/qfs_wallet.db` and is excluded from git (see `.gitignore`). To set up the database in a fresh environment, run `npm run db:setup`.
 
 ## Scripts
 
@@ -28,12 +30,20 @@ Originally MySQL/MariaDB, ported to PostgreSQL for Replit compatibility. The `db
 
 ## Environment Variables
 
-- `JWT_SECRET` — Required, min 32 chars (set in development env)
-- `DATABASE_URL` — Auto-set by Replit PostgreSQL
+- `JWT_SECRET` — Required, min 32 chars
+- `SQLITE_DB_PATH` — Optional, path to SQLite file (defaults to `server/data/qfs_wallet.db`)
 - `API_PORT` — Express port (default 4000)
-- `CLIENT_ORIGIN` — CORS origin for production
+- `CLIENT_ORIGIN` — CORS origin (required in production)
 - `ACCESS_TOKEN_TTL` — JWT expiry (default 12h)
 - `PENDING_TOKEN_TTL` — Pending token expiry (default 10m)
+
+## GitHub / Portability
+
+The SQLite database file is gitignored. When cloning to a new environment:
+1. Set `JWT_SECRET` in your environment
+2. Run `npm install`
+3. Run `npm run db:setup`
+4. Run `npm run dev`
 
 ## Seed Accounts
 

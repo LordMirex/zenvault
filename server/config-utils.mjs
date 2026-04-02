@@ -28,17 +28,7 @@ export const buildConfig = (env = process.env) => {
     throw new Error('JWT_SECRET must be at least 32 characters and must not use a placeholder value.');
   }
 
-  const dbUser = toTrimmedString(env.DB_USER, 'root') || 'root';
-  const dbPassword = String(env.DB_PASSWORD ?? '');
   const clientOrigin = toTrimmedString(env.CLIENT_ORIGIN, isProduction ? '' : 'http://localhost:5173');
-
-  if (isProduction && dbUser.toLowerCase() === 'root') {
-    throw new Error('DB_USER must not be root in production.');
-  }
-
-  if (isProduction && !dbPassword.trim()) {
-    throw new Error('DB_PASSWORD must be set in production.');
-  }
 
   if (isProduction && !clientOrigin) {
     throw new Error('CLIENT_ORIGIN must be set in production.');
@@ -48,11 +38,7 @@ export const buildConfig = (env = process.env) => {
     nodeEnv,
     isProduction,
     apiPort: parsePort(env.API_PORT, 4000),
-    dbHost: toTrimmedString(env.DB_HOST, '127.0.0.1') || '127.0.0.1',
-    dbPort: parsePort(env.DB_PORT, 3306),
-    dbUser,
-    dbPassword,
-    dbName: toTrimmedString(env.DB_NAME, 'qfs_wallet') || 'qfs_wallet',
+    sqliteDbPath: toTrimmedString(env.SQLITE_DB_PATH, '') || null,
     jwtSecret,
     clientOrigin,
     accessTokenTtl: toTrimmedString(env.ACCESS_TOKEN_TTL, '12h') || '12h',

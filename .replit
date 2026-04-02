@@ -8,15 +8,6 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-API_PORT = "4000"
-DB_HOST = "127.0.0.1"
-DB_PORT = "5432"
-DB_USER = "qfs_user"
-DB_NAME = "qfs_wallet"
-CLIENT_ORIGIN = ""
-ACCESS_TOKEN_TTL = "12h"
-PENDING_TOKEN_TTL = "10m"
-VITE_API_BASE_URL = ""
 NODE_ENV = "development"
 
 [workflows]
