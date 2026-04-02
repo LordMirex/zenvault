@@ -10,7 +10,7 @@ channel = "stable-25_05"
 [userenv.shared]
 API_PORT = "4000"
 DB_HOST = "127.0.0.1"
-DB_PORT = "3306"
+DB_PORT = "5432"
 DB_USER = "qfs_user"
 DB_NAME = "qfs_wallet"
 CLIENT_ORIGIN = ""
