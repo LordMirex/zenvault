@@ -530,6 +530,13 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
+// GET /api/prices — public live price feed (no auth required)
+app.get('/api/prices', (_req, res) => {
+  const prices = priceFeed.getAllPrices();
+  const updatedAt = priceFeed.lastUpdatedAt;
+  return res.json({ prices, updatedAt });
+});
+
 app.get('/api/public/settings', async (_req, res) => {
   return res.json({
     branding: await getGeneralSettings(),

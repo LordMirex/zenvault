@@ -112,6 +112,7 @@ type AuthContextValue = {
   user: SessionUser | null;
   clientProfile: ClientBootstrap['profile'] | null;
   clientSummary: ClientBootstrap['summary'] | null;
+  clientWalletAssets: WalletAsset[];
   adminSettings: AdminBootstrap['adminSettings'] | null;
   adminUsers: AdminBootstrap['adminUsers'];
   adminKycCases: AdminBootstrap['adminKycCases'];
@@ -163,6 +164,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [clientProfile, setClientProfile] = useState<ClientBootstrap['profile'] | null>(null);
   const [clientSummary, setClientSummary] = useState<ClientBootstrap['summary'] | null>(null);
+  const [clientWalletAssets, setClientWalletAssets] = useState<WalletAsset[]>([]);
   const [adminSettings, setAdminSettings] = useState<AdminBootstrap['adminSettings'] | null>(null);
   const [adminUsers, setAdminUsers] = useState<AdminBootstrap['adminUsers']>([]);
   const [adminKycCases, setAdminKycCases] = useState<AdminBootstrap['adminKycCases']>([]);
@@ -178,6 +180,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setUser(null);
     setClientProfile(null);
     setClientSummary(null);
+    setClientWalletAssets([]);
     setAdminSettings(null);
     setAdminUsers([]);
     setAdminKycCases([]);
@@ -199,6 +202,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       hydrateWalletData(payload);
       setClientProfile(payload.profile);
       setClientSummary(payload.summary);
+      setClientWalletAssets(payload.walletAssets ?? []);
       setAdminSettings(null);
     } else {
       const payload = await apiRequest<AdminBootstrap>('/api/admin/bootstrap');
@@ -411,12 +415,37 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     await refreshBootstrap();
   };
 
+  useEffect(() => {
+    if (status !== 'authenticated' || !user || user.role !== 'user') return;
+
+    const applyLivePrices = async () => {
+      try {
+        const data = await apiRequest<{ prices: Record<string, { price: number; change: number }> }>('/api/prices', { token: null });
+        if (!data?.prices) return;
+        setClientWalletAssets((prev) =>
+          prev.map((asset) => {
+            const live = data.prices[asset.symbol];
+            if (!live) return asset;
+            return { ...asset, price: live.price, change: live.change };
+          }),
+        );
+      } catch {
+        // ignore price refresh errors silently
+      }
+    };
+
+    applyLivePrices();
+    const interval = setInterval(applyLivePrices, 60_000);
+    return () => clearInterval(interval);
+  }, [status, user]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
       clientProfile,
       clientSummary,
+      clientWalletAssets,
       adminSettings,
       adminUsers,
       adminKycCases,
@@ -440,7 +469,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       refreshBootstrap,
     }),
     [
-      status, user, clientProfile, clientSummary, adminSettings,
+      status, user, clientProfile, clientSummary, clientWalletAssets, adminSettings,
       adminUsers, adminKycCases, adminTransactions, adminWalletRails,
       adminEmailTemplates, adminAlerts, adminTimeline, adminMetrics, bootstrapReady
     ],

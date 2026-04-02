@@ -17,7 +17,7 @@ const getInitials = (value: string) =>
 export const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, clientProfile, logout } = useAuth();
+  const { user, clientProfile, clientWalletAssets, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -47,8 +47,8 @@ export const Navbar = () => {
   const accountLabel = clientProfile?.uuid ?? user?.uuid ?? user?.email ?? 'Signed-in member';
   const initials = getInitials(displayName);
   const isLightTheme = theme === 'light';
-  const clientAssets = (clientProfile as any)?.walletAssets ?? [];
-  const liveAssets = (Array.isArray(clientAssets) ? clientAssets : []).filter((asset: any) => asset.enabledByDefault).slice(0, 3);
+  const { clientWalletAssets } = useAuth();
+  const liveAssets = clientWalletAssets.filter((asset) => asset.enabledByDefault).slice(0, 3);
 
   const handleLogout = async () => {
     setMenuOpen(false);
