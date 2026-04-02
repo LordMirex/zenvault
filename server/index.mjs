@@ -46,9 +46,13 @@ const allowedOrigins = new Set(
         'http://127.0.0.1:4173',
         'http://localhost:5173',
         'http://127.0.0.1:5173',
+        process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null,
       ]),
   ].filter(Boolean),
 );
+
+const isReplitOrigin = (origin) =>
+  !config.isProduction && typeof origin === 'string' && origin.endsWith('.replit.dev');
 
 const rateLimitState = new Map();
 
@@ -105,7 +109,7 @@ const signupLimiter = createRateLimitMiddleware({
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin)) {
+      if (!origin || allowedOrigins.has(origin) || isReplitOrigin(origin)) {
         return callback(null, true);
       }
 
