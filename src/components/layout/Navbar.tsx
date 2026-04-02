@@ -47,7 +47,6 @@ export const Navbar = () => {
   const accountLabel = clientProfile?.uuid ?? user?.uuid ?? user?.email ?? 'Signed-in member';
   const initials = getInitials(displayName);
   const isLightTheme = theme === 'light';
-  const { clientWalletAssets } = useAuth();
   const liveAssets = clientWalletAssets.filter((asset) => asset.enabledByDefault).slice(0, 3);
 
   const handleLogout = async () => {
