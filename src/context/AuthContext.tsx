@@ -104,6 +104,11 @@ type AdminBootstrap = {
   };
 };
 
+type ClientSession = { id: string; device: string; location: string; status: string; lastSeen: string };
+type KycChecklistItem = { id: string; title: string; detail: string; status: string };
+type ReferralMilestone = { label: string; reward: string; requirement: string };
+type RecentReferral = { id: string; name: string; joinedAt: string; status: string; reward: string };
+
 type AuthContextValue = {
   status: 'loading' | 'anonymous' | 'authenticated';
   user: SessionUser | null;
@@ -114,6 +119,10 @@ type AuthContextValue = {
   clientWithdrawalActivity: WalletActivity[];
   clientAddressBookEntries: AddressBookEntry[];
   clientNotificationItems: NotificationItem[];
+  clientRecentSessions: ClientSession[];
+  clientKycChecklist: KycChecklistItem[];
+  clientReferralMilestones: ReferralMilestone[];
+  clientRecentReferrals: RecentReferral[];
   adminSettings: AdminBootstrap['adminSettings'] | null;
   adminUsers: AdminBootstrap['adminUsers'];
   adminKycCases: AdminBootstrap['adminKycCases'];
@@ -168,6 +177,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [clientWithdrawalActivity, setClientWithdrawalActivity] = useState<WalletActivity[]>([]);
   const [clientAddressBookEntries, setClientAddressBookEntries] = useState<AddressBookEntry[]>([]);
   const [clientNotificationItems, setClientNotificationItems] = useState<NotificationItem[]>([]);
+  const [clientRecentSessions, setClientRecentSessions] = useState<ClientSession[]>([]);
+  const [clientKycChecklist, setClientKycChecklist] = useState<KycChecklistItem[]>([]);
+  const [clientReferralMilestones, setClientReferralMilestones] = useState<ReferralMilestone[]>([]);
+  const [clientRecentReferrals, setClientRecentReferrals] = useState<RecentReferral[]>([]);
   const [adminSettings, setAdminSettings] = useState<AdminBootstrap['adminSettings'] | null>(null);
   const [adminUsers, setAdminUsers] = useState<AdminBootstrap['adminUsers']>([]);
   const [adminKycCases, setAdminKycCases] = useState<AdminBootstrap['adminKycCases']>([]);
@@ -188,6 +201,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setClientWithdrawalActivity([]);
     setClientAddressBookEntries([]);
     setClientNotificationItems([]);
+    setClientRecentSessions([]);
+    setClientKycChecklist([]);
+    setClientReferralMilestones([]);
+    setClientRecentReferrals([]);
     setAdminSettings(null);
     setAdminUsers([]);
     setAdminKycCases([]);
@@ -214,6 +231,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       setClientWithdrawalActivity(payload.withdrawalActivity ?? []);
       setClientAddressBookEntries(payload.addressBookEntries ?? []);
       setClientNotificationItems(payload.notificationItems ?? []);
+      setClientRecentSessions(payload.recentSessions ?? []);
+      setClientKycChecklist(payload.kycChecklist ?? []);
+      setClientReferralMilestones(payload.referralMilestones ?? []);
+      setClientRecentReferrals(payload.recentReferrals ?? []);
       setAdminSettings(null);
     } else {
       const payload = await apiRequest<AdminBootstrap>('/api/admin/bootstrap');
@@ -452,6 +473,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       clientWithdrawalActivity,
       clientAddressBookEntries,
       clientNotificationItems,
+      clientRecentSessions,
+      clientKycChecklist,
+      clientReferralMilestones,
+      clientRecentReferrals,
       adminSettings,
       adminUsers,
       adminKycCases,
