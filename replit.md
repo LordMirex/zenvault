@@ -28,7 +28,8 @@ The database file lives at `server/data/qfs_wallet.db` and is excluded from git 
 - `npm run db:setup` — Drops and recreates tables, seeds data (destructive!)
 - `npm run build` — TypeScript compile + Vite build
 - `npm run start` — Starts API server only (requires `dist/` to already exist)
-- `npm run start:prod` — **Full production start**: builds frontend, sets up DB, then starts server (use this on VPS)
+- `npm run start:prod` — **Full production start**: builds frontend then starts server (use this on VPS)
+- `npm run db:import <dump.sql>` — Import/sync data from a MySQL dump into the SQLite DB (upserts, never wipes)
 
 ## Environment Variables
 
