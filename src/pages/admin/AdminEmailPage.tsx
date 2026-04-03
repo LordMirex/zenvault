@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
-  AdminBadge,
   AdminButton,
   AdminCard,
   AdminNotice,
@@ -11,14 +10,44 @@ import {
   AdminTextInput,
 } from '../../components/admin/AdminUi';
 
+const escapeHtml = (value: string) =>
+  String(value ?? '').replace(/[&<>"']/g, (character) => {
+    if (character === '&') return '&amp;';
+    if (character === '<') return '&lt;';
+    if (character === '>') return '&gt;';
+    if (character === '"') return '&quot;';
+    return '&#39;';
+  });
+
+const resolveAssetUrl = (siteUrl: string, assetPath: string) => {
+  const normalized = String(assetPath ?? '').trim();
+  if (!normalized) return '';
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  const base = String(siteUrl ?? '').replace(/\/$/, '');
+  if (!base) return normalized;
+  return normalized.startsWith('/') ? `${base}${normalized}` : `${base}/${normalized}`;
+};
+
 const buildPreviewHtml = ({
   siteName,
+  siteUrl,
+  logoUrl,
+  footerSummary,
+  companyAddress,
+  companyPhone,
+  companyEmail,
   fromName,
   subject,
   message,
   recipientName,
 }: {
   siteName: string;
+  siteUrl: string;
+  logoUrl: string;
+  footerSummary: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail: string;
   fromName: string;
   subject: string;
   message: string;
@@ -26,50 +55,55 @@ const buildPreviewHtml = ({
 }) => {
   const paragraphs = message
     .split(/\r?\n\r?\n/)
-    .map((p) => p.replace(/\r?\n/g, ' ').trim())
+    .map((item) => item.replace(/\r?\n/g, ' ').trim())
     .filter(Boolean);
 
+  const intro = paragraphs[0] ?? 'Your message preview appears here.';
+  const bodyParagraphs = paragraphs.slice(1);
   const greeting = recipientName ? `Hello ${recipientName},` : 'Hello,';
-  const intro = paragraphs[0] ?? '';
-  const rest = paragraphs.slice(1);
-
-  const paragraphMarkup = rest
-    .map((p) => `<p style="margin:0 0 16px;color:#334155;font-size:16px;line-height:1.7;">${p}</p>`)
-    .join('');
-
-  const signatureMarkup = fromName
-    ? `<p style="margin:24px 0 0;color:#334155;font-size:15px;line-height:1.7;">${fromName}<br />${siteName} Operations</p>`
-    : '';
+  const safeLogoUrl = resolveAssetUrl(siteUrl, logoUrl);
+  const footerLines = [footerSummary, companyAddress, companyPhone, companyEmail, siteUrl].filter(Boolean);
+  const signature = [fromName || siteName, `${siteName} Operations`]
+    .filter(Boolean)
+    .map((line) => escapeHtml(line))
+    .join('<br />');
 
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${subject || 'Email Preview'}</title>
+    <title>${escapeHtml(subject || 'Email Preview')}</title>
   </head>
-  <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9;padding:24px 16px;">
+  <body style="margin:0;padding:0;background:#f6efe5;font-family:Arial,Helvetica,sans-serif;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+      ${escapeHtml(intro)}
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6efe5;padding:32px 16px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e2e8f0;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border-radius:30px;overflow:hidden;border:1px solid rgba(17,17,17,0.08);box-shadow:0 18px 70px rgba(17,17,17,0.08);">
             <tr>
-              <td style="padding:28px 32px;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);">
-                <p style="margin:0 0 8px;color:#cbd5e1;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">${siteName || 'Your Company'}</p>
-                <h1 style="margin:0;color:#ffffff;font-size:26px;line-height:1.25;">${subject || '(no subject)'}</h1>
-                <p style="margin:12px 0 0;color:#cbd5e1;font-size:14px;line-height:1.6;">${intro}</p>
+              <td style="padding:32px 36px;background:linear-gradient(135deg,#111111 0%,#24211b 100%);">
+                <div style="display:inline-flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;background:rgba(247,147,26,0.14);border:1px solid rgba(247,147,26,0.24);">
+                  <span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#f7931a;"></span>
+                  <span style="color:#f8dfb5;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">${escapeHtml(siteName || 'Operations')}</span>
+                </div>
+                ${safeLogoUrl ? `<div style="margin:18px 0 0;"><img src="${escapeHtml(safeLogoUrl)}" alt="${escapeHtml(siteName)}" style="max-height:44px;width:auto;display:block;" /></div>` : ''}
+                <h1 style="margin:20px 0 0;color:#ffffff;font-size:32px;line-height:1.15;">${escapeHtml(subject || 'Email Preview')}</h1>
+                <p style="margin:14px 0 0;color:#e8dccb;font-size:15px;line-height:1.7;">${escapeHtml(intro)}</p>
               </td>
             </tr>
             <tr>
-              <td style="padding:32px;">
-                <p style="margin:0 0 16px;color:#0f172a;font-size:17px;font-weight:700;">${greeting}</p>
-                ${paragraphMarkup}
-                ${signatureMarkup}
+              <td style="padding:36px;">
+                <p style="margin:0 0 16px;color:#111111;font-size:17px;font-weight:700;">${escapeHtml(greeting)}</p>
+                ${bodyParagraphs.map((paragraph) => `<p style="margin:0 0 16px;color:#3f3a31;font-size:16px;line-height:1.78;">${escapeHtml(paragraph)}</p>`).join('')}
+                <p style="margin:24px 0 0;color:#3f3a31;font-size:15px;line-height:1.72;">${signature}</p>
               </td>
             </tr>
             <tr>
-              <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;">
-                <p style="margin:0;color:#64748b;font-size:12px;line-height:1.8;">${siteName || 'Your Company'}</p>
+              <td style="padding:24px 36px;background:#fffaf2;border-top:1px solid rgba(17,17,17,0.08);">
+                <p style="margin:0;color:#6d6558;font-size:13px;line-height:1.8;">${footerLines.map((line) => escapeHtml(line)).join('<br />')}</p>
               </td>
             </tr>
           </table>
@@ -81,8 +115,7 @@ const buildPreviewHtml = ({
 };
 
 export const AdminEmailPage = () => {
-  const { adminSettings, adminEmailTemplates, adminUsers, sendAdminEmail } = useAuth();
-
+  const { adminSettings, adminUsers, sendAdminEmail } = useAuth();
   const [compose, setCompose] = useState({
     scope: 'all' as 'all' | 'user',
     userId: String(adminUsers[0]?.id ?? ''),
@@ -92,21 +125,42 @@ export const AdminEmailPage = () => {
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
-  const [activeTab, setActiveTab] = useState<'compose' | 'templates' | 'preview'>('compose');
+  const [activeTab, setActiveTab] = useState<'compose' | 'preview'>('compose');
 
-  const siteName = String(adminSettings?.general?.siteName ?? adminSettings?.email?.fromName ?? 'Wallet');
-  const fromName = String(adminSettings?.email?.fromName ?? '');
-  const fromAddress = String(adminSettings?.email?.fromAddress ?? '');
+  const general = adminSettings?.general ?? {};
+  const email = adminSettings?.email ?? {};
+  const siteName = String(general.siteName ?? email.fromName ?? 'Wallet');
+  const siteUrl = String(general.siteUrl ?? window.location.origin);
+  const logoUrl = String(general.logoUrl ?? '');
+  const footerSummary = String(general.footerSummary ?? '');
+  const companyAddress = String(general.companyAddress ?? '');
+  const companyPhone = String(general.companyPhone ?? '');
+  const companyEmail = String(general.companyEmail ?? email.fromAddress ?? '');
+  const fromName = String(email.fromName ?? '');
+  const fromAddress = String(email.fromAddress ?? '');
 
-  const selectedUser = adminUsers.find((u) => String(u.id) === compose.userId) ?? null;
+  const selectedUser = adminUsers.find((user) => String(user.id) === compose.userId) ?? null;
   const recipientCount = compose.scope === 'all' ? adminUsers.length : selectedUser ? 1 : 0;
   const previewRecipient = compose.scope === 'user' ? (selectedUser?.name ?? 'Client') : 'Client';
 
+  useEffect(() => {
+    if (!adminUsers.length) return;
+    if (!adminUsers.some((user) => String(user.id) === compose.userId)) {
+      setCompose((current) => ({ ...current, userId: String(adminUsers[0]?.id ?? '') }));
+    }
+  }, [adminUsers, compose.userId]);
+
   const previewHtml = buildPreviewHtml({
     siteName,
+    siteUrl,
+    logoUrl,
+    footerSummary,
+    companyAddress,
+    companyPhone,
+    companyEmail,
     fromName,
     subject: compose.subject || 'Subject preview',
-    message: compose.message || 'Your message body will appear here.\n\nThis is a second paragraph.',
+    message: compose.message || 'Your message appears here.\n\nAdd a second paragraph to see the body layout.',
     recipientName: previewRecipient,
   });
 
@@ -114,6 +168,12 @@ export const AdminEmailPage = () => {
     event.preventDefault();
     setFeedback('');
     setError('');
+
+    if (compose.scope === 'user' && !selectedUser) {
+      setError('Select a user before sending.');
+      return;
+    }
+
     setSending(true);
     try {
       const result = await sendAdminEmail({
@@ -122,14 +182,15 @@ export const AdminEmailPage = () => {
         subject: compose.subject,
         message: compose.message,
       });
+
       setFeedback(
         result.failedCount
           ? `${result.sentCount} email(s) sent. ${result.failedCount} failed.`
           : `${result.sentCount} email(s) sent successfully.`,
       );
-      setCompose((c) => ({ ...c, subject: '', message: '' }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to send the email.');
+      setCompose((current) => ({ ...current, subject: '', message: '' }));
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Unable to send the email.');
     } finally {
       setSending(false);
     }
@@ -138,23 +199,23 @@ export const AdminEmailPage = () => {
   return (
     <div className="space-y-6">
       <AdminPageHeading
-        title="Email"
-        description="Send branded messages to users and manage email templates."
+        title="Broadcasts"
+        description="Send branded messages and preview the live delivery layout used for account, KYC, and operational email."
       />
 
       <div className="flex gap-2 border-b border-slate-200">
-        {(['compose', 'preview', 'templates'] as const).map((tab) => (
+        {(['compose', 'preview'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-semibold capitalize transition-colors border-b-2 -mb-px ${
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold capitalize transition-colors ${
               activeTab === tab
                 ? 'border-violet-600 text-violet-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            {tab === 'compose' ? 'Compose' : tab === 'preview' ? 'Template Preview' : 'Templates'}
+            {tab}
           </button>
         ))}
       </div>
@@ -163,11 +224,11 @@ export const AdminEmailPage = () => {
       {error && <AdminNotice tone="danger">{error}</AdminNotice>}
 
       {activeTab === 'compose' && (
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <AdminCard className="p-6">
             <h3 className="text-lg font-semibold text-slate-900">Compose Message</h3>
             <p className="mt-1 text-sm text-slate-500">
-              Write a message that will be delivered inside the branded email template.
+              Messages are sent inside the same branded layout used for signup, KYC, and operational notices.
             </p>
 
             <form className="mt-5 grid gap-4" onSubmit={handleSend}>
@@ -175,11 +236,11 @@ export const AdminEmailPage = () => {
                 <AdminSelect
                   label="Audience"
                   value={compose.scope}
-                  onChange={(e) =>
-                    setCompose((c) => ({
-                      ...c,
-                      scope: e.target.value as 'all' | 'user',
-                      userId: e.target.value === 'user' ? c.userId || String(adminUsers[0]?.id ?? '') : c.userId,
+                  onChange={(event) =>
+                    setCompose((current) => ({
+                      ...current,
+                      scope: event.target.value as 'all' | 'user',
+                      userId: event.target.value === 'user' ? current.userId || String(adminUsers[0]?.id ?? '') : current.userId,
                     }))
                   }
                 >
@@ -191,11 +252,11 @@ export const AdminEmailPage = () => {
                   label="Recipient"
                   value={compose.userId}
                   disabled={compose.scope !== 'user'}
-                  onChange={(e) => setCompose((c) => ({ ...c, userId: e.target.value }))}
+                  onChange={(event) => setCompose((current) => ({ ...current, userId: event.target.value }))}
                 >
-                  {adminUsers.map((u) => (
-                    <option key={u.id} value={String(u.id)}>
-                      {u.name} ({u.email})
+                  {adminUsers.map((user) => (
+                    <option key={user.id} value={String(user.id)}>
+                      {user.name} ({user.email})
                     </option>
                   ))}
                 </AdminSelect>
@@ -204,16 +265,16 @@ export const AdminEmailPage = () => {
               <AdminTextInput
                 label="Subject"
                 value={compose.subject}
-                onChange={(e) => setCompose((c) => ({ ...c, subject: e.target.value }))}
-                placeholder="Service update from the operations desk"
+                onChange={(event) => setCompose((current) => ({ ...current, subject: event.target.value }))}
+                placeholder="Operations update from the desk"
               />
 
               <AdminTextArea
                 label="Message"
                 rows={10}
                 value={compose.message}
-                onChange={(e) => setCompose((c) => ({ ...c, message: e.target.value }))}
-                placeholder={`Write your message here.\n\nSeparate paragraphs with a blank line. The first paragraph becomes the intro shown at the top of the email.`}
+                onChange={(event) => setCompose((current) => ({ ...current, message: event.target.value }))}
+                placeholder={`Write your message here.\n\nSeparate paragraphs with a blank line. The first paragraph becomes the top intro in the branded email.`}
               />
 
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -221,7 +282,7 @@ export const AdminEmailPage = () => {
                   {compose.scope === 'all'
                     ? `Sending to ${recipientCount} active client account(s).`
                     : selectedUser
-                      ? `Sending to ${selectedUser.name} — ${selectedUser.email}.`
+                      ? `Sending to ${selectedUser.name} (${selectedUser.email}).`
                       : 'Select a user before sending.'}
                 </p>
                 <div className="flex gap-3">
@@ -230,10 +291,13 @@ export const AdminEmailPage = () => {
                     onClick={() => setActiveTab('preview')}
                     className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    Preview template
+                    Preview Layout
                   </button>
-                  <AdminButton type="submit" disabled={sending || !compose.subject || !compose.message}>
-                    {sending ? 'Sending…' : 'Send Email'}
+                  <AdminButton
+                    type="submit"
+                    disabled={sending || !compose.subject || !compose.message || (compose.scope === 'user' && !selectedUser)}
+                  >
+                    {sending ? 'Sending...' : 'Send Message'}
                   </AdminButton>
                 </div>
               </div>
@@ -242,25 +306,35 @@ export const AdminEmailPage = () => {
 
           <div className="space-y-4">
             <AdminCard className="p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">From</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Sender</p>
               <p className="mt-3 text-base font-semibold text-slate-900">{fromName || siteName}</p>
               <p className="mt-1 text-sm text-slate-500">
-                {fromAddress || (
-                  <span className="text-amber-600">
-                    No sender email — configure in Email Settings first.
-                  </span>
-                )}
+                {fromAddress || <span className="text-amber-600">No sender email configured yet.</span>}
               </p>
             </AdminCard>
 
             <AdminCard className="p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Automatic Flows</p>
+              <div className="mt-4 space-y-3">
+                {[
+                  'Welcome and account creation emails',
+                  'KYC submission and approval notices',
+                  'Operational messages sent from this page',
+                ].map((item) => (
+                  <div key={item} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </AdminCard>
+
+            <AdminCard className="p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Delivery Notes</p>
-              <ul className="mt-3 space-y-2 text-sm leading-7 text-slate-600">
-                <li>Messages are wrapped in your branded template before delivery.</li>
-                <li>SMTP credentials must be configured in <span className="font-semibold text-slate-800">Settings → Email Settings</span> for delivery to work.</li>
-                <li>Each paragraph should be separated by a blank line.</li>
-                <li>The first paragraph appears as the header intro in the email.</li>
-              </ul>
+              <div className="mt-4 space-y-2 text-sm leading-7 text-slate-600">
+                <p>SMTP credentials still live in Settings / Email Settings.</p>
+                <p>The same branded layout is reused everywhere so the experience stays consistent.</p>
+                <p>Branding is pulled from your live site identity and footer settings.</p>
+              </div>
             </AdminCard>
           </div>
         </div>
@@ -270,47 +344,18 @@ export const AdminEmailPage = () => {
         <AdminCard className="overflow-hidden p-0">
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">Email Template Preview</h3>
+              <h3 className="text-base font-semibold text-slate-900">Live Email Preview</h3>
               <p className="mt-0.5 text-sm text-slate-500">
-                This is how your emails appear in the recipient's inbox. Fill in the compose form to see your content reflected here.
+                This preview mirrors the branded email shell used by the server for real delivery.
               </p>
             </div>
           </div>
           <iframe
             srcDoc={previewHtml}
-            title="Email template preview"
-            className="h-[700px] w-full border-0 bg-[#f1f5f9]"
+            title="Email preview"
+            className="h-[760px] w-full border-0 bg-[#f6efe5]"
             sandbox="allow-same-origin"
           />
-        </AdminCard>
-      )}
-
-      {activeTab === 'templates' && (
-        <AdminCard className="p-6">
-          <h3 className="text-lg font-semibold text-slate-900">Email Templates</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Automatic system emails use the branded template below. These are triggered by signup, KYC approval, and admin actions.
-          </p>
-          <div className="mt-5 space-y-3">
-            {adminEmailTemplates.length === 0 && (
-              <p className="text-sm text-slate-400">No templates configured.</p>
-            )}
-            {adminEmailTemplates.map((template) => (
-              <div
-                key={template.id}
-                className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between"
-              >
-                <div>
-                  <p className="font-semibold text-slate-900">{template.name}</p>
-                  <p className="mt-1 text-sm text-slate-500">{template.subject}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <AdminBadge value={template.status} />
-                  <span className="text-sm text-slate-400">{template.updatedAt}</span>
-                </div>
-              </div>
-            ))}
-          </div>
         </AdminCard>
       )}
     </div>

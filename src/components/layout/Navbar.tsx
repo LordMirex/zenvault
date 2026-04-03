@@ -1,7 +1,9 @@
 import { Bell, ChevronDown, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
+import { BrandLogo } from '../common/BrandLogo';
 import { useAuth } from '../../context/AuthContext';
+import { useBranding } from '../../context/BrandingContext';
 import { useTheme } from '../../context/ThemeContext';
 import { formatPercent, formatUsd } from '../../lib/format';
 
@@ -16,7 +18,8 @@ const getInitials = (value: string) =>
 export const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, clientProfile, clientWalletAssets, logout } = useAuth();
+  const { branding } = useBranding();
+  const { user, clientProfile, clientWalletAssets, marketAssets, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -33,6 +36,7 @@ export const Navbar = () => {
     { path: '/app/kyc', title: 'KYC Verification' },
     { path: '/app/crypto-manage', title: 'Manage Assets' },
     { path: '/app/crypto-address', title: 'Wallet Addresses' },
+    { path: '/app/cards', title: 'Cards' },
     { path: '/app/crypto/details', title: 'Asset Detail' },
     { path: '/app/notifications', title: 'Notifications' },
   ];
@@ -46,15 +50,9 @@ export const Navbar = () => {
   const accountLabel = clientProfile?.uuid ?? user?.uuid ?? user?.email ?? 'Signed-in member';
   const initials = getInitials(displayName);
   const isLightTheme = theme === 'light';
-  const liveAssets = clientWalletAssets.filter((asset) => asset.enabledByDefault && asset.price > 0).slice(0, 3);
-
-  const handleLogout = async () => {
-    setMenuOpen(false);
-    await logout();
-    navigate('/login', { replace: true });
-  };
-
   const themeActionLabel = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+  const activeAssetIds = new Set(clientWalletAssets.map((asset) => asset.marketAssetId ?? asset.id));
+  const liveAssets = marketAssets.filter((asset) => activeAssetIds.has(asset.id)).slice(0, 5);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -71,6 +69,12 @@ export const Navbar = () => {
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
 
+  const handleLogout = async () => {
+    setMenuOpen(false);
+    await logout();
+    navigate('/login', { replace: true });
+  };
+
   const headerClasses = isLightTheme
     ? 'border-slate-200/90 bg-white/90'
     : 'border-gray-800 bg-dark-900/80';
@@ -79,15 +83,10 @@ export const Navbar = () => {
   const marketShellClasses = isLightTheme
     ? 'border-slate-200 bg-white/95 shadow-[0_12px_36px_rgba(148,163,184,0.18)]'
     : 'border-gray-800 bg-dark-800/70';
+  const marketDividerClasses = isLightTheme ? 'divide-slate-200' : 'divide-gray-800';
   const marketChipClasses = isLightTheme
-    ? 'border-primary/30 bg-primary/10'
-    : 'border-primary/20 bg-primary/10';
-  const marketCardClasses = isLightTheme
-    ? 'border-slate-200 bg-slate-50'
-    : 'border-gray-800 bg-dark-900/60';
-  const marketNameClasses = isLightTheme ? 'text-slate-900' : 'text-white';
-  const marketSubtextClasses = isLightTheme ? 'text-slate-500' : 'text-gray-500';
-  const marketPriceClasses = isLightTheme ? 'text-slate-700' : 'text-gray-300';
+    ? 'border-primary/30 bg-primary/10 text-slate-700'
+    : 'border-primary/20 bg-primary/10 text-gray-300';
   const notificationButtonClasses = isLightTheme
     ? 'border-slate-200 bg-white/90 text-slate-500 hover:border-primary/40 hover:text-primary'
     : 'border-gray-800 text-gray-400 hover:border-primary/40 hover:text-primary';
@@ -112,50 +111,59 @@ export const Navbar = () => {
   return (
     <header className={`sticky top-0 z-40 shrink-0 border-b px-4 py-4 backdrop-blur-md md:px-8 ${headerClasses}`}>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-4">
-          {/* Desktop sidebar already shows the logo — on mobile just show the page title, clean and prominent */}
-          <div className="min-w-0 max-w-[16rem]">
-            <h1 className={`truncate text-lg font-bold md:text-xl ${titleClasses}`}>{currentTitle}</h1>
+        <div className="flex min-w-0 items-center gap-3">
+          <Link to="/app" className="shrink-0">
+            <BrandLogo
+              size="lg"
+              variant="icon"
+              stretch
+              invertFallback
+              wrapperClassName="shrink-0"
+              className="drop-shadow-[0_10px_24px_rgba(15,23,42,0.12)]"
+            />
+          </Link>
+
+          <div className="min-w-0">
+            <p className={`truncate text-[10px] font-bold uppercase tracking-[0.24em] ${metaClasses}`}>
+              {branding.siteName}
+            </p>
+            <h1 className={`truncate text-sm font-semibold md:text-base ${titleClasses}`}>{currentTitle}</h1>
             <p className={`hidden truncate text-xs sm:block ${metaClasses}`}>{accountLabel}</p>
           </div>
         </div>
 
         <div className="hidden min-w-0 flex-1 items-center justify-center md:flex">
-          <div className={`flex w-full max-w-3xl items-center gap-2 rounded-[1.4rem] border px-2.5 py-1.5 ${marketShellClasses}`}>
-            <div className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 ${marketChipClasses}`}>
-              <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">Live</span>
+          <div className={`flex w-full max-w-4xl items-center overflow-hidden rounded-full border px-2 py-1 ${marketShellClasses}`}>
+            <div className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 ${marketChipClasses}`}>
+              <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Live Market</span>
             </div>
 
             {liveAssets.length === 0 ? (
-              <div className={`flex flex-1 items-center justify-center rounded-[1rem] border border-dashed px-3 py-2 text-xs ${marketSubtextClasses}`}>
+              <div className={`flex flex-1 items-center justify-center px-4 py-2 text-xs ${metaClasses}`}>
                 Market feed unavailable
               </div>
             ) : (
-              <div className="flex min-w-0 flex-1 gap-1.5">
-                {liveAssets.map((asset) => {
-                  const changePositive = asset.change > 0;
-                  const changeNegative = asset.change < 0;
-                  const changeBadgeClass = changePositive
-                    ? isLightTheme ? 'bg-emerald-50 text-emerald-600' : 'bg-success/10 text-success'
-                    : changeNegative
-                      ? isLightTheme ? 'bg-rose-50 text-rose-600' : 'bg-danger/10 text-danger'
-                      : isLightTheme ? 'bg-slate-100 text-slate-500' : 'bg-dark-800 text-gray-400';
-                  return (
-                    <div key={asset.id} className={`flex min-w-0 flex-1 items-center gap-2 rounded-[1rem] border px-2 py-1.5 ${marketCardClasses}`}>
-                      <img src={asset.icon} alt={asset.name} className="h-6 w-6 shrink-0 object-contain" />
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="flex items-center gap-1">
-                          <p className={`shrink-0 text-[10px] font-black uppercase tracking-[0.14em] ${marketNameClasses}`}>{asset.symbol}</p>
-                          <span className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold hidden lg:inline-block ${changeBadgeClass}`}>
-                            {formatPercent(asset.change)}
-                          </span>
-                        </div>
-                        <p className={`truncate text-[10px] font-semibold ${marketPriceClasses}`}>{formatUsd(asset.price)}</p>
+              <div className={`ml-2 flex min-w-0 flex-1 divide-x ${marketDividerClasses}`}>
+                {liveAssets.map((asset) => (
+                  <div key={asset.id} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2">
+                    <img src={asset.icon} alt={asset.name} className="h-7 w-7 shrink-0 object-contain" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className={`truncate text-[11px] font-black uppercase tracking-[0.16em] ${titleClasses}`}>
+                          {asset.symbol}
+                        </p>
+                        <span className={`shrink-0 text-[11px] font-semibold ${asset.change >= 0 ? 'text-success' : 'text-danger'}`}>
+                          {formatPercent(asset.change)}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-3">
+                        <p className={`truncate text-[11px] ${metaClasses}`}>{asset.name}</p>
+                        <p className={`shrink-0 text-xs font-semibold ${titleClasses}`}>{formatUsd(asset.price)}</p>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>

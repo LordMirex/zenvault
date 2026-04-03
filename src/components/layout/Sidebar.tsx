@@ -8,7 +8,8 @@ import {
   Bell,
   LayoutGrid,
   BookUser,
-  Bot
+  Bot,
+  CreditCard
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -31,6 +32,7 @@ const navItems = [
 const cryptoBaseItems = [
   { name: 'Manage Crypto', href: '/app/crypto-manage', icon: LayoutGrid },
   { name: 'Wallet Addresses', href: '/app/crypto-address', icon: BookUser },
+  { name: 'Cards', href: '/app/cards', icon: CreditCard },
   { name: 'Notifications', href: '/app/notifications', icon: Bell },
 ];
 

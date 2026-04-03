@@ -1,5 +1,6 @@
 export type WalletAsset = {
   id: string;
+  marketAssetId?: string;
   symbol: string;
   name: string;
   network: string;
@@ -16,6 +17,34 @@ export type WalletAsset = {
   confirmations: string;
   enabledByDefault: boolean;
   tags: string[];
+};
+
+export type MarketAsset = {
+  id: string;
+  symbol: string;
+  name: string;
+  icon: string;
+  price: number;
+  change: number;
+  marketCapRank: number;
+  network: string;
+  tags: string[];
+  active: boolean;
+};
+
+export type WalletCardRecord = {
+  id: string;
+  label: string;
+  brand: 'Visa' | 'Mastercard';
+  last4: string;
+  status: 'Active' | 'Frozen' | 'Review';
+  spendLimitUsd: number;
+  utilizationUsd: number;
+  issuedAt: string;
+  requestOnly?: boolean;
+  requestedAt?: string;
+  holderName?: string;
+  applicationFeeUsd?: number;
 };
 
 export type WalletActivity = {

@@ -6,6 +6,7 @@ import { useBranding } from '../context/BrandingContext';
 import { apiRequest } from '../lib/api';
 import { formatNumber, formatUsd, truncateMiddle } from '../lib/format';
 import { findWalletAssetByRoute } from '../lib/walletRoutes';
+import { makeQrCodeUrl } from '../lib/qr';
 
 
 export const TransferAssetPage = () => {
@@ -83,8 +84,10 @@ export const TransferAssetPage = () => {
     }
   };
 
+  const destination = method === 'external' ? asset.address : asset.payId;
+  const qrImageUrl = makeQrCodeUrl(destination);
+
   if (mode === 'receive') {
-    const destination = method === 'external' ? asset.address : asset.payId;
 
     return (
       <div className="space-y-8 animate-in fade-in duration-300">
@@ -102,9 +105,18 @@ export const TransferAssetPage = () => {
           <div className="rounded-[2rem] border border-gray-800 bg-dark-900 p-6">
             <div className="flex min-h-[320px] items-center justify-center rounded-[1.75rem] border border-dashed border-gray-700 bg-dark-800">
               <div className="space-y-4 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
-                  <QrCode className="h-8 w-8" />
-                </div>
+                {qrImageUrl ? (
+                  <img
+                    src={qrImageUrl}
+                    alt={`QR code to receive ${asset.symbol} via ${method === 'external' ? asset.network : 'PayID'}`}
+                    loading="lazy"
+                    className="mx-auto h-44 w-44 rounded-[1.25rem] object-contain"
+                  />
+                ) : (
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+                    <QrCode className="h-8 w-8" />
+                  </div>
+                )}
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Scan To Receive</p>
                 <p className="text-lg font-black text-white">{asset.symbol}</p>
               </div>

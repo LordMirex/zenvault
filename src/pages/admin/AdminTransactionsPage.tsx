@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, Coins, Eye, RotateCcw, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../lib/api';
@@ -45,7 +45,7 @@ export const AdminTransactionsPage = () => {
 
   const selectedCreateUser = useMemo(
     () => adminUsers.find((user) => user.id === createForm.userId) ?? null,
-    [createForm.userId],
+    [adminUsers, createForm.userId],
   );
 
   const createAssetOptions = useMemo(() => {
@@ -55,6 +55,18 @@ export const AdminTransactionsPage = () => {
 
     return Array.from(new Set(selectedCreateUser.holdings.map((holding) => holding.symbol)));
   }, [selectedCreateUser]);
+
+  useEffect(() => {
+    if (!createForm.userId && adminUsers[0]?.id) {
+      setCreateForm((current) => ({ ...current, userId: adminUsers[0]?.id ?? '' }));
+    }
+  }, [adminUsers, createForm.userId]);
+
+  useEffect(() => {
+    if (!createAssetOptions.includes(createForm.asset)) {
+      setCreateForm((current) => ({ ...current, asset: createAssetOptions[0] ?? 'USDT' }));
+    }
+  }, [createAssetOptions, createForm.asset]);
 
   const handleStatusChange = async (transactionId: string, status: 'Completed' | 'Pending' | 'Review') => {
     setFeedback('');
@@ -101,6 +113,12 @@ export const AdminTransactionsPage = () => {
   const handleCreate = async () => {
     setFeedback('');
     setError('');
+
+    if (!createForm.userId) {
+      setError('Select a user before creating a transaction.');
+      return;
+    }
+
     setActiveTransactionId('create');
 
     try {
@@ -277,7 +295,7 @@ export const AdminTransactionsPage = () => {
         onClose={() => setShowCreateModal(false)}
         footer={
           <div className="flex justify-end">
-            <AdminButton onClick={() => void handleCreate()} disabled={activeTransactionId === 'create'}>
+            <AdminButton onClick={() => void handleCreate()} disabled={activeTransactionId === 'create' || !createForm.userId}>
               {activeTransactionId === 'create' ? 'Creating...' : 'Create Transaction'}
             </AdminButton>
           </div>

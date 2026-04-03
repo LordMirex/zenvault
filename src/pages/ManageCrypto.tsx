@@ -5,12 +5,7 @@ import { useAuth } from '../context/AuthContext';
 export const ManageCrypto = () => {
   const { toggleClientAsset, clientWalletAssets } = useAuth();
   const [query, setQuery] = useState('');
-  const [enabledAssets, setEnabledAssets] = useState<Record<string, boolean>>(() =>
-    clientWalletAssets.reduce<Record<string, boolean>>((result, asset) => {
-      result[asset.id] = asset.enabledByDefault;
-      return result;
-    }, {}),
-  );
+  const [activeAssetId, setActiveAssetId] = useState('');
 
   const filteredAssets = clientWalletAssets.filter((asset) => {
     const search = query.toLowerCase();
@@ -22,14 +17,16 @@ export const ManageCrypto = () => {
     );
   });
 
-  const activeCount = Object.values(enabledAssets).filter(Boolean).length;
+  const visibleCount = clientWalletAssets.filter((asset) => asset.enabledByDefault).length;
+  const hiddenCount = clientWalletAssets.length - visibleCount;
 
-  const toggleAsset = async (assetId: string) => {
-    setEnabledAssets((current) => ({
-      ...current,
-      [assetId]: !current[assetId],
-    }));
-    await toggleClientAsset(assetId);
+  const handleToggle = async (assetId: string) => {
+    setActiveAssetId(assetId);
+    try {
+      await toggleClientAsset(assetId);
+    } finally {
+      setActiveAssetId('');
+    }
   };
 
   return (
@@ -40,26 +37,27 @@ export const ManageCrypto = () => {
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">Manage Assets</p>
             <div>
               <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">
-                Control which chains and assets stay active inside the wallet
+                Choose which live assets should appear on your dashboard
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-gray-400 md:text-base">
-                Disable unused rails, keep the treasury surface tight, and reduce operator mistakes.
+                The admin controls which coins are active across the platform. Here, you only decide which of those active
+                coins should be shown in your personal dashboard portfolio.
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-3xl border border-gray-800 bg-dark-900/80 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Active Assets</p>
-              <p className="mt-2 text-2xl font-black text-primary">{activeCount}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Visible</p>
+              <p className="mt-2 text-2xl font-black text-primary">{visibleCount}</p>
             </div>
             <div className="rounded-3xl border border-gray-800 bg-dark-900/80 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Paused</p>
-              <p className="mt-2 text-2xl font-black text-white">{clientWalletAssets.length - activeCount}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Hidden</p>
+              <p className="mt-2 text-2xl font-black text-white">{hiddenCount}</p>
             </div>
             <div className="rounded-3xl border border-gray-800 bg-dark-900/80 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Policy</p>
-              <p className="mt-2 text-2xl font-black text-success">Healthy</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Live Assets</p>
+              <p className="mt-2 text-2xl font-black text-success">{clientWalletAssets.length}</p>
             </div>
           </div>
         </div>
@@ -72,7 +70,7 @@ export const ManageCrypto = () => {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by coin, network, or tag"
+              placeholder="Search by coin, symbol, or network"
               className="w-full rounded-2xl border border-gray-800 bg-dark-800 py-3 pl-11 pr-4 text-sm text-white placeholder:text-gray-500 focus:border-primary/50 focus:outline-none"
             />
           </div>
@@ -102,20 +100,27 @@ export const ManageCrypto = () => {
                 <button
                   type="button"
                   role="switch"
-                  aria-checked={enabledAssets[asset.id]}
-                  onClick={() => toggleAsset(asset.id)}
+                  aria-checked={asset.enabledByDefault}
+                  disabled={activeAssetId === asset.id}
+                  onClick={() => void handleToggle(asset.id)}
                   className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${
-                    enabledAssets[asset.id] ? 'bg-primary' : 'bg-gray-700'
-                  }`}
+                    asset.enabledByDefault ? 'bg-primary' : 'bg-gray-700'
+                  } ${activeAssetId === asset.id ? 'cursor-not-allowed opacity-60' : ''}`}
                 >
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      enabledAssets[asset.id] ? 'translate-x-8' : 'translate-x-1'
+                      asset.enabledByDefault ? 'translate-x-8' : 'translate-x-1'
                     }`}
                   />
                 </button>
               </div>
             ))}
+
+            {filteredAssets.length === 0 && (
+              <div className="rounded-[1.75rem] border border-dashed border-gray-800 bg-dark-800/40 p-8 text-center text-sm text-gray-500">
+                No active assets matched that search.
+              </div>
+            )}
           </div>
         </div>
 
@@ -126,16 +131,16 @@ export const ManageCrypto = () => {
                 <Bolt size={20} />
               </div>
               <div>
-                <p className="text-sm font-bold text-white">Routing Overview</p>
-                <p className="text-sm text-gray-500">Active rails remain visible across buy, deposit, and withdrawal flows.</p>
+                <p className="text-sm font-bold text-white">Dashboard Rules</p>
+                <p className="text-sm text-gray-500">Your visible coins define the dashboard portfolio total.</p>
               </div>
             </div>
 
             <div className="mt-5 space-y-3">
               {[
-                `${activeCount} assets currently enabled for operators`,
-                'Paused assets are hidden from the quick-action wallet forms',
-                'Stablecoin rails inherit enhanced transfer monitoring by default',
+                `${visibleCount} asset${visibleCount === 1 ? '' : 's'} currently contribute to your dashboard portfolio`,
+                'Hidden assets stay active in the wallet, but they no longer appear on the main dashboard table',
+                'Live prices continue updating for all active assets the admin keeps enabled',
               ].map((detail) => (
                 <div key={detail} className="rounded-[1.5rem] border border-gray-800 bg-dark-800/70 p-4 text-sm text-gray-400">
                   {detail}
@@ -148,9 +153,10 @@ export const ManageCrypto = () => {
             <div className="flex gap-3">
               <ShieldCheck className="mt-0.5 shrink-0 text-success" size={18} />
               <div>
-                <p className="text-sm font-bold text-white">Asset Governance</p>
+                <p className="text-sm font-bold text-white">Visibility Only</p>
                 <p className="mt-1 text-sm text-gray-400">
-                  Any disabled asset keeps its historical balance and address data, but can no longer be selected in transfer forms.
+                  Toggling an asset here does not remove the wallet itself. It only controls whether that coin shows on
+                  your dashboard and counts toward the dashboard portfolio summary.
                 </p>
               </div>
             </div>

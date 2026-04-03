@@ -62,6 +62,12 @@ export const PublicHome = () => {
   const testimonialCount = publicTestimonials.length;
   const featuredServices = publicServices.filter((service) => !hiddenServiceSlugs.has(service.slug));
 
+  const desktopTestimonials = testimonialCount
+    ? Array.from({ length: Math.min(3, testimonialCount) }, (_, offset) =>
+        publicTestimonials[(testimonialIndex + offset) % testimonialCount],
+      )
+    : [];
+
   const cycleTestimonials = (direction: number) => {
     if (testimonialCount < 2) {
       return;
@@ -93,17 +99,17 @@ export const PublicHome = () => {
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                to="/signup"
+                to="/login"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--vb-orange)] px-6 py-4 text-sm font-bold text-[var(--vb-ink)] transition-transform hover:-translate-y-0.5"
               >
-                Create account
+                Access Wallet
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                to="/locations"
+                to="/signup"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-black/10 bg-white px-6 py-4 text-sm font-semibold text-slate-700 transition-colors hover:border-[var(--vb-orange)] hover:text-slate-950"
               >
-                Visit a branch
+                Create account
                 <MoveRight className="h-4 w-4" />
               </Link>
             </div>
@@ -288,100 +294,40 @@ export const PublicHome = () => {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[var(--vb-orange)]">
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0),rgba(255,166,48,0.24))]" />
-        <div className="absolute -left-24 top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-[#f9b155]/35 blur-3xl" />
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#ff9f2c] via-[#ff7d06] to-[#f14904]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.35),_rgba(255,255,255,0))]" aria-hidden />
+        <div className="relative mx-auto max-w-7xl px-4 py-20 text-center lg:px-6">
+          <p className="text-sm font-black uppercase tracking-[0.26em] text-[#1b124c]">Testimonials</p>
+          <h2 className="public-display mt-6 text-4xl font-bold leading-tight text-white md:text-5xl lg:text-6xl">
+            How We&apos;ve Made Crypto Exchange Seamless for our Customers
+          </h2>
 
-        <div className="relative mx-auto max-w-7xl px-4 py-20 lg:px-6 lg:py-24">
-          <div className="mx-auto max-w-4xl text-center">
-            <p className="text-sm font-black uppercase tracking-[0.26em] text-[#1d2b6b]">Testimonials</p>
-            <h2 className="public-display mt-6 text-4xl font-bold leading-tight text-white md:text-5xl lg:text-6xl">
-              How We&apos;ve Made Crypto Exchange Seamless for our Customers
-            </h2>
-          </div>
-
-          <div className="relative mt-14 hidden lg:block lg:px-16 xl:px-20">
-            <button
-              type="button"
-              aria-label="Show previous testimonial"
-              onClick={() => cycleTestimonials(-1)}
-              className="absolute left-4 top-1/2 z-10 inline-flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full bg-[#35295f] text-white shadow-xl transition-transform hover:scale-105"
-            >
-              <ChevronLeft className="h-7 w-7" />
-            </button>
-            <button
-              type="button"
-              aria-label="Show next testimonial"
-              onClick={() => cycleTestimonials(1)}
-              className="absolute right-4 top-1/2 z-10 inline-flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full bg-[#35295f] text-white shadow-xl transition-transform hover:scale-105"
-            >
-              <ChevronRight className="h-7 w-7" />
-            </button>
-
-            <div className="-mx-4 overflow-x-hidden rounded-[2.25rem] px-4 lg:mx-0 lg:px-0">
-              <div
-                className="flex gap-6 transition-transform duration-500 ease-out"
-                style={{ transform: `translateX(${-testimonialIndex * 33.333}%)` }}
+          <div className="relative mt-12 lg:mt-16">
+            <div className="relative hidden lg:block">
+              <button
+                type="button"
+                aria-label="Show previous testimonial"
+                onClick={() => cycleTestimonials(-1)}
+                className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full bg-[#1a1140] p-3 text-white shadow-2xl transition-transform hover:scale-105"
               >
-                {publicTestimonials.map((testimonial) => (
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Show next testimonial"
+                onClick={() => cycleTestimonials(1)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full bg-[#1a1140] p-3 text-white shadow-2xl transition-transform hover:scale-105"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
+              <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
+                {desktopTestimonials.map((testimonial) => (
                   <article
                     key={testimonial.name}
-                    className="flex min-h-[24rem] min-w-[33.333%] flex-shrink-0 flex-col justify-between rounded-[2.25rem] bg-white px-12 py-12 text-slate-900 shadow-[0_24px_70px_rgba(17,17,17,0.18)]"
+                    className="flex min-h-[24rem] flex-col justify-between rounded-[2rem] bg-white px-10 py-10 text-slate-900 shadow-[0_24px_70px_rgba(17,17,17,0.25)]"
                   >
-                    <p className="max-w-4xl text-xl leading-10">
-                      &ldquo;
-                      {testimonial.quote.map((part, index) =>
-                        part.emphasis ? (
-                          <strong key={`${testimonial.name}-${index}`} className="font-extrabold">
-                            {part.text}
-                          </strong>
-                        ) : (
-                          <span key={`${testimonial.name}-${index}`}>{part.text}</span>
-                        ),
-                      )}
-                      &rdquo;
-                    </p>
-
-                    <div className="mt-10 flex items-center gap-4">
-                      <img
-                        src={testimonial.avatar}
-                        alt={testimonial.avatarAlt}
-                        loading="lazy"
-                        className="h-16 w-16 rounded-full object-cover shadow-sm"
-                      />
-                      <p className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">{testimonial.name}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-center gap-2">
-              {publicTestimonials.map((testimonial, index) => (
-                <button
-                  key={testimonial.name}
-                  type="button"
-                  aria-label={`Show testimonial ${index + 1}`}
-                  onClick={() => setTestimonialIndex(index)}
-                  className={`h-2.5 rounded-full transition-all ${index === testimonialIndex ? 'w-10 bg-[#35295f]' : 'w-2.5 bg-white/60'}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="relative mx-auto mt-14 max-w-3xl lg:hidden">
-            <div className="mx-5 overflow-hidden rounded-[2rem] sm:mx-8">
-              <div
-                className="flex transition-transform duration-500 ease-out"
-                style={{ transform: `translateX(-${testimonialIndex * 100}%)` }}
-              >
-                {publicTestimonials.map((testimonial) => (
-                  <article
-                    key={testimonial.name}
-                    className="flex min-h-[18rem] min-w-full flex-col justify-between rounded-[2rem] bg-white px-8 py-9 text-slate-900 shadow-[0_22px_65px_rgba(17,17,17,0.16)] sm:min-h-[20rem] sm:px-10"
-                  >
-                    <p className="text-[1.05rem] leading-9 sm:text-[1.15rem] sm:leading-10">
+                    <p className="text-lg leading-8">
                       &ldquo;
                       {testimonial.quote.map((part, index) =>
                         part.emphasis ? (
@@ -400,44 +346,84 @@ export const PublicHome = () => {
                         src={testimonial.avatar}
                         alt={testimonial.avatarAlt}
                         loading="lazy"
-                        className="h-14 w-14 rounded-full object-cover shadow-sm"
+                        className="h-16 w-16 rounded-full object-cover shadow-sm"
                       />
-                      <p className="text-xl font-semibold tracking-[-0.03em] text-slate-900 sm:text-2xl">{testimonial.name}</p>
+                      <p className="text-xl font-semibold tracking-[-0.03em] text-slate-900">{testimonial.name}</p>
                     </div>
                   </article>
                 ))}
               </div>
             </div>
 
-            <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 items-center justify-between">
-              <button
-                type="button"
-                aria-label="Show previous testimonial"
-                onClick={() => cycleTestimonials(-1)}
-                className="pointer-events-auto inline-flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full bg-[#35295f] text-white shadow-lg"
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </button>
-              <button
-                type="button"
-                aria-label="Show next testimonial"
-                onClick={() => cycleTestimonials(1)}
-                className="pointer-events-auto inline-flex h-11 w-11 translate-x-1/2 items-center justify-center rounded-full bg-[#35295f] text-white shadow-lg"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </button>
-            </div>
+            <div className="relative mx-auto mt-10 max-w-3xl lg:hidden">
+              <div className="mx-5 overflow-hidden rounded-[2rem] sm:mx-8">
+                <div
+                  className="flex transition-transform duration-500 ease-out"
+                  style={{ transform: `translateX(-${testimonialIndex * 100}%)` }}
+                >
+                  {publicTestimonials.map((testimonial) => (
+                    <article
+                      key={testimonial.name}
+                      className="flex min-h-[18rem] min-w-full flex-col justify-between rounded-[2rem] bg-white px-8 py-9 text-slate-900 shadow-[0_22px_65px_rgba(17,17,17,0.16)] sm:min-h-[20rem] sm:px-10"
+                    >
+                      <p className="text-[1.05rem] leading-9 sm:text-[1.15rem] sm:leading-10">
+                        &ldquo;
+                        {testimonial.quote.map((part, index) =>
+                          part.emphasis ? (
+                            <strong key={`${testimonial.name}-${index}`} className="font-extrabold">
+                              {part.text}
+                            </strong>
+                          ) : (
+                            <span key={`${testimonial.name}-${index}`}>{part.text}</span>
+                          ),
+                        )}
+                        &rdquo;
+                      </p>
 
-            <div className="mt-8 flex justify-center gap-2">
-              {publicTestimonials.map((testimonial, index) => (
+                      <div className="mt-8 flex items-center gap-4">
+                        <img
+                          src={testimonial.avatar}
+                          alt={testimonial.avatarAlt}
+                          loading="lazy"
+                          className="h-14 w-14 rounded-full object-cover shadow-sm"
+                        />
+                        <p className="text-xl font-semibold tracking-[-0.03em] text-slate-900 sm:text-2xl">{testimonial.name}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 items-center justify-between">
                 <button
-                  key={testimonial.name}
                   type="button"
-                  aria-label={`Show testimonial ${index + 1}`}
-                  onClick={() => setTestimonialIndex(index)}
-                  className={`h-2.5 rounded-full transition-all ${index === testimonialIndex ? 'w-10 bg-[#35295f]' : 'w-2.5 bg-white/60'}`}
-                />
-              ))}
+                  aria-label="Show previous testimonial"
+                  onClick={() => cycleTestimonials(-1)}
+                  className="pointer-events-auto inline-flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full bg-[#1a1140] text-white shadow-lg"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Show next testimonial"
+                  onClick={() => cycleTestimonials(1)}
+                  className="pointer-events-auto inline-flex h-11 w-11 translate-x-1/2 items-center justify-center rounded-full bg-[#1a1140] text-white shadow-lg"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="mt-8 flex justify-center gap-2">
+                {publicTestimonials.map((testimonial, index) => (
+                  <button
+                    key={testimonial.name}
+                    type="button"
+                    aria-label={`Show testimonial ${index + 1}`}
+                    onClick={() => setTestimonialIndex(index)}
+                    className={`h-2.5 rounded-full transition-all ${index === testimonialIndex ? 'w-10 bg-[#35295f]' : 'w-2.5 bg-white/60'}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>

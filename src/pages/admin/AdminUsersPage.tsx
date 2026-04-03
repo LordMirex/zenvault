@@ -32,7 +32,7 @@ export const AdminUsersPage = () => {
     <div className="space-y-6">
       <AdminPageHeading
         title="Users Management"
-        description="Recovered user-table flow with direct routes into overview, credentials, crypto records, and card records."
+        description="Direct access to user overview, reset password, live asset funding, and card records."
         actions={
           <Link to="/admin/users/create">
             <AdminButton>Create User</AdminButton>
@@ -102,7 +102,7 @@ export const AdminUsersPage = () => {
                 <td className="px-5 py-4">
                   <AdminActionBar>
                     <AdminIconAction icon={Eye} label={`Inspect ${user.name}`} tone="violet" to={`/admin/users/${user.id}`} />
-                    <AdminIconAction icon={KeyRound} label={`Update ${user.name} credentials`} tone="amber" to={`/admin/users/${user.id}/password`} />
+                    <AdminIconAction icon={KeyRound} label={`Reset ${user.name} password`} tone="amber" to={`/admin/users/${user.id}/password`} />
                     <AdminIconAction icon={Coins} label={`Open ${user.name} crypto records`} tone="blue" to={`/admin/users/${user.id}/crypto`} />
                   </AdminActionBar>
                 </td>

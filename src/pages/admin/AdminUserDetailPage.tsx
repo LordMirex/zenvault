@@ -98,7 +98,7 @@ export const AdminUserDetailPage = () => {
                 Edit Profile
               </AdminButton>
             )}
-            <AdminIconAction icon={KeyRound} label={`Reset ${user.name} credentials`} tone="amber" to={`/admin/users/${user.id}/password`} />
+            <AdminIconAction icon={KeyRound} label={`Reset ${user.name} password`} tone="amber" to={`/admin/users/${user.id}/password`} />
             <AdminIconAction icon={Coins} label={`Open ${user.name} crypto records`} tone="blue" to={`/admin/users/${user.id}/crypto`} />
             <AdminIconAction icon={CreditCard} label={`Open ${user.name} card records`} tone="emerald" to={`/admin/users/${user.id}/cards`} />
           </AdminActionBar>

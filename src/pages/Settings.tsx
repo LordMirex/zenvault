@@ -10,7 +10,6 @@ import {
   Smartphone,
   Sun,
   User,
-  Users,
   WalletCards,
   type LucideIcon,
 } from 'lucide-react';
@@ -18,6 +17,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { useTheme } from '../context/ThemeContext';
+import { formatUsd } from '../lib/format';
 
 const formatStatus = (value?: string) =>
   value
@@ -46,7 +46,7 @@ type SettingsItem = SettingsLinkItem | SettingsToggleItem;
 
 export const Settings = () => {
   const navigate = useNavigate();
-  const { logout, clientProfile, clientSummary, user } = useAuth();
+  const { logout, clientCards, clientCardRequests, clientCardApplicationFeeUsd, clientProfile, clientSummary, user } = useAuth();
   const { branding } = useBranding();
   const { theme, toggleTheme, isLightTheme } = useTheme();
 
@@ -92,14 +92,26 @@ export const Settings = () => {
     },
     {
       title: 'Wallet Desk',
-      subtitle: 'Assets, deposit rails, and referral activity.',
+      subtitle: 'Assets, cards, and wallet routing.',
       items: [
         {
           name: 'Manage Assets',
           icon: WalletCards,
-          value: clientSummary?.walletConnected ? 'Wallet connection active' : 'Wallet connection pending',
+          value: clientSummary?.walletConnected ? 'Choose dashboard portfolio assets' : 'Wallet connection pending',
           tone: isLightTheme ? 'bg-violet-100 text-violet-700' : 'bg-violet-500/12 text-violet-300',
           href: '/app/crypto-manage',
+        },
+        {
+          name: 'Cards',
+          icon: WalletCards,
+          value:
+            clientCardRequests.length > 0
+              ? `${clientCardRequests.length} pending request${clientCardRequests.length === 1 ? '' : 's'}`
+              : clientCards.length > 0
+                ? `${clientCards.length} issued card${clientCards.length === 1 ? '' : 's'}`
+                : `${formatUsd(clientCardApplicationFeeUsd)} application fee`,
+          tone: isLightTheme ? 'bg-pink-100 text-pink-700' : 'bg-pink-500/12 text-pink-300',
+          href: '/app/cards',
         },
         {
           name: 'Wallet Addresses',
@@ -107,13 +119,6 @@ export const Settings = () => {
           value: 'Deposit rails and trusted contacts',
           tone: isLightTheme ? 'bg-cyan-100 text-cyan-700' : 'bg-cyan-500/12 text-cyan-300',
           href: '/app/crypto-address',
-        },
-        {
-          name: 'Referral Program',
-          icon: Users,
-          value: 'Track invites and reward activity',
-          tone: isLightTheme ? 'bg-pink-100 text-pink-700' : 'bg-pink-500/12 text-pink-300',
-          href: '/app/referral',
         },
       ],
     },
@@ -172,11 +177,11 @@ export const Settings = () => {
 
             <div className="space-y-4">
               <h2 className={`wallet-display max-w-3xl text-[clamp(2.5rem,6vw,4.6rem)] font-semibold leading-[0.95] ${titleClasses}`}>
-                Rebuild the account area so it feels deliberate, not generated.
+                Account controls for assets, cards, security, and notifications.
               </h2>
               <p className={`max-w-2xl text-base leading-7 md:text-lg ${bodyClasses}`}>
-                The settings area now uses bigger type, stronger grouping, and clearer action cards. Important account tools
-                should read like control surfaces, not recycled list rows.
+                Use this area to choose dashboard assets, apply for cards, manage security, and keep the account workspace
+                clean.
               </p>
             </div>
 
@@ -205,9 +210,9 @@ export const Settings = () => {
                   </p>
                 </div>
                 <div className="grid gap-3">
-                  {[
+                  {[ 
                     { label: 'Wallet connection', value: clientSummary?.walletConnected ? 'Connected' : 'Pending' },
-                    { label: 'Quick access', value: 'Security + notifications live' },
+                    { label: 'Card desk', value: clientCardRequests.length > 0 ? 'Request pending review' : 'Ready for applications' },
                   ].map((item) => (
                     <div key={item.label} className={`rounded-[1.4rem] border p-4 ${insetClasses}`}>
                       <p className={`text-[11px] font-bold uppercase tracking-[0.2em] ${labelClasses}`}>{item.label}</p>

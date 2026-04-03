@@ -1,104 +1,128 @@
-import { config } from './config.mjs';
+import {
+  SUPPORTED_MARKET_ASSETS,
+  getSupportedMarketAssetIds,
+} from './assets.mjs';
 
-const SYMBOL_MAP = {
-  BTC: { coingecko: 'bitcoin', binance: 'BTCUSDT' },
-  ETH: { coingecko: 'ethereum', binance: 'ETHUSDT' },
-  USDT: { coingecko: 'tether', binance: 'USDTUSDT' }, // Binance doesn't really have USDTUSDT, usually 1.0
-  SOL: { coingecko: 'solana', binance: 'SOLUSDT' },
-  BNB: { coingecko: 'binancecoin', binance: 'BNBUSDT' },
-  DOT: { coingecko: 'polkadot', binance: 'DOTUSDT' },
-  TRX: { coingecko: 'tron', binance: 'TRXUSDT' },
-  LTC: { coingecko: 'litecoin', binance: 'LTCUSDT' },
-  BCH: { coingecko: 'bitcoin-cash', binance: 'BCHUSDT' },
-  XLM: { coingecko: 'stellar', binance: 'XLMUSDT' },
-  DASH: { coingecko: 'dash', binance: 'DASHUSDT' },
+const COINGECKO_PUBLIC_BASE = 'https://api.coingecko.com/api/v3';
+const COINGECKO_PRO_BASE = 'https://pro-api.coingecko.com/api/v3';
+const DEFAULT_ICON = '/crypto/btc-icon.png';
+
+const buildRequestConfig = () => {
+  const proKey = String(process.env.COINGECKO_PRO_API_KEY ?? '').trim();
+  if (proKey) {
+    return {
+      url: `${COINGECKO_PRO_BASE}/coins/markets`,
+      headers: {
+        accept: 'application/json',
+        'x-cg-pro-api-key': proKey,
+      },
+    };
+  }
+
+  const demoKey = String(process.env.COINGECKO_DEMO_API_KEY ?? '').trim();
+  return {
+    url: `${COINGECKO_PUBLIC_BASE}/coins/markets`,
+    headers: {
+      accept: 'application/json',
+      ...(demoKey ? { 'x-cg-demo-api-key': demoKey } : {}),
+    },
+  };
 };
+
+const fallbackMarketAssets = SUPPORTED_MARKET_ASSETS.map((asset, index) => ({
+  id: asset.id,
+  symbol: asset.symbol,
+  name: asset.name,
+  icon: DEFAULT_ICON,
+  price: 0,
+  change: 0,
+  marketCapRank: index + 1,
+}));
 
 class PriceFeed {
   constructor() {
     this.cache = new Map();
+    this.marketAssets = [...fallbackMarketAssets];
     this.lastUpdatedAt = null;
     this.isFetching = false;
   }
 
-  async fetchFromBinance() {
-    try {
-      const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
-      if (!response.ok) throw new Error('Binance API response not OK');
-      const data = await response.json();
-      
-      const results = {};
-      for (const [symbol, mapping] of Object.entries(SYMBOL_MAP)) {
-        const ticker = data.find(t => t.symbol === mapping.binance);
-        if (ticker) {
-          results[symbol] = {
-            price: parseFloat(ticker.lastPrice),
-            change: parseFloat(ticker.priceChangePercent),
-          };
-        }
-      }
-      return results;
-    } catch (error) {
-      console.warn('PriceFeed: Binance fetch failed', error.message);
-      return null;
-    }
-  }
-
   async fetchFromCoinGecko() {
-    try {
-      const ids = Object.values(SYMBOL_MAP).map(m => m.coingecko).join(',');
-      const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
-      if (!response.ok) throw new Error('CoinGecko API response not OK');
-      const data = await response.json();
-      
-      const results = {};
-      for (const [symbol, mapping] of Object.entries(SYMBOL_MAP)) {
-        const coin = data[mapping.coingecko];
-        if (coin) {
-          results[symbol] = {
-            price: coin.usd,
-            change: coin.usd_24h_change || 0,
-          };
-        }
-      }
-      return results;
-    } catch (error) {
-      console.warn('PriceFeed: CoinGecko fetch failed', error.message);
-      return null;
+    const { url, headers } = buildRequestConfig();
+    const params = new URLSearchParams({
+      vs_currency: 'usd',
+      ids: getSupportedMarketAssetIds().join(','),
+      order: 'market_cap_desc',
+      per_page: String(SUPPORTED_MARKET_ASSETS.length),
+      page: '1',
+      sparkline: 'false',
+      price_change_percentage: '24h',
+    });
+
+    const response = await fetch(`${url}?${params.toString()}`, { headers });
+    if (!response.ok) {
+      throw new Error(`CoinGecko responded with ${response.status}`);
     }
+
+    const payload = await response.json();
+
+    return (Array.isArray(payload) ? payload : [])
+      .map((asset, index) => ({
+        id: String(asset.id ?? '').trim(),
+        symbol: String(asset.symbol ?? '').trim().toUpperCase(),
+        name: String(asset.name ?? '').trim(),
+        icon: String(asset.image ?? '').trim() || DEFAULT_ICON,
+        price: Number(asset.current_price ?? 0),
+        change: Number(asset.price_change_percentage_24h ?? 0),
+        marketCapRank: Number(asset.market_cap_rank ?? index + 1),
+      }))
+      .filter((asset) => asset.id && asset.symbol && asset.name);
   }
 
   async update() {
-    if (this.isFetching) return;
+    if (this.isFetching) {
+      return;
+    }
+
     this.isFetching = true;
 
     try {
-      // Try Binance first (faster, less rate limited)
-      let results = await this.fetchFromBinance();
-      
-      // Fallback to CoinGecko
-      if (!results) {
-        results = await this.fetchFromCoinGecko();
+      const marketAssets = await this.fetchFromCoinGecko();
+      if (!marketAssets.length) {
+        return;
       }
 
-      if (results && Object.keys(results).length > 0) {
-        for (const [symbol, data] of Object.entries(results)) {
-          this.cache.set(symbol, data);
-        }
-        this.lastUpdatedAt = new Date();
-        console.log(`PriceFeed: Successfully updated ${Object.keys(results).length} symbols at ${this.lastUpdatedAt.toISOString()}`);
-      }
+      this.marketAssets = marketAssets;
+      this.cache = new Map(
+        marketAssets.map((asset) => [
+          asset.symbol,
+          {
+            price: asset.price,
+            change: asset.change,
+          },
+        ]),
+      );
+      this.lastUpdatedAt = new Date();
+      console.log(
+        `PriceFeed: updated ${marketAssets.length} supported assets at ${this.lastUpdatedAt.toISOString()}`,
+      );
+    } catch (error) {
+      console.warn('PriceFeed: market update failed', error.message);
     } finally {
       this.isFetching = false;
     }
   }
 
   getPrice(symbol) {
-    return this.cache.get(symbol);
+    return this.cache.get(String(symbol ?? '').trim().toUpperCase());
   }
 
   getAllPrices() {
     return Object.fromEntries(this.cache);
+  }
+
+  getMarketAssets() {
+    return this.marketAssets.map((asset) => ({ ...asset }));
   }
 }
 

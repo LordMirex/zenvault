@@ -9,6 +9,7 @@ const routeTitles = [
   { path: '/admin/users', title: 'Users Management' },
   { path: '/admin/kyc', title: 'KYC Verification' },
   { path: '/admin/transactions', title: 'Transactions' },
+  { path: '/admin/broadcasts', title: 'Broadcasts' },
   { path: '/admin/settings', title: 'Settings' },
   { path: '/admin/profile', title: 'Profile Settings' },
 ];

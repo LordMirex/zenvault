@@ -2,6 +2,7 @@ node_modules
 _archive
 attached_assets
 dist
+.env
 # SQLite WAL temp files (auto-generated, not needed in repo)
 *.db-wal
 *.db-shm

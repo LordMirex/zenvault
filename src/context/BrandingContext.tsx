@@ -22,6 +22,7 @@ export type BrandingSettings = {
   footerSummary: string;
   authHeadline: string;
   authDescription: string;
+  companyName: string;
   companyAddress: string;
   companyPhone: string;
   companyEmail: string;
@@ -46,6 +47,7 @@ const defaultBranding: BrandingSettings = {
   authHeadline: 'Sign in to your account',
   authDescription:
     'Access your wallet, portfolio activity, and account controls through a secure login flow.',
+  companyName: '',
   companyAddress: '',
   companyPhone: '',
   companyEmail: '',
@@ -82,6 +84,7 @@ const normalizeBranding = (input: Record<string, unknown> | null | undefined): B
     footerSummary: cleanText(merged.footerSummary, defaultBranding.footerSummary),
     authHeadline: cleanText(merged.authHeadline, defaultBranding.authHeadline),
     authDescription: cleanText(merged.authDescription, defaultBranding.authDescription),
+    companyName: cleanText(merged.companyName, defaultBranding.companyName),
     companyAddress: cleanText(merged.companyAddress, defaultBranding.companyAddress),
     companyPhone: cleanText(merged.companyPhone, defaultBranding.companyPhone),
     companyEmail: cleanText(merged.companyEmail, defaultBranding.companyEmail),
@@ -117,7 +120,9 @@ const routeTitles = [
   { matcher: (pathname: string) => pathname === '/signup', title: 'Create Account', public: false },
 
   { matcher: (pathname: string) => pathname === '/app' || pathname === '/dashboard', title: 'Dashboard', public: false },
+  { matcher: (pathname: string) => pathname === '/app/cards' || pathname === '/cards', title: 'Cards', public: false },
   { matcher: (pathname: string) => pathname.startsWith('/app/'), title: 'Wallet', public: false },
+  { matcher: (pathname: string) => pathname.startsWith('/admin/broadcasts'), title: 'Broadcasts', public: false },
   { matcher: (pathname: string) => pathname.startsWith('/admin'), title: 'Admin', public: false },
 ];
 

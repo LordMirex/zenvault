@@ -24,6 +24,10 @@ export type AdminCardRecord = {
   spendLimitUsd: number;
   utilizationUsd: number;
   issuedAt: string;
+  requestOnly?: boolean;
+  requestedAt?: string;
+  holderName?: string;
+  applicationFeeUsd?: number;
 };
 
 export type AdminUser = {
@@ -47,6 +51,18 @@ export type AdminUser = {
   cards: AdminCardRecord[];
 };
 
+export type AdminKycDocument = {
+  id: string;
+  fieldName: string;
+  label: string;
+  originalName: string;
+  storedName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  downloadPath: string;
+};
+
 export type AdminKycCase = {
   id: string;
   userId: string;
@@ -56,6 +72,7 @@ export type AdminKycCase = {
   riskLevel: AdminRiskLevel;
   status: AdminKycStatus;
   note: string;
+  documents: AdminKycDocument[];
 };
 
 export type AdminTransactionRecord = {
@@ -84,18 +101,18 @@ export type AdminMetric = {
   detail: string;
 };
 
-export type AdminWalletRail = {
+export type AdminAssetCatalogItem = {
   id: string;
   symbol: string;
   name: string;
+  icon: string;
+  price: number;
+  change: number;
+  marketCapRank: number;
   network: string;
-  address: string;
-  payId: string;
-  status: 'Healthy' | 'Watch' | 'Paused';
-  minDeposit: string;
-  minWithdrawal: string;
-  fee: string;
-  confirmations: string;
+  tags: string[];
+  active: boolean;
+  depositAddress: string;
 };
 
 export type AdminEmailTemplate = {
@@ -110,7 +127,7 @@ export let adminUsers: AdminUser[] = [];
 export let adminMetrics: AdminMetric[] = [];
 export let adminKycCases: AdminKycCase[] = [];
 export let adminTransactions: AdminTransactionRecord[] = [];
-export let adminWalletRails: AdminWalletRail[] = [];
+export let adminAssetCatalog: AdminAssetCatalogItem[] = [];
 export let adminEmailTemplates: AdminEmailTemplate[] = [];
 
 export let adminAlerts: string[] = [];
@@ -124,7 +141,7 @@ export const hydrateAdminData = (payload: any) => {
   adminMetrics = payload.adminMetrics;
   adminKycCases = payload.adminKycCases;
   adminTransactions = payload.adminTransactions;
-  adminWalletRails = payload.adminWalletRails;
+  adminAssetCatalog = payload.adminAssetCatalog;
   adminEmailTemplates = payload.adminEmailTemplates;
   adminAlerts = payload.adminAlerts;
   adminTimeline = payload.adminTimeline;

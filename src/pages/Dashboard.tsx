@@ -26,7 +26,8 @@ export const Dashboard = () => {
   const [showBalance, setShowBalance] = useState(true);
   const navigate = useNavigate();
   const { clientProfile, clientSummary, user, clientWalletAssets } = useAuth();
-  const featuredAssets = clientWalletAssets.slice(0, 4);
+  const featuredAssets = clientWalletAssets.filter((asset) => asset.enabledByDefault);
+  const dashboardAssets = featuredAssets.slice(0, 6);
   const accountId = clientProfile?.uuid ?? user?.uuid ?? 'Wallet ID unavailable';
 
   return (
@@ -102,13 +103,13 @@ export const Dashboard = () => {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-white">Your Assets</h3>
+          <h3 className="text-xl font-bold text-white">Dashboard Assets</h3>
           <button
             type="button"
             onClick={() => navigate('/app/crypto-manage')}
             className="flex items-center gap-1 text-sm text-primary hover:underline"
           >
-            Manage <ChevronRight size={14} />
+            Select Assets <ChevronRight size={14} />
           </button>
         </div>
 
@@ -121,7 +122,7 @@ export const Dashboard = () => {
           </div>
 
           <div className="divide-y divide-gray-800/50">
-            {featuredAssets.map((asset) => (
+            {dashboardAssets.map((asset) => (
               <button
                 key={asset.id}
                 type="button"
@@ -159,6 +160,22 @@ export const Dashboard = () => {
                 </div>
               </button>
             ))}
+
+            {dashboardAssets.length === 0 && (
+              <div className="px-6 py-12 text-center">
+                <p className="text-lg font-semibold text-white">No assets are selected for the dashboard yet.</p>
+                <p className="mt-2 text-sm text-gray-500">
+                  Go to Manage Assets and choose which active coins should show in your portfolio view.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/app/crypto-manage')}
+                  className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-dark-900 transition-colors hover:bg-yellow-400"
+                >
+                  Choose Dashboard Assets
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>

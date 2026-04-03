@@ -126,7 +126,7 @@ export const seedSettings = {
   general: {
     siteName: 'Vancouver Bitcoin',
     appName: 'QFS Wallet',
-    siteUrl: 'http://127.0.0.1:4173',
+    siteUrl: '',
     logoUrl: '/marketing/vb-logo-colour.svg',
     faviconUrl: '/crypto/btc-icon.png',
     publicTopbarLabel: 'Vancouver Bitcoin',
@@ -156,20 +156,21 @@ export const seedSettings = {
     notifyOnUserRegistration: true,
     notifyOnKycSubmission: true,
     notifyOnKycApproval: true,
-    templates: [
-      { id: 'tmpl-1', name: 'Welcome Email', subject: 'Welcome to QFS Trading', status: 'Live', updatedAt: 'Today' },
-      { id: 'tmpl-2', name: 'KYC Approval', subject: 'Your account verification is approved', status: 'Live', updatedAt: 'Yesterday' },
-      { id: 'tmpl-3', name: 'Withdrawal Review', subject: 'Your transfer is under review', status: 'Draft', updatedAt: '2 days ago' },
-    ],
   },
   wallets: {
-    rails: [
-      { id: 'rail-btc', name: 'Bitcoin', network: 'BTC', status: 'Healthy', minDeposit: '0.0002 BTC', minWithdrawal: '0.00035 BTC', fee: '0.00035 BTC', confirmations: '2 confirmations' },
-      { id: 'rail-eth', name: 'Ethereum', network: 'ETH', status: 'Healthy', minDeposit: '0.005 ETH', minWithdrawal: '0.01 ETH', fee: '0.0025 ETH', confirmations: '12 confirmations' },
-      { id: 'rail-usdt-trc20', name: 'Tether', network: 'TRC20', status: 'Healthy', minDeposit: '10 USDT', minWithdrawal: '25 USDT', fee: '1 USDT', confirmations: '20 confirmations' },
-      { id: 'rail-usdt-erc20', name: 'Tether', network: 'ERC20', status: 'Watch', minDeposit: '10 USDT', minWithdrawal: '25 USDT', fee: '8 USDT', confirmations: '12 confirmations' },
-      { id: 'rail-sol', name: 'Solana', network: 'SOL', status: 'Healthy', minDeposit: '0.15 SOL', minWithdrawal: '0.20 SOL', fee: '0.01 SOL', confirmations: '32 confirmations' },
+    activeAssetIds: [
+      'bitcoin',
+      'ethereum',
+      'tether',
+      'ripple',
+      'binancecoin',
+      'usd-coin',
+      'solana',
+      'tron',
+      'dogecoin',
+      'cardano',
     ],
+    cardApplicationFeeUsd: 75,
   },
   referralMilestones: [
     { label: 'Starter Circle', reward: '100 USDT', requirement: 'Invite 1 verified trader' },

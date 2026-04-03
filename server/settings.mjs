@@ -8,6 +8,7 @@ export const defaultGeneralSettings = {
   siteUrl: String(config.clientOrigin ?? 'http://localhost:5173').replace(/\/$/, ''),
   logoUrl: '',
   faviconUrl: '',
+  companyName: '',
   publicTopbarLabel: 'Welcome',
   publicTopbarText:
     'Secure digital asset management with guided support and transparent pricing.',
@@ -38,6 +39,7 @@ export const normalizeGeneralSettings = (input = {}) => {
     siteUrl: trimString(merged.siteUrl).replace(/\/$/, '') || defaultGeneralSettings.siteUrl,
     logoUrl: trimString(merged.logoUrl) || defaultGeneralSettings.logoUrl,
     faviconUrl: trimString(merged.faviconUrl) || defaultGeneralSettings.faviconUrl,
+    companyName: trimString(merged.companyName) || defaultGeneralSettings.companyName,
     publicTopbarLabel: trimString(merged.publicTopbarLabel) || defaultGeneralSettings.publicTopbarLabel,
     publicTopbarText: trimString(merged.publicTopbarText) || defaultGeneralSettings.publicTopbarText,
     publicHeroTitle: trimString(merged.publicHeroTitle) || defaultGeneralSettings.publicHeroTitle,

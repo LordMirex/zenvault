@@ -2,7 +2,7 @@ const ACCESS_TOKEN_KEY = 'qfs_access_token';
 const PENDING_TOKEN_KEY = 'qfs_pending_token';
 const AUTH_NOTICE_KEY = 'qfs_auth_notice';
 export const AUTH_EXPIRED_EVENT = 'qfs:auth-expired';
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 type RequestOptions = RequestInit & {
   token?: string | null;
@@ -37,7 +37,8 @@ export const apiRequest = async <T>(path: string, options: RequestOptions = {}):
   headers.set('Accept', 'application/json');
 
   const hasBody = options.body !== undefined;
-  if (hasBody && !headers.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (hasBody && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -46,7 +47,7 @@ export const apiRequest = async <T>(path: string, options: RequestOptions = {}):
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const requestUrl = /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`;
+  const requestUrl = /^https?:\/\//.test(path) ? path : `${API_BASE}${path}`;
 
   const response = await fetch(requestUrl, {
     ...options,

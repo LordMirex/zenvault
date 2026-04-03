@@ -158,10 +158,9 @@ export const SignupPage = () => {
           </p>
         </main>
 
-        <aside className="hidden bg-emerald-500 p-10 text-slate-950 lg:flex lg:h-full lg:flex-col lg:justify-between lg:overflow-hidden">
-          <div>
-            <BrandLogo size="lg" variant="icon" stretch />
-            <h2 className="mt-6 text-5xl font-black tracking-tight">A clearer start for first-time buyers and repeat clients</h2>
+          <aside className="hidden bg-emerald-500 p-10 text-slate-950 lg:flex lg:h-full lg:flex-col lg:justify-between lg:overflow-hidden">
+            <div>
+              <h2 className="mt-6 text-5xl font-black tracking-tight">A clearer start for first-time buyers and repeat clients</h2>
             <p className="mt-5 max-w-lg text-base leading-8 text-emerald-950/80">
               The signup flow is built to reduce hesitation, explain what comes next, and move clients into a secure dashboard without friction.
             </p>

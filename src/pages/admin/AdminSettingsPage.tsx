@@ -4,7 +4,7 @@ import { Upload, Image, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
 import { BrandLogo } from '../../components/common/BrandLogo';
-import { AdminBadge, AdminButton, AdminCard, AdminPageHeading, AdminTextArea, AdminTextInput, AdminSelect } from '../../components/admin/AdminUi';
+import { AdminBadge, AdminButton, AdminCard, AdminPageHeading, AdminTextArea, AdminTextInput } from '../../components/admin/AdminUi';
 import { cn } from '../../lib/cn';
 import { getAccessToken } from '../../lib/api';
 
@@ -14,11 +14,11 @@ const tabs = [
   { label: 'Wallet Settings', to: '/admin/settings/wallets', key: 'wallets' },
 ] as const;
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:4000' : '')).replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 export const AdminSettingsPage = () => {
   const location = useLocation();
-  const { adminSettings, saveAdminSettings, adminEmailTemplates, adminWalletRails } = useAuth();
+  const { adminSettings, saveAdminSettings, adminAssetCatalog } = useAuth();
   const { refreshBranding } = useBranding();
   const [message, setMessage] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -39,6 +39,9 @@ export const AdminSettingsPage = () => {
     footerSummary: '',
     authHeadline: '',
     authDescription: '',
+    companyAddress: '',
+    companyPhone: '',
+    companyEmail: '',
     referralBonusAmount: '',
     bonusDistribution: '',
   });
@@ -57,19 +60,11 @@ export const AdminSettingsPage = () => {
     notifyOnKycApproval: true,
   });
 
-  const [railForm, setRailForm] = useState({
-    symbol: '',
-    name: '',
-    network: '',
-    address: '',
-    payId: '',
-    status: 'Healthy' as const,
-    minDeposit: '',
-    minWithdrawal: '',
-    fee: '',
-    confirmations: '',
+  const [walletForm, setWalletForm] = useState({
+    activeAssetIds: [] as string[],
+    cardApplicationFeeUsd: '75',
+    assetConfigs: {} as Record<string, { depositAddress: string }>,
   });
-  const [editingRailId, setEditingRailId] = useState<string | null>(null);
 
   useEffect(() => {
     if (adminSettings?.general) {
@@ -85,6 +80,9 @@ export const AdminSettingsPage = () => {
         footerSummary: String(adminSettings.general.footerSummary ?? ''),
         authHeadline: String(adminSettings.general.authHeadline ?? ''),
         authDescription: String(adminSettings.general.authDescription ?? ''),
+        companyAddress: String(adminSettings.general.companyAddress ?? ''),
+        companyPhone: String(adminSettings.general.companyPhone ?? ''),
+        companyEmail: String(adminSettings.general.companyEmail ?? ''),
         referralBonusAmount: String(adminSettings.general.referralBonusAmount ?? ''),
         bonusDistribution: String(adminSettings.general.bonusDistribution ?? ''),
       });
@@ -103,6 +101,30 @@ export const AdminSettingsPage = () => {
         notifyOnUserRegistration: Boolean(adminSettings.email.notifyOnUserRegistration ?? true),
         notifyOnKycSubmission: Boolean(adminSettings.email.notifyOnKycSubmission ?? true),
         notifyOnKycApproval: Boolean(adminSettings.email.notifyOnKycApproval ?? true),
+      });
+    }
+
+    if (adminSettings?.wallets) {
+      const assetConfigs =
+        adminSettings.wallets.assetConfigs && typeof adminSettings.wallets.assetConfigs === 'object'
+          ? Object.fromEntries(
+            Object.entries(adminSettings.wallets.assetConfigs as Record<string, unknown>).map(([assetId, config]) => {
+              const depositAddress =
+                config && typeof config === 'object' && !Array.isArray(config)
+                  ? String((config as { depositAddress?: unknown; address?: unknown }).depositAddress ?? (config as { address?: unknown }).address ?? '')
+                  : '';
+
+              return [assetId, { depositAddress }];
+            }),
+          )
+          : {};
+
+      setWalletForm({
+        activeAssetIds: Array.isArray(adminSettings.wallets.activeAssetIds)
+          ? adminSettings.wallets.activeAssetIds.map((value) => String(value))
+          : [],
+        cardApplicationFeeUsd: String(adminSettings.wallets.cardApplicationFeeUsd ?? 75),
+        assetConfigs,
       });
     }
   }, [adminSettings]);
@@ -133,7 +155,6 @@ export const AdminSettingsPage = () => {
       mailUsername: emailForm.mailUsername,
       mailPassword: emailForm.mailPassword,
       mailEncryption: emailForm.mailEncryption,
-      templates: adminEmailTemplates,
       notifyOnUserRegistration: emailForm.notifyOnUserRegistration,
       notifyOnKycSubmission: emailForm.notifyOnKycSubmission,
       notifyOnKycApproval: emailForm.notifyOnKycApproval,
@@ -142,53 +163,42 @@ export const AdminSettingsPage = () => {
     setMessage('Email settings saved.');
   };
 
-  const saveWalletRail = async () => {
-    if (!railForm.symbol || !railForm.name || !railForm.network) {
-      setMessage('Symbol, Name, and Network are required.');
-      return;
-    }
+  const toggleAsset = (assetId: string) => {
+    setWalletForm((current) => {
+      const activeAssetIds = current.activeAssetIds.includes(assetId)
+        ? current.activeAssetIds.filter((value) => value !== assetId)
+        : [...current.activeAssetIds, assetId];
 
-    const currentRails = [...adminWalletRails];
-    const newRail = {
-      id: editingRailId || `rail-${Date.now()}`,
-      ...railForm,
-    };
-
-    if (editingRailId) {
-      const idx = currentRails.findIndex((r) => r.id === editingRailId);
-      if (idx !== -1) currentRails[idx] = newRail;
-    } else {
-      currentRails.push(newRail);
-    }
-
-    await saveAdminSettings('wallets', { ...adminSettings?.wallets, rails: currentRails });
-    setMessage(editingRailId ? 'Wallet rail updated.' : 'Wallet rail added.');
-    setEditingRailId(null);
-    setRailForm({ symbol: '', name: '', network: '', address: '', payId: '', status: 'Healthy', minDeposit: '', minWithdrawal: '', fee: '', confirmations: '' });
-  };
-
-  const editWalletRail = (rail: any) => {
-    setEditingRailId(rail.id);
-    setRailForm({
-      symbol: rail.symbol || '',
-      name: rail.name || '',
-      network: rail.network || '',
-      address: rail.address || '',
-      payId: rail.payId || '',
-      status: rail.status || 'Healthy',
-      minDeposit: rail.minDeposit || '',
-      minWithdrawal: rail.minWithdrawal || '',
-      fee: rail.fee || '',
-      confirmations: rail.confirmations || '',
+      return {
+        ...current,
+        activeAssetIds,
+      };
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const deleteWalletRail = async (id: string) => {
-    if (!window.confirm('Delete this wallet rail?')) return;
-    const currentRails = adminWalletRails.filter((r) => r.id !== id);
-    await saveAdminSettings('wallets', { ...adminSettings?.wallets, rails: currentRails });
-    setMessage('Wallet rail deleted.');
+  const saveWalletSettings = async () => {
+    await saveAdminSettings('wallets', {
+      activeAssetIds: walletForm.activeAssetIds,
+      cardApplicationFeeUsd: Number(walletForm.cardApplicationFeeUsd || 0),
+      assetConfigs: Object.fromEntries(
+        Object.entries(walletForm.assetConfigs)
+          .map(([assetId, config]) => [assetId, { depositAddress: String(config.depositAddress ?? '').trim() }])
+          .filter(([, config]) => Boolean((config as { depositAddress: string }).depositAddress)),
+      ),
+    });
+    setMessage('Asset settings saved.');
+  };
+
+  const updateAssetDepositAddress = (assetId: string, depositAddress: string) => {
+    setWalletForm((current) => ({
+      ...current,
+      assetConfigs: {
+        ...current.assetConfigs,
+        [assetId]: {
+          depositAddress,
+        },
+      },
+    }));
   };
 
   const handleFileUpload = async (type: 'logo' | 'favicon', file: File) => {
@@ -235,7 +245,7 @@ export const AdminSettingsPage = () => {
     <div className="space-y-6">
       <AdminPageHeading
         title="Settings"
-        description="General, email, and wallet settings now persist through the MySQL-backed API."
+        description="General, email, and wallet settings now persist through the live database-backed API."
       />
 
       <div className="flex flex-wrap gap-3">
@@ -398,6 +408,15 @@ export const AdminSettingsPage = () => {
           </AdminCard>
 
           <AdminCard className="p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Company Contact</h3>
+            <div className="mt-5 grid gap-4">
+              <AdminTextInput label="Company Address" value={generalForm.companyAddress} onChange={(event) => setGeneralForm((current) => ({ ...current, companyAddress: event.target.value }))} placeholder="Office or mailing address" />
+              <AdminTextInput label="Company Phone" value={generalForm.companyPhone} onChange={(event) => setGeneralForm((current) => ({ ...current, companyPhone: event.target.value }))} placeholder="+1 555 000 0000" />
+              <AdminTextInput label="Company Email" value={generalForm.companyEmail} onChange={(event) => setGeneralForm((current) => ({ ...current, companyEmail: event.target.value }))} placeholder="support@example.com" />
+            </div>
+          </AdminCard>
+
+          <AdminCard className="p-6">
             <h3 className="text-lg font-semibold text-slate-900">Referral Settings</h3>
             <div className="mt-5 space-y-4">
               <AdminTextInput label="Referral Bonus Amount (USD)" value={generalForm.referralBonusAmount} onChange={(event) => setGeneralForm((current) => ({ ...current, referralBonusAmount: event.target.value }))} />
@@ -411,20 +430,42 @@ export const AdminSettingsPage = () => {
       {currentTab === 'email' && (
         <div className="space-y-6">
           <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Email Templates</h3>
-            <div className="mt-5 space-y-3">
-              {adminEmailTemplates.map((template) => (
-                <div key={template.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="font-semibold text-slate-900">{template.name}</p>
-                    <p className="mt-1 text-sm text-slate-500">{template.subject}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <AdminBadge value={template.status} />
-                    <span className="text-sm text-slate-500">{template.updatedAt}</span>
-                  </div>
+            <h3 className="text-lg font-semibold text-slate-900">Live Email System</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500">
+              Welcome emails, KYC notices, and manual broadcasts all use one shared branded layout tied to your live site settings.
+            </p>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {[
+                {
+                  label: 'Brand source',
+                  value: generalForm.siteName || 'Not configured',
+                  detail: 'Uses your public logo, site name, and footer summary.',
+                },
+                {
+                  label: 'Sender',
+                  value: emailForm.fromName || 'Not configured',
+                  detail: emailForm.fromAddress || 'Set a sender email below before delivery.',
+                },
+                {
+                  label: 'Preview and send',
+                  value: 'Broadcasts',
+                  detail: 'Compose and preview the live layout from the broadcast workspace.',
+                },
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{item.label}</p>
+                  <p className="mt-3 text-base font-semibold text-slate-900">{item.value}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-5">
+              <Link
+                to="/admin/broadcasts"
+                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Open Broadcast Workspace
+              </Link>
             </div>
           </AdminCard>
 
@@ -485,67 +526,98 @@ export const AdminSettingsPage = () => {
       {currentTab === 'wallets' && (
         <div className="space-y-6">
           <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Configure Wallet Rail</h3>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <AdminTextInput label="Symbol (e.g. BTC)" value={railForm.symbol} onChange={(e) => setRailForm((c) => ({ ...c, symbol: e.target.value.toUpperCase() }))} />
-              <AdminTextInput label="Name (e.g. Bitcoin)" value={railForm.name} onChange={(e) => setRailForm((c) => ({ ...c, name: e.target.value }))} />
-              <AdminTextInput label="Network (e.g. Native, TRC20)" value={railForm.network} onChange={(e) => setRailForm((c) => ({ ...c, network: e.target.value }))} />
-              <AdminSelect label="Status" value={railForm.status} onChange={(e) => setRailForm((c) => ({ ...c, status: e.target.value as any }))}>
-                <option>Healthy</option>
-                <option>Watch</option>
-                <option>Paused</option>
-              </AdminSelect>
-              <div className="md:col-span-2">
-                <AdminTextInput label="Deposit Address" value={railForm.address} onChange={(e) => setRailForm((c) => ({ ...c, address: e.target.value }))} placeholder="Public on-chain address for users to deposit" />
+            <h3 className="text-lg font-semibold text-slate-900">Asset Activation</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+              This panel now uses a fixed top-20 asset catalog with live logos and live market prices. Toggle only the assets
+              you want users and operators to work with.
+            </p>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <AdminTextInput
+                label="Card Application Fee (USD)"
+                value={walletForm.cardApplicationFeeUsd}
+                onChange={(event) => setWalletForm((current) => ({ ...current, cardApplicationFeeUsd: event.target.value }))}
+                placeholder="75"
+              />
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Active Assets</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{walletForm.activeAssetIds.length}</p>
+                <p className="mt-1 text-sm text-slate-500">Users can hold and admins can fund only the assets enabled here.</p>
               </div>
-              <div className="md:col-span-2">
-                <AdminTextInput label="Internal PayID" value={railForm.payId} onChange={(e) => setRailForm((c) => ({ ...c, payId: e.target.value }))} placeholder="Internal identifier (optional)" />
-              </div>
-              <AdminTextInput label="Min Deposit" value={railForm.minDeposit} onChange={(e) => setRailForm((c) => ({ ...c, minDeposit: e.target.value }))} />
-              <AdminTextInput label="Min Withdrawal" value={railForm.minWithdrawal} onChange={(e) => setRailForm((c) => ({ ...c, minWithdrawal: e.target.value }))} />
-              <AdminTextInput label="Fee" value={railForm.fee} onChange={(e) => setRailForm((c) => ({ ...c, fee: e.target.value }))} />
-              <AdminTextInput label="Confirmations text" value={railForm.confirmations} onChange={(e) => setRailForm((c) => ({ ...c, confirmations: e.target.value }))} />
             </div>
-            <div className="mt-5 flex justify-end gap-3">
-              {editingRailId && (
-                <AdminButton variant="secondary" onClick={() => {
-                  setEditingRailId(null);
-                  setRailForm({ symbol: '', name: '', network: '', address: '', payId: '', status: 'Healthy', minDeposit: '', minWithdrawal: '', fee: '', confirmations: '' });
-                }}>Cancel Edit</AdminButton>
-              )}
-              <AdminButton onClick={saveWalletRail}>
-                {editingRailId ? 'Update Rail' : 'Add Wallet Rail'}
-              </AdminButton>
+            <div className="mt-6 flex justify-end">
+              <AdminButton onClick={saveWalletSettings}>Save Asset Settings</AdminButton>
             </div>
           </AdminCard>
 
           <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Current Wallet Rails</h3>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {adminWalletRails.map((rail) => (
-                <div key={rail.id} className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <h3 className="text-lg font-semibold text-slate-900">Supported Top 20 Assets</h3>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {adminAssetCatalog.map((asset) => {
+                const isActive = walletForm.activeAssetIds.includes(asset.id);
+
+                return (
+                <div key={asset.id} className="rounded-lg border border-slate-200 bg-slate-50 p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-slate-900">{rail.name} ({rail.symbol})</p>
-                      <p className="text-sm text-slate-500">{rail.network}</p>
+                    <div className="flex items-center gap-3">
+                      <img src={asset.icon} alt={asset.name} className="h-10 w-10 rounded-full bg-white p-1 shadow-sm" />
+                      <div>
+                        <p className="font-semibold text-slate-900">{asset.name} ({asset.symbol})</p>
+                        <p className="text-sm text-slate-500">{asset.network}</p>
+                      </div>
                     </div>
-                    <AdminBadge value={rail.status} />
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                      #{asset.marketCapRank}
+                    </span>
                   </div>
-                  <div className="mt-4 space-y-2 text-sm text-slate-600">
-                    <p className="truncate"><span className="font-semibold">Address:</span> {rail.address || 'None'}</p>
-                    <p>Minimum deposit: {rail.minDeposit}</p>
-                    <p>Minimum withdrawal: {rail.minWithdrawal}</p>
-                    <p>Fee: {rail.fee}</p>
-                    <p>{rail.confirmations}</p>
+                  <div className="mt-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        ${asset.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                      </p>
+                      <p className={`mt-1 text-sm font-medium ${asset.change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {asset.change >= 0 ? '+' : ''}{asset.change.toFixed(2)}%
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isActive}
+                      onClick={() => toggleAsset(asset.id)}
+                      className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${
+                        isActive ? 'bg-violet-600' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 rounded-full bg-white transition-transform ${
+                          isActive ? 'translate-x-8' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
-                  <div className="mt-4 flex gap-2">
-                    <AdminButton variant="secondary" onClick={() => editWalletRail(rail)}>Edit</AdminButton>
-                    <AdminButton variant="secondary" onClick={() => deleteWalletRail(rail.id)}>Delete</AdminButton>
+                  <div className="mt-4">
+                    <AdminTextInput
+                      label="Shared Deposit Address"
+                      value={walletForm.assetConfigs[asset.id]?.depositAddress ?? asset.depositAddress ?? ''}
+                      onChange={(event) => updateAssetDepositAddress(asset.id, event.target.value)}
+                      placeholder={`Set the ${asset.symbol} address every user should deposit to`}
+                    />
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Users will see this address on their deposit screens for {asset.symbol}. Leave it blank to use the generated fallback address.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {asset.tags.map((tag) => (
+                      <span key={tag} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                        {tag}
+                      </span>
+                    ))}
+                    <AdminBadge value={isActive ? 'Active' : 'Inactive'} />
                   </div>
                 </div>
-              ))}
-              {adminWalletRails.length === 0 && (
-                <p className="text-sm text-slate-500 md:col-span-2">No wallet rails configured.</p>
+              );
+              })}
+              {adminAssetCatalog.length === 0 && (
+                <p className="text-sm text-slate-500 md:col-span-2">Live asset catalog unavailable.</p>
               )}
             </div>
           </AdminCard>

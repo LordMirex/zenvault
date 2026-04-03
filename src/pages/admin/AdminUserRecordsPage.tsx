@@ -9,28 +9,26 @@ import {
   AdminActionBar,
   AdminBadge,
   AdminButton,
-  AdminCard,
   AdminIconAction,
   AdminNotice,
+  AdminCard,
   AdminPageHeading,
   AdminSelect,
   AdminTextInput,
 } from '../../components/admin/AdminUi';
 
-type AssetFormState = Record<string, { status: string; address: string; amount: string }>;
+type AssetFormState = Record<string, string>;
 type CardFundingState = Record<string, string>;
-type LivePrices = Record<string, { price: number; change: number }>;
 
 export const AdminUserRecordsPage = () => {
   const { id } = useParams();
   const location = useLocation();
   const { refreshBootstrap, adminUsers, adminTransactions } = useAuth();
-  const user = id ? adminUsers.find((u) => String(u.id) === String(id)) : undefined;
+  const user = id ? adminUsers.find((entry) => String(entry.id) === String(id)) : undefined;
   const isCardsPage = location.pathname.endsWith('/cards');
-  const userTransactions = user ? adminTransactions.filter((item) => item.userId === user.id) : [];
   const [assetForms, setAssetForms] = useState<AssetFormState>({});
   const [cardFunding, setCardFunding] = useState<CardFundingState>({});
-  const [livePrices, setLivePrices] = useState<LivePrices>({});
+  const [selectedRequestId, setSelectedRequestId] = useState('');
   const [cardForm, setCardForm] = useState({
     holderName: '',
     brand: 'Visa',
@@ -52,44 +50,24 @@ export const AdminUserRecordsPage = () => {
     }
 
     setAssetForms(
-      Object.fromEntries(
-        user.holdings.map((holding) => [
-          holding.id,
-          {
-            status: holding.status,
-            address: holding.address,
-            amount: '',
-          },
-        ]),
-      ),
+      Object.fromEntries(user.holdings.map((holding) => [holding.id, ''])),
     );
     setCardFunding(
       Object.fromEntries(
-        user.cards.map((card) => [card.id, '']),
+        user.cards
+          .filter((card) => !card.requestOnly)
+          .map((card) => [card.id, '']),
       ),
     );
   }, [user]);
 
-  useEffect(() => {
-    if (isCardsPage) return;
-
-    const fetchPrices = async () => {
-      try {
-        const payload = await apiRequest<{ prices: LivePrices }>('/api/prices');
-        setLivePrices(payload.prices);
-      } catch {
-        // keep cached prices
-      }
-    };
-
-    void fetchPrices();
-    const interval = setInterval(() => void fetchPrices(), 30000);
-    return () => clearInterval(interval);
-  }, [isCardsPage]);
-
   if (!user) {
     return <Navigate to="/admin/users" replace />;
   }
+
+  const userTransactions = adminTransactions.filter((transaction) => transaction.userId === user.id).slice(0, 8);
+  const pendingCardRequests = user.cards.filter((card) => card.requestOnly);
+  const issuedCards = user.cards.filter((card) => !card.requestOnly);
 
   const runAction = async (key: string, action: () => Promise<void>) => {
     setActiveKey(key);
@@ -106,42 +84,48 @@ export const AdminUserRecordsPage = () => {
     }
   };
 
-  const updateAssetForm = (assetId: string, field: 'status' | 'amount' | 'address', value: string) => {
-    setAssetForms((current) => ({
-      ...current,
-      [assetId]: {
-        ...(current[assetId] ?? { status: 'Enabled', address: '', amount: '' }),
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleAssetSave = async (assetId: string) => {
-    const form = assetForms[assetId];
-    await runAction(`asset-save-${assetId}`, async () => {
-      await apiRequest(`/api/admin/users/${user.id}/assets/${assetId}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          status: form?.status,
-          ...(form?.address ? { address: form.address } : {}),
-        }),
-      });
-      setFeedback('Wallet record updated.');
-    });
-  };
-
   const handleAssetAdjustment = async (assetId: string, action: 'add' | 'subtract') => {
-    const form = assetForms[assetId];
+    const amount = Number(assetForms[assetId] || 0);
+
     await runAction(`asset-${action}-${assetId}`, async () => {
       await apiRequest(`/api/admin/users/${user.id}/assets/${assetId}`, {
         method: 'PUT',
         body: JSON.stringify({
           action,
-          amount: Number(form?.amount || 0),
+          amount,
         }),
       });
-      setFeedback(`${action === 'add' ? 'Added to' : 'Subtracted from'} wallet balance.`);
-      updateAssetForm(assetId, 'amount', '');
+      setFeedback(action === 'add' ? 'Wallet funded successfully.' : 'Wallet debited successfully.');
+      setAssetForms((current) => ({ ...current, [assetId]: '' }));
+    });
+  };
+
+  const handleUseRequest = (requestId: string) => {
+    const request = pendingCardRequests.find((entry) => entry.id === requestId);
+    if (!request) {
+      return;
+    }
+
+    setSelectedRequestId(requestId);
+    setCardForm((current) => ({
+      ...current,
+      holderName: request.holderName || user.name,
+      brand: request.brand,
+    }));
+  };
+
+  const resetCardForm = () => {
+    setSelectedRequestId('');
+    setCardForm({
+      holderName: '',
+      brand: 'Visa',
+      last4: '',
+      expiryMonth: '',
+      expiryYear: '',
+      initialBalance: '',
+      billingAddress: '',
+      zipCode: '',
+      cvv: '',
     });
   };
 
@@ -151,25 +135,19 @@ export const AdminUserRecordsPage = () => {
         method: 'POST',
         body: JSON.stringify({
           ...cardForm,
+          requestId: selectedRequestId || undefined,
           initialBalance: Number(cardForm.initialBalance || 0),
         }),
       });
       setFeedback('Card issued successfully.');
-      setCardForm({
-        holderName: '',
-        brand: 'Visa',
-        last4: '',
-        expiryMonth: '',
-        expiryYear: '',
-        initialBalance: '',
-        billingAddress: '',
-        zipCode: '',
-        cvv: '',
-      });
+      resetCardForm();
     });
   };
 
-  const handleCardAction = async (cardId: string, action: 'add-funds' | 'subtract-funds' | 'activate' | 'freeze' | 'review') => {
+  const handleCardAction = async (
+    cardId: string,
+    action: 'add-funds' | 'subtract-funds' | 'activate' | 'freeze' | 'review',
+  ) => {
     await runAction(`card-${action}-${cardId}`, async () => {
       await apiRequest(`/api/admin/users/${user.id}/cards/${cardId}`, {
         method: 'PUT',
@@ -204,7 +182,7 @@ export const AdminUserRecordsPage = () => {
       </Link>
 
       <AdminPageHeading
-        title={`${user.name} ${isCardsPage ? 'Cards' : 'Crypto Records'}`}
+        title={`${user.name} ${isCardsPage ? 'Cards' : 'Wallet Funding'}`}
         description={`${user.email} - ${user.country} - ${user.deskLabel}`}
       />
 
@@ -212,30 +190,32 @@ export const AdminUserRecordsPage = () => {
       {error && <AdminNotice tone="danger">{error}</AdminNotice>}
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminCard className="p-5">
-          <p className="text-sm font-medium text-slate-500">Portfolio Value</p>
-          <p className="mt-3 text-3xl font-black text-slate-900">{formatCompactUsd(user.portfolioUsd)}</p>
-          <p className="mt-2 text-sm text-slate-500">Available balance {formatCompactUsd(user.availableUsd)}</p>
-        </AdminCard>
-        <AdminCard className="p-5">
-          <p className="text-sm font-medium text-slate-500">Status</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <AdminBadge value={user.status} />
-            <AdminBadge value={user.kycStatus} />
-          </div>
-          <p className="mt-3 text-sm text-slate-500">{user.note}</p>
-        </AdminCard>
-        <AdminCard className="p-5">
-          <p className="text-sm font-medium text-slate-500">Open Items</p>
-          <p className="mt-3 text-3xl font-black text-slate-900">{isCardsPage ? user.cards.length : user.holdings.length}</p>
-          <p className="mt-2 text-sm text-slate-500">{isCardsPage ? 'Card records visible to admin' : 'Wallet records visible to admin'}</p>
-        </AdminCard>
+        <InfoTile label="Portfolio Value" value={formatCompactUsd(user.portfolioUsd)} />
+        <InfoTile label="Available Value" value={formatCompactUsd(user.availableUsd)} />
+        <InfoTile
+          label={isCardsPage ? 'Card Items' : 'Live Active Assets'}
+          value={String(isCardsPage ? user.cards.length : user.holdings.length)}
+        />
       </div>
 
       {isCardsPage ? (
         <div className="space-y-6">
           <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Issue New Card</h3>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Issue Card</h3>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                  Issue a card directly or fulfill a pending client application. Pending applications appear below and can
+                  prefill this form.
+                </p>
+              </div>
+              {selectedRequestId && (
+                <AdminButton variant="secondary" onClick={resetCardForm}>
+                  Clear Request
+                </AdminButton>
+              )}
+            </div>
+
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <AdminTextInput label="Holder Name" value={cardForm.holderName} onChange={(event) => setCardForm((current) => ({ ...current, holderName: event.target.value }))} />
               <AdminSelect label="Brand" value={cardForm.brand} onChange={(event) => setCardForm((current) => ({ ...current, brand: event.target.value }))}>
@@ -250,6 +230,7 @@ export const AdminUserRecordsPage = () => {
               <AdminTextInput label="ZIP Code" value={cardForm.zipCode} onChange={(event) => setCardForm((current) => ({ ...current, zipCode: event.target.value }))} />
               <AdminTextInput label="CVV" value={cardForm.cvv} onChange={(event) => setCardForm((current) => ({ ...current, cvv: event.target.value.replace(/\D/g, '').slice(0, 4) }))} />
             </div>
+
             <div className="mt-5 flex justify-end">
               <AdminButton onClick={() => void handleCreateCard()} disabled={activeKey === 'card-create'}>
                 {activeKey === 'card-create' ? 'Issuing...' : 'Issue Card'}
@@ -257,19 +238,50 @@ export const AdminUserRecordsPage = () => {
             </div>
           </AdminCard>
 
+          <AdminCard className="p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Pending Card Applications</h3>
+            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+              {pendingCardRequests.length === 0 && (
+                <p className="text-sm text-slate-500">No pending card requests for this user.</p>
+              )}
+              {pendingCardRequests.map((request) => (
+                <div key={request.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-semibold text-slate-900">{request.brand} request</p>
+                      <p className="mt-1 text-sm text-slate-500">{request.holderName || user.name}</p>
+                      <p className="mt-2 text-xs text-slate-500">{request.requestedAt || 'Pending review'}</p>
+                    </div>
+                    <AdminBadge value="Review" />
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <InfoTile label="Application Fee" value={formatUsd(request.applicationFeeUsd ?? 0)} />
+                    <InfoTile label="Request Status" value="Pending" />
+                  </div>
+                  <div className="mt-5 flex gap-2">
+                    <AdminButton variant="secondary" onClick={() => handleUseRequest(request.id)}>
+                      Use Request
+                    </AdminButton>
+                    <AdminIconAction icon={Trash2} label={`Delete ${request.label}`} tone="rose" onClick={() => void handleDeleteCard(request.id)} disabled={activeKey === `card-delete-${request.id}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AdminCard>
+
           <div className="grid gap-5 xl:grid-cols-2">
-            {user.cards.length === 0 && (
+            {issuedCards.length === 0 && (
               <AdminCard className="p-6">
-                <p className="text-sm text-slate-500">No cards have been issued for this user yet.</p>
+                <p className="text-sm text-slate-500">No issued cards exist for this user yet.</p>
               </AdminCard>
             )}
-            {user.cards.map((card) => (
+            {issuedCards.map((card) => (
               <AdminCard key={card.id} className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-lg font-semibold text-slate-900">{card.label}</p>
                     <p className="mt-1 text-sm text-slate-500">
-                      {card.brand} -•••• {card.last4}
+                      {card.brand} - {card.last4}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">{card.issuedAt}</p>
                   </div>
@@ -318,98 +330,58 @@ export const AdminUserRecordsPage = () => {
         </div>
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
-          {user.holdings.map((holding) => {
-            const form = assetForms[holding.id] ?? { status: holding.status, address: holding.address, amount: '' };
-            const live = livePrices[holding.symbol];
-            const livePrice = live?.price ?? null;
-            const liveChange = live?.change ?? null;
-            const liveValueUsd = livePrice !== null ? holding.balance * livePrice : holding.valueUsd;
-
-            return (
-              <AdminCard key={holding.id} className="p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <img src={holding.icon} alt={holding.name} className="h-12 w-12 rounded-full border border-slate-200 bg-white p-1.5" />
-                    <div>
-                      <p className="text-lg font-semibold text-slate-900">{holding.symbol}</p>
-                      <p className="text-sm text-slate-500">
-                        {holding.name} - {holding.network}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <AdminBadge value={holding.status} />
-                    {livePrice !== null && (
-                      <p className="text-xs font-semibold text-slate-500">
-                        ${livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
-                        {liveChange !== null && (
-                          <span className={liveChange >= 0 ? 'ml-1 text-emerald-600' : 'ml-1 text-rose-500'}>
-                            {liveChange >= 0 ? '+' : ''}{liveChange.toFixed(2)}%
-                          </span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-3 md:grid-cols-2">
-                  <InfoTile label="Balance" value={formatNumber(holding.balance, 8)} />
-                  <InfoTile label="Value (Live)" value={formatUsd(liveValueUsd)} />
-                </div>
-
-                <div className="mt-5 grid gap-4">
-                  <AdminSelect label="Status" value={form.status} onChange={(event) => updateAssetForm(holding.id, 'status', event.target.value)}>
-                    <option>Enabled</option>
-                    <option>Watch</option>
-                    <option>Paused</option>
-                  </AdminSelect>
+          {user.holdings.map((holding) => (
+            <AdminCard key={holding.id} className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <img src={holding.icon} alt={holding.name} className="h-12 w-12 rounded-full border border-slate-200 bg-white p-1.5" />
                   <div>
-                    <AdminTextInput
-                      label="Deposit Address"
-                      value={form.address}
-                      onChange={(event) => updateAssetForm(holding.id, 'address', event.target.value)}
-                      placeholder={holding.address || 'Enter wallet address for this user'}
-                    />
-                    {holding.address && (
-                      <p className="mt-1.5 truncate font-mono text-xs text-slate-400" title={holding.address}>
-                        Current: {holding.address}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex justify-end">
-                    <AdminButton variant="secondary" onClick={() => void handleAssetSave(holding.id)} disabled={activeKey === `asset-save-${holding.id}`}>
-                      {activeKey === `asset-save-${holding.id}` ? 'Saving...' : 'Save Wallet'}
-                    </AdminButton>
+                    <p className="text-lg font-semibold text-slate-900">{holding.symbol}</p>
+                    <p className="text-sm text-slate-500">
+                      {holding.name} - {holding.network}
+                    </p>
                   </div>
                 </div>
+                <AdminBadge value={holding.status} />
+              </div>
 
-                <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto]">
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <InfoTile label="Balance" value={formatNumber(holding.balance, 8)} />
+                <InfoTile label="Value" value={formatUsd(holding.valueUsd)} />
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-medium text-slate-500">Fund or debit this wallet</p>
+                <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
                   <AdminTextInput
-                    label="Adjustment Amount"
-                    value={form.amount}
-                    onChange={(event) => updateAssetForm(holding.id, 'amount', event.target.value)}
+                    label="Amount"
+                    value={assetForms[holding.id] ?? ''}
+                    onChange={(event) => setAssetForms((current) => ({ ...current, [holding.id]: event.target.value }))}
                     placeholder="0.00"
                   />
                   <div className="flex items-end">
                     <AdminActionBar>
                       <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'add')} disabled={activeKey === `asset-add-${holding.id}`}>
-                        Add
+                        Send To User
                       </AdminButton>
                       <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'subtract')} disabled={activeKey === `asset-subtract-${holding.id}`}>
-                        Subtract
+                        Debit
                       </AdminButton>
                     </AdminActionBar>
                   </div>
                 </div>
-              </AdminCard>
-            );
-          })}
+              </div>
+            </AdminCard>
+          ))}
         </div>
       )}
 
       <AdminCard className="p-5">
         <h3 className="text-lg font-semibold text-slate-900">Recent Related Transactions</h3>
         <div className="mt-4 grid gap-3">
+          {userTransactions.length === 0 && (
+            <p className="text-sm text-slate-500">No related transactions yet.</p>
+          )}
           {userTransactions.map((transaction) => (
             <div key={transaction.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
               <div>

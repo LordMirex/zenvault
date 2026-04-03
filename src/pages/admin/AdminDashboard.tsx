@@ -87,15 +87,15 @@ export const AdminDashboard = () => {
 
       <AdminCard className="flex items-center justify-between gap-4 p-5">
         <div>
-          <p className="text-sm font-semibold text-slate-700">Send Email to Users</p>
-          <p className="mt-1 text-sm text-slate-500">Compose and send branded messages to all or specific clients.</p>
+          <p className="text-sm font-semibold text-slate-700">Client Broadcasts</p>
+          <p className="mt-1 text-sm text-slate-500">Compose and send branded operational messages to all or specific clients.</p>
         </div>
         <Link
-          to="/admin/email"
+          to="/admin/broadcasts"
           className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
         >
           <Mail className="h-4 w-4" />
-          Go to Email
+          Open Broadcasts
         </Link>
       </AdminCard>
 

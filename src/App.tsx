@@ -26,6 +26,7 @@ const AssetDetailPage = lazyNamed(() => import('./pages/AssetDetailPage'), 'Asse
 const ManageCrypto = lazyNamed(() => import('./pages/ManageCrypto'), 'ManageCrypto');
 const CryptoAddress = lazyNamed(() => import('./pages/CryptoAddress'), 'CryptoAddress');
 const Notifications = lazyNamed(() => import('./pages/Notifications'), 'Notifications');
+const Cards = lazyNamed(() => import('./pages/Cards'), 'Cards');
 const Settings = lazyNamed(() => import('./pages/Settings'), 'Settings');
 const ProfileSecurity = lazyNamed(() => import('./pages/ProfileSecurity'), 'ProfileSecurity');
 const KycVerification = lazyNamed(() => import('./pages/KycVerification'), 'KycVerification');
@@ -166,6 +167,7 @@ function App() {
                 <Route path="crypto-address" element={<CryptoAddress />} />
                 <Route path="crypto/details/:symbol/:network" element={<AssetDetailPage />} />
                 <Route path="notifications" element={<Notifications />} />
+                <Route path="cards" element={<Cards />} />
                 <Route path="bots" element={<Bots />} />
               </Route>
             </Route>
@@ -185,7 +187,8 @@ function App() {
                 <Route path="settings/general" element={<AdminSettingsPage />} />
                 <Route path="settings/email" element={<AdminSettingsPage />} />
                 <Route path="settings/wallets" element={<AdminSettingsPage />} />
-                <Route path="email" element={<AdminEmailPage />} />
+                <Route path="broadcasts" element={<AdminEmailPage />} />
+                <Route path="email" element={<Navigate to="/admin/broadcasts" replace />} />
                 <Route path="profile" element={<AdminProfilePage />} />
               </Route>
             </Route>
@@ -208,6 +211,7 @@ function App() {
             <Route path="/crypto-address" element={<Navigate to="/app/crypto-address" replace />} />
             <Route path="/crypto/details/:symbol/:network" element={<AppAliasRedirect />} />
             <Route path="/notifications" element={<Navigate to="/app/notifications" replace />} />
+            <Route path="/cards" element={<Navigate to="/app/cards" replace />} />
             <Route path="/bots" element={<Navigate to="/app/bots" replace />} />
           </Routes>
         </Suspense>

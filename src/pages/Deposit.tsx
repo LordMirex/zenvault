@@ -3,6 +3,7 @@ import { Copy, QrCode, Search, Share2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatNumber, truncateMiddle } from '../lib/format';
 import { useBranding } from '../context/BrandingContext';
+import { makeQrCodeUrl } from '../lib/qr';
 
 type DepositMethod = 'external' | 'payid';
 
@@ -34,6 +35,9 @@ export const Deposit = () => {
     filteredAssets.find((asset) => asset.id === selectedAssetId) ??
     filteredAssets[0] ??
     clientWalletAssets[0];
+
+  const destinationValue = method === 'external' ? selectedAsset.address : selectedAsset.payId;
+  const qrImageUrl = makeQrCodeUrl(destinationValue);
 
   const activity = clientDepositActivity
     .map((item) => ({
@@ -172,16 +176,14 @@ export const Deposit = () => {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() =>
-                      copyValue(method === 'external' ? 'address' : 'payid', method === 'external' ? selectedAsset.address : selectedAsset.payId)
-                    }
+                    onClick={() => copyValue(method === 'external' ? 'address' : 'payid', destinationValue)}
                     className="rounded-full border border-gray-700 p-2 text-gray-400 transition-colors hover:text-white"
                   >
                     <Copy size={16} />
                   </button>
                   <button
                     type="button"
-                    onClick={() => copyValue('share', method === 'external' ? selectedAsset.address : selectedAsset.payId)}
+                    onClick={() => copyValue('share', destinationValue)}
                     className="rounded-full border border-gray-700 p-2 text-gray-400 transition-colors hover:text-white"
                   >
                     <Share2 size={16} />
@@ -192,9 +194,18 @@ export const Deposit = () => {
               <div className="mt-5 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
                 <div className="flex min-h-[220px] items-center justify-center rounded-[1.5rem] border border-dashed border-gray-700 bg-dark-900">
                   <div className="space-y-3 text-center">
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
-                      <QrCode size={32} />
-                    </div>
+                    {qrImageUrl ? (
+                      <img
+                        src={qrImageUrl}
+                        alt={`QR code for ${selectedAsset.symbol} ${method === 'external' ? 'address' : 'PayID'}`}
+                        loading="lazy"
+                        className="mx-auto h-40 w-40 rounded-[1.25rem] object-contain"
+                      />
+                    ) : (
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+                        <QrCode size={32} />
+                      </div>
+                    )}
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Scan to fund</p>
                     <p className="text-lg font-black text-white">{selectedAsset.symbol}</p>
                   </div>

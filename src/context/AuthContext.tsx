@@ -8,17 +8,19 @@ import {
 } from 'react';
 import type {
   AddressBookEntry,
+  MarketAsset,
   NotificationItem,
   WalletActivity,
   WalletAsset,
+  WalletCardRecord,
 } from '../data/wallet';
 import type {
   AdminEmailTemplate,
+  AdminAssetCatalogItem,
   AdminKycCase,
   AdminMetric,
   AdminTransactionRecord,
   AdminUser,
-  AdminWalletRail,
 } from '../data/admin';
 
 import { hydrateWalletData } from '../data/wallet';
@@ -61,10 +63,14 @@ type ClientBootstrap = {
     walletConnected: boolean;
   };
   walletAssets: WalletAsset[];
+  marketAssets: MarketAsset[];
   depositActivity: WalletActivity[];
   withdrawalActivity: WalletActivity[];
   notificationItems: NotificationItem[];
   addressBookEntries: AddressBookEntry[];
+  cards: WalletCardRecord[];
+  cardRequests: WalletCardRecord[];
+  cardApplicationFeeUsd: number;
   recentSessions: {
     id: string;
     device: string;
@@ -78,6 +84,27 @@ type ClientBootstrap = {
     detail: string;
     status: string;
   }[];
+  kycCases: {
+    id: string;
+    userId: string;
+    documentType: string;
+    submittedAt: string;
+    country: string;
+    riskLevel: string;
+    status: string;
+    note: string;
+    documents: {
+      id: string;
+      fieldName: string;
+      label: string;
+      originalName: string;
+      storedName: string;
+      mimeType: string;
+      sizeBytes: number;
+      uploadedAt: string;
+      downloadPath: string;
+    }[];
+  }[];
   referralMilestones: { label: string; reward: string; requirement: string }[];
   recentReferrals: { id: string; name: string; joinedAt: string; status: string; reward: string }[];
 };
@@ -86,9 +113,8 @@ type AdminBootstrap = {
   adminUsers: AdminUser[];
   adminMetrics: AdminMetric[];
   adminKycCases: AdminKycCase[];
-
   adminTransactions: AdminTransactionRecord[];
-  adminWalletRails: AdminWalletRail[];
+  adminAssetCatalog: AdminAssetCatalogItem[];
   adminEmailTemplates: AdminEmailTemplate[];
   adminAlerts: string[];
   adminTimeline: {
@@ -106,6 +132,28 @@ type AdminBootstrap = {
 
 type ClientSession = { id: string; device: string; location: string; status: string; lastSeen: string };
 type KycChecklistItem = { id: string; title: string; detail: string; status: string };
+type ClientKycDocument = {
+  id: string;
+  fieldName: string;
+  label: string;
+  originalName: string;
+  storedName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  downloadPath: string;
+};
+type ClientKycCase = {
+  id: string;
+  userId: string;
+  documentType: string;
+  submittedAt: string;
+  country: string;
+  riskLevel: string;
+  status: string;
+  note: string;
+  documents: ClientKycDocument[];
+};
 type ReferralMilestone = { label: string; reward: string; requirement: string };
 type RecentReferral = { id: string; name: string; joinedAt: string; status: string; reward: string };
 
@@ -115,19 +163,24 @@ type AuthContextValue = {
   clientProfile: ClientBootstrap['profile'] | null;
   clientSummary: ClientBootstrap['summary'] | null;
   clientWalletAssets: WalletAsset[];
+  marketAssets: MarketAsset[];
   clientDepositActivity: WalletActivity[];
   clientWithdrawalActivity: WalletActivity[];
   clientAddressBookEntries: AddressBookEntry[];
   clientNotificationItems: NotificationItem[];
+  clientCards: WalletCardRecord[];
+  clientCardRequests: WalletCardRecord[];
+  clientCardApplicationFeeUsd: number;
   clientRecentSessions: ClientSession[];
   clientKycChecklist: KycChecklistItem[];
+  clientKycCases: ClientKycCase[];
   clientReferralMilestones: ReferralMilestone[];
   clientRecentReferrals: RecentReferral[];
   adminSettings: AdminBootstrap['adminSettings'] | null;
   adminUsers: AdminBootstrap['adminUsers'];
   adminKycCases: AdminBootstrap['adminKycCases'];
   adminTransactions: AdminBootstrap['adminTransactions'];
-  adminWalletRails: AdminBootstrap['adminWalletRails'];
+  adminAssetCatalog: AdminBootstrap['adminAssetCatalog'];
   adminEmailTemplates: AdminBootstrap['adminEmailTemplates'];
   adminAlerts: AdminBootstrap['adminAlerts'];
   adminTimeline: AdminBootstrap['adminTimeline'];
@@ -144,6 +197,7 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   toggleClientAsset: (assetId: string) => Promise<void>;
+  submitCardApplication: (input: { holderName: string; brand: 'Visa' | 'Mastercard'; note: string }) => Promise<string>;
   updateClientSecurity: (input: {
     currentPassword: string;
     newPassword: string;
@@ -173,19 +227,24 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [clientProfile, setClientProfile] = useState<ClientBootstrap['profile'] | null>(null);
   const [clientSummary, setClientSummary] = useState<ClientBootstrap['summary'] | null>(null);
   const [clientWalletAssets, setClientWalletAssets] = useState<WalletAsset[]>([]);
+  const [marketAssets, setMarketAssets] = useState<MarketAsset[]>([]);
   const [clientDepositActivity, setClientDepositActivity] = useState<WalletActivity[]>([]);
   const [clientWithdrawalActivity, setClientWithdrawalActivity] = useState<WalletActivity[]>([]);
   const [clientAddressBookEntries, setClientAddressBookEntries] = useState<AddressBookEntry[]>([]);
   const [clientNotificationItems, setClientNotificationItems] = useState<NotificationItem[]>([]);
+  const [clientCards, setClientCards] = useState<WalletCardRecord[]>([]);
+  const [clientCardRequests, setClientCardRequests] = useState<WalletCardRecord[]>([]);
+  const [clientCardApplicationFeeUsd, setClientCardApplicationFeeUsd] = useState(0);
   const [clientRecentSessions, setClientRecentSessions] = useState<ClientSession[]>([]);
   const [clientKycChecklist, setClientKycChecklist] = useState<KycChecklistItem[]>([]);
+  const [clientKycCases, setClientKycCases] = useState<ClientKycCase[]>([]);
   const [clientReferralMilestones, setClientReferralMilestones] = useState<ReferralMilestone[]>([]);
   const [clientRecentReferrals, setClientRecentReferrals] = useState<RecentReferral[]>([]);
   const [adminSettings, setAdminSettings] = useState<AdminBootstrap['adminSettings'] | null>(null);
   const [adminUsers, setAdminUsers] = useState<AdminBootstrap['adminUsers']>([]);
   const [adminKycCases, setAdminKycCases] = useState<AdminBootstrap['adminKycCases']>([]);
   const [adminTransactions, setAdminTransactions] = useState<AdminBootstrap['adminTransactions']>([]);
-  const [adminWalletRails, setAdminWalletRails] = useState<AdminBootstrap['adminWalletRails']>([]);
+  const [adminAssetCatalog, setAdminAssetCatalog] = useState<AdminBootstrap['adminAssetCatalog']>([]);
   const [adminEmailTemplates, setAdminEmailTemplates] = useState<AdminBootstrap['adminEmailTemplates']>([]);
   const [adminAlerts, setAdminAlerts] = useState<AdminBootstrap['adminAlerts']>([]);
   const [adminTimeline, setAdminTimeline] = useState<AdminBootstrap['adminTimeline']>([]);
@@ -197,20 +256,24 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setClientProfile(null);
     setClientSummary(null);
     setClientWalletAssets([]);
+    setMarketAssets([]);
     setClientDepositActivity([]);
     setClientWithdrawalActivity([]);
     setClientAddressBookEntries([]);
     setClientNotificationItems([]);
+    setClientCards([]);
+    setClientCardRequests([]);
+    setClientCardApplicationFeeUsd(0);
     setClientRecentSessions([]);
     setClientKycChecklist([]);
+    setClientKycCases([]);
     setClientReferralMilestones([]);
     setClientRecentReferrals([]);
     setAdminSettings(null);
     setAdminUsers([]);
     setAdminKycCases([]);
     setAdminTransactions([]);
-    setAdminWalletRails([]);
-    setAdminEmailTemplates([]);
+    setAdminAssetCatalog([]);
     setAdminAlerts([]);
     setAdminTimeline([]);
     setAdminMetrics([]);
@@ -227,28 +290,55 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       setClientProfile(payload.profile);
       setClientSummary(payload.summary);
       setClientWalletAssets(payload.walletAssets ?? []);
+      setMarketAssets(payload.marketAssets ?? []);
       setClientDepositActivity(payload.depositActivity ?? []);
       setClientWithdrawalActivity(payload.withdrawalActivity ?? []);
       setClientAddressBookEntries(payload.addressBookEntries ?? []);
       setClientNotificationItems(payload.notificationItems ?? []);
+      setClientCards(payload.cards ?? []);
+      setClientCardRequests(payload.cardRequests ?? []);
+      setClientCardApplicationFeeUsd(payload.cardApplicationFeeUsd ?? 0);
       setClientRecentSessions(payload.recentSessions ?? []);
       setClientKycChecklist(payload.kycChecklist ?? []);
+      setClientKycCases(payload.kycCases ?? []);
       setClientReferralMilestones(payload.referralMilestones ?? []);
       setClientRecentReferrals(payload.recentReferrals ?? []);
       setAdminSettings(null);
+      setAdminUsers([]);
+      setAdminKycCases([]);
+      setAdminTransactions([]);
+      setAdminAssetCatalog([]);
+      setAdminEmailTemplates([]);
+      setAdminAlerts([]);
+      setAdminTimeline([]);
+      setAdminMetrics([]);
     } else {
       const payload = await apiRequest<AdminBootstrap>('/api/admin/bootstrap');
       setAdminSettings(payload.adminSettings);
       setAdminUsers(payload.adminUsers);
       setAdminKycCases(payload.adminKycCases);
       setAdminTransactions(payload.adminTransactions);
-      setAdminWalletRails(payload.adminWalletRails);
+      setAdminAssetCatalog(payload.adminAssetCatalog);
       setAdminEmailTemplates(payload.adminEmailTemplates);
       setAdminAlerts(payload.adminAlerts);
       setAdminTimeline(payload.adminTimeline);
       setAdminMetrics(payload.adminMetrics);
       setClientProfile(null);
       setClientSummary(null);
+      setClientWalletAssets([]);
+      setMarketAssets([]);
+      setClientDepositActivity([]);
+      setClientWithdrawalActivity([]);
+      setClientAddressBookEntries([]);
+      setClientNotificationItems([]);
+      setClientCards([]);
+      setClientCardRequests([]);
+      setClientCardApplicationFeeUsd(0);
+      setClientRecentSessions([]);
+      setClientKycChecklist([]);
+      setClientKycCases([]);
+      setClientReferralMilestones([]);
+      setClientRecentReferrals([]);
     }
 
     setBootstrapReady(true);
@@ -302,9 +392,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
     const pollPrices = async () => {
       try {
-        const { prices } = await apiRequest<{ prices: Record<string, { price: number; change: number }> }>('/api/prices');
-        setClientWalletAssets((prev) =>
-          prev.map((asset) => {
+        const { prices, marketAssets: liveMarketAssets } = await apiRequest<{
+          prices: Record<string, { price: number; change: number }>;
+          marketAssets: MarketAsset[];
+        }>('/api/prices');
+        setMarketAssets(liveMarketAssets ?? []);
+        setClientWalletAssets((prev) => {
+          const nextAssets = prev.map((asset) => {
             const live = prices[asset.symbol];
             if (!live) return asset;
             const livePrice = live.price ?? asset.price;
@@ -314,13 +408,54 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
               change: live.change ?? asset.change,
               valueUsd: Number((asset.balance * livePrice).toFixed(2)),
             };
-          }),
-        );
+          });
+          const visiblePortfolioUsd = Number(
+            nextAssets
+              .filter((asset) => asset.enabledByDefault)
+              .reduce((total, asset) => total + asset.valueUsd, 0)
+              .toFixed(2),
+          );
+          const totalWalletUsd = Number(nextAssets.reduce((total, asset) => total + asset.valueUsd, 0).toFixed(2));
+          const changeUsd = Number(
+            nextAssets
+              .filter((asset) => asset.enabledByDefault)
+              .reduce((total, asset) => {
+                const multiplier = 1 + asset.change / 100;
+                if (!Number.isFinite(multiplier) || multiplier === 0) {
+                  return total;
+                }
+
+                const previousValue = asset.valueUsd / multiplier;
+                return total + (asset.valueUsd - previousValue);
+              }, 0)
+              .toFixed(2),
+          );
+          const previousPortfolioUsd = visiblePortfolioUsd - changeUsd;
+          const changePct =
+            visiblePortfolioUsd > 0 && previousPortfolioUsd !== 0
+              ? Number(((changeUsd / previousPortfolioUsd) * 100).toFixed(2))
+              : 0;
+
+          setClientSummary((current) =>
+            current
+              ? {
+                ...current,
+                portfolioUsd: visiblePortfolioUsd,
+                availableUsd: totalWalletUsd,
+                changeUsd,
+                changePct,
+              }
+              : current,
+          );
+
+          return nextAssets;
+        });
       } catch {
         // silent — keep cached prices on failure
       }
     };
 
+    void pollPrices();
     const interval = setInterval(() => void pollPrices(), 30000);
     return () => clearInterval(interval);
   }, [status, user?.role]);
@@ -387,6 +522,19 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     await refreshBootstrap();
   };
 
+  const submitCardApplication = async (input: {
+    holderName: string;
+    brand: 'Visa' | 'Mastercard';
+    note: string;
+  }) => {
+    const payload = await apiRequest<{ message: string }>('/api/client/cards/apply', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    await refreshBootstrap();
+    return payload.message;
+  };
+
   const updateClientSecurity = async (input: {
     currentPassword: string;
     newPassword: string;
@@ -438,30 +586,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     await refreshBootstrap();
   };
 
-  useEffect(() => {
-    if (status !== 'authenticated' || !user || user.role !== 'user') return;
-
-    const applyLivePrices = async () => {
-      try {
-        const data = await apiRequest<{ prices: Record<string, { price: number; change: number }> }>('/api/prices', { token: null });
-        if (!data?.prices) return;
-        setClientWalletAssets((prev) =>
-          prev.map((asset) => {
-            const live = data.prices[asset.symbol];
-            if (!live) return asset;
-            return { ...asset, price: live.price, change: live.change };
-          }),
-        );
-      } catch {
-        // ignore price refresh errors silently
-      }
-    };
-
-    applyLivePrices();
-    const interval = setInterval(applyLivePrices, 60_000);
-    return () => clearInterval(interval);
-  }, [status, user]);
-
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -469,19 +593,24 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       clientProfile,
       clientSummary,
       clientWalletAssets,
+      marketAssets,
       clientDepositActivity,
       clientWithdrawalActivity,
       clientAddressBookEntries,
       clientNotificationItems,
+      clientCards,
+      clientCardRequests,
+      clientCardApplicationFeeUsd,
       clientRecentSessions,
       clientKycChecklist,
+      clientKycCases,
       clientReferralMilestones,
       clientRecentReferrals,
       adminSettings,
       adminUsers,
       adminKycCases,
       adminTransactions,
-      adminWalletRails,
+      adminAssetCatalog,
       adminEmailTemplates,
       adminAlerts,
       adminTimeline,
@@ -492,6 +621,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       logout,
       markAllNotificationsRead,
       toggleClientAsset,
+      submitCardApplication,
       updateClientSecurity,
       createAdminUser,
       sendAdminEmail,
@@ -499,10 +629,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       refreshBootstrap,
     }),
     [
-      status, user, clientProfile, clientSummary, clientWalletAssets, clientDepositActivity,
-      clientWithdrawalActivity, clientAddressBookEntries, clientNotificationItems,
-      adminSettings, adminUsers, adminKycCases, adminTransactions, adminWalletRails,
-      adminEmailTemplates, adminAlerts, adminTimeline, adminMetrics, bootstrapReady
+      status, user, clientProfile, clientSummary, clientWalletAssets, marketAssets,
+      clientDepositActivity, clientWithdrawalActivity, clientAddressBookEntries,
+      clientNotificationItems, clientCards, clientCardRequests, clientCardApplicationFeeUsd,
+      clientRecentSessions, clientKycChecklist, clientKycCases, clientReferralMilestones,
+      clientRecentReferrals, adminSettings, adminUsers, adminKycCases, adminTransactions,
+      adminAssetCatalog, adminEmailTemplates, adminAlerts, adminTimeline, adminMetrics,
+      bootstrapReady
     ],
   );
 

@@ -2,10 +2,11 @@ import cors from 'cors';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, extname, join } from 'path';
+import { createReadStream, existsSync, mkdirSync, unlinkSync } from 'fs';
 import multer from 'multer';
 import { compareSecret, createAccessToken, hashSecret, verifyToken } from './auth.mjs';
 import { config } from './config.mjs';
-import { query, queryOne } from './db.mjs';
+import { getDb, query, queryOne } from './db.mjs';
 import {
   buildBrandedEmail,
   createMailClient,
@@ -22,15 +23,37 @@ import {
 } from './session-utils.mjs';
 import { normalizeGeneralSettings, resolveSiteOrigin } from './settings.mjs';
 import {
-  buildEffectiveWalletAssets,
-  buildWalletRailFallbacksFromHoldings,
-  collectWalletRails,
-  updateWalletRailPresets,
-} from './wallets.mjs';
+  buildAdminAssetCatalog,
+  buildUserWalletAssets,
+  normalizeActivityRecords,
+  normalizeWalletSettings,
+  sumVisiblePortfolioValue,
+  sumWalletValue,
+  upsertWalletHolding,
+} from './assets.mjs';
 import { priceFeed } from './price-feed.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const publicUploadsDir = join(__dirname, 'uploads');
+const secureKycUploadsDir = join(__dirname, 'data', 'kyc-documents');
+
+const ensureDirectory = (targetPath) => {
+  if (!existsSync(targetPath)) {
+    mkdirSync(targetPath, { recursive: true });
+  }
+};
+
+const ensureColumn = (tableName, columnName, definition) => {
+  const columns = getDb().prepare(`PRAGMA table_info(${tableName})`).all();
+  if (!columns.some((column) => column.name === columnName)) {
+    getDb().prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
+  }
+};
+
+ensureDirectory(publicUploadsDir);
+ensureDirectory(secureKycUploadsDir);
+ensureColumn('kyc_cases', 'documents_json', "TEXT NOT NULL DEFAULT '[]'");
 
 const app = express();
 app.disable('x-powered-by');
@@ -124,18 +147,27 @@ app.use('/api', (_req, res, next) => {
 });
 
 // Serve uploaded files (logos, favicons) as static assets
-app.use('/uploads', express.static(join(__dirname, 'uploads')));
+app.use('/uploads', express.static(publicUploadsDir));
 
 // Serve the compiled React frontend directly configured for robust VPS deployments
 app.use(express.static(join(__dirname, '../dist')));
 
 // Multer configuration for logo/favicon uploads
 const uploadStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, join(__dirname, 'uploads')),
+  destination: (_req, _file, cb) => cb(null, publicUploadsDir),
   filename: (_req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
     const ext = extname(file.originalname).toLowerCase() || '.png';
     cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+  },
+});
+
+const kycUploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, secureKycUploadsDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    const ext = extname(file.originalname).toLowerCase() || '.pdf';
+    cb(null, `kyc-${file.fieldname}-${uniqueSuffix}${ext}`);
   },
 });
 
@@ -148,8 +180,22 @@ const uploadFilter = (_req, file, cb) => {
   return cb(new Error('Only image files (PNG, JPG, SVG, WebP, ICO, GIF) are allowed.'));
 };
 
+const kycUploadFilter = (_req, file, cb) => {
+  const allowed = ['.png', '.jpg', '.jpeg', '.webp', '.pdf'];
+  const ext = extname(file.originalname).toLowerCase();
+  if (allowed.includes(ext)) {
+    return cb(null, true);
+  }
+  return cb(new Error('Only PNG, JPG, WebP, or PDF files are allowed for KYC uploads.'));
+};
+
 const logoUpload = multer({ storage: uploadStorage, fileFilter: uploadFilter, limits: { fileSize: 2 * 1024 * 1024 } });
 const faviconUpload = multer({ storage: uploadStorage, fileFilter: uploadFilter, limits: { fileSize: 512 * 1024 } });
+const kycUpload = multer({
+  storage: kycUploadStorage,
+  fileFilter: kycUploadFilter,
+  limits: { fileSize: 8 * 1024 * 1024, files: 3 },
+});
 
 const parseJson = (value, fallback = []) => {
   if (!value) {
@@ -160,6 +206,184 @@ const parseJson = (value, fallback = []) => {
     return JSON.parse(value);
   } catch {
     return fallback;
+  }
+};
+
+const kycDocumentLabels = {
+  governmentId: 'Government ID',
+  proofOfAddress: 'Proof of Address',
+  sourceOfFunds: 'Source of Funds',
+};
+
+const kycDocumentFields = Object.keys(kycDocumentLabels);
+
+const sanitizeFileName = (value, fallback = 'document') => {
+  const sanitized = String(value ?? '')
+    .trim()
+    .replace(/[^\w.\- ]+/g, '_')
+    .slice(0, 120);
+  return sanitized || fallback;
+};
+
+const inferLegacyKycDocumentFields = (kycCase) => {
+  const haystack = `${kycCase?.document_type ?? ''} ${kycCase?.note ?? ''}`.toLowerCase();
+  const inferred = [];
+
+  if (/(passport|government id|national id|driver|identity)/.test(haystack)) {
+    inferred.push('governmentId');
+  }
+
+  if (/(utility|proof of address|address|residence)/.test(haystack)) {
+    inferred.push('proofOfAddress');
+  }
+
+  if (/(source of funds|source of wealth|statement|treasury|bank)/.test(haystack)) {
+    inferred.push('sourceOfFunds');
+  }
+
+  return [...new Set(inferred)];
+};
+
+const buildLegacyKycDocuments = (kycCase) =>
+  inferLegacyKycDocumentFields(kycCase).map((fieldName) => ({
+    id: `legacy-${fieldName}`,
+    fieldName,
+    label: kycDocumentLabels[fieldName],
+    originalName: `${kycDocumentLabels[fieldName]} (legacy record)`,
+    storedName: '',
+    mimeType: '',
+    sizeBytes: 0,
+    uploadedAt: kycCase?.submitted_at_label ?? '',
+  }));
+
+const readKycDocuments = (kycCase) => {
+  const storedDocuments = parseJson(kycCase?.documents_json, []);
+  const documents = storedDocuments.length ? storedDocuments : buildLegacyKycDocuments(kycCase);
+
+  return documents.map((document) => ({
+    id: String(document.id ?? createPrefixedId('kyc-doc')),
+    fieldName: String(document.fieldName ?? '').trim(),
+    label: String(document.label ?? '').trim() || kycDocumentLabels[document.fieldName] || 'Supporting Document',
+    originalName: String(document.originalName ?? document.fileName ?? 'Document').trim(),
+    storedName: String(document.storedName ?? '').trim(),
+    mimeType: String(document.mimeType ?? '').trim(),
+    sizeBytes: Number(document.sizeBytes ?? 0),
+    uploadedAt: String(document.uploadedAt ?? kycCase?.submitted_at_label ?? '').trim(),
+  }));
+};
+
+const mapKycCase = (kycCase) => {
+  const documents = readKycDocuments(kycCase).map((document) => ({
+    ...document,
+    downloadPath: document.storedName
+      ? `/api/kyc/cases/${kycCase.id}/documents/${document.id}`
+      : '',
+  }));
+
+  return {
+    id: String(kycCase.id),
+    userId: String(kycCase.user_id),
+    documentType: kycCase.document_type,
+    submittedAt: kycCase.submitted_at_label,
+    country: kycCase.country,
+    riskLevel: kycCase.risk_level,
+    status: kycCase.status,
+    note: kycCase.note ?? '',
+    documents,
+  };
+};
+
+const buildKycChecklist = ({ documents = [], status = 'Pending', reviewNote = '' }) => {
+  const documentsByField = new Map(
+    documents
+      .filter((document) => document.fieldName)
+      .map((document) => [document.fieldName, document]),
+  );
+
+  return [
+    {
+      id: 'kyc-1',
+      title: 'Government ID',
+      detail: documentsByField.has('governmentId')
+        ? status === 'Approved'
+          ? 'Government ID accepted and cleared for compliance review.'
+          : status === 'Needs review'
+            ? reviewNote || 'Government ID needs another upload or manual clarification.'
+            : 'Government ID received and queued for review.'
+        : 'Upload a passport, national ID card, or driver license.',
+      status: documentsByField.has('governmentId')
+        ? status === 'Approved'
+          ? 'Completed'
+          : status === 'Needs review'
+            ? 'Review'
+            : 'Pending'
+        : 'Required',
+    },
+    {
+      id: 'kyc-2',
+      title: 'Proof of Address',
+      detail: documentsByField.has('proofOfAddress')
+        ? status === 'Approved'
+          ? 'Proof of address accepted and matched to the account record.'
+          : status === 'Needs review'
+            ? reviewNote || 'Proof of address needs a clearer or newer document.'
+            : 'Proof of address received and queued for review.'
+        : 'Upload a utility bill, bank statement, or similar document from the last 90 days.',
+      status: documentsByField.has('proofOfAddress')
+        ? status === 'Approved'
+          ? 'Completed'
+          : status === 'Needs review'
+            ? 'Review'
+            : 'Pending'
+        : 'Required',
+    },
+    {
+      id: 'kyc-3',
+      title: 'Source of Funds',
+      detail: documentsByField.has('sourceOfFunds')
+        ? status === 'Approved'
+          ? 'Source-of-funds evidence accepted for this review cycle.'
+          : status === 'Needs review'
+            ? reviewNote || 'Source-of-funds evidence needs additional clarification.'
+            : 'Source-of-funds evidence received and queued if compliance requests it.'
+        : 'Optional unless the compliance desk asks for it on a higher-limit review.',
+      status: documentsByField.has('sourceOfFunds')
+        ? status === 'Approved'
+          ? 'Completed'
+          : status === 'Needs review'
+            ? 'Review'
+            : 'Pending'
+        : 'Optional',
+    },
+  ];
+};
+
+const buildKycDocumentType = (documents) =>
+  documents.map((document) => document.label).join(' + ') || 'Document submission';
+
+const buildStoredKycDocuments = (files, uploadedAt) =>
+  files.map((file) => ({
+    id: createPrefixedId('kyc-doc'),
+    fieldName: file.fieldname,
+    label: kycDocumentLabels[file.fieldname] ?? sanitizeFileName(file.fieldname, 'Supporting Document'),
+    originalName: sanitizeFileName(file.originalname, 'document'),
+    storedName: file.filename,
+    mimeType: file.mimetype,
+    sizeBytes: Number(file.size ?? 0),
+    uploadedAt,
+  }));
+
+const deleteKycStoredFiles = (documents = []) => {
+  for (const document of documents) {
+    const storedName = String(document?.storedName ?? '').trim();
+    if (!storedName) {
+      continue;
+    }
+
+    const filePath = join(secureKycUploadsDir, storedName);
+    if (existsSync(filePath)) {
+      unlinkSync(filePath);
+    }
   }
 };
 
@@ -214,45 +438,63 @@ const mapSessionUser = (user) => ({
   status: user.status,
 });
 
-const mapAdminUser = (user) => ({
-  id: String(user.id),
-  name: user.name,
-  email: user.email,
-  uuid: user.uuid,
-  country: user.country,
-  deskLabel: user.desk_label,
-  tier: user.tier,
-  status: user.status,
-  kycStatus: user.kyc_status,
-  riskLevel: user.risk_level,
-  portfolioUsd: Number(user.portfolio_usd),
-  availableUsd: Number(user.available_usd),
-  plan: user.plan_name,
-  lastSeen: user.last_seen,
-  note: user.note,
-  openCards: parseJson(user.cards_json).length,
-  holdings: parseJson(user.holdings_json).map((holding) => ({
+const buildAdminHoldings = (user, { walletSettings = {}, marketAssets = [] } = {}) =>
+  buildUserWalletAssets({
+    user,
+    holdings: parseJson(user.holdings_json, []),
+    marketAssets,
+    walletSettings,
+  }).map((holding) => ({
     id: holding.id,
     symbol: holding.symbol,
     name: holding.name,
     network: holding.network,
     icon: holding.icon,
-    balance: holding.balance,
-    valueUsd: holding.valueUsd,
-    address: holding.address,
+    balance: Number(holding.balance ?? 0),
+    valueUsd: Number(holding.valueUsd ?? 0),
+    address: String(holding.address ?? '').trim(),
     status: holding.status ?? (holding.enabledByDefault ? 'Enabled' : 'Paused'),
-  })),
-  cards: parseJson(user.cards_json).map((card) => ({
-    id: card.id,
-    label: card.label,
-    brand: card.brand,
-    last4: card.last4,
-    status: card.status === 'Active' ? 'Active' : card.status === 'Frozen' ? 'Frozen' : 'Review',
-    spendLimitUsd: card.spendLimitUsd,
-    utilizationUsd: card.utilizationUsd,
-    issuedAt: card.issuedAt,
-  })),
+  }));
+
+const mapAdminCard = (card) => ({
+  id: String(card.id ?? ''),
+  label: String(card.label ?? '').trim() || 'Card Record',
+  brand: String(card.brand ?? '').trim() === 'Mastercard' ? 'Mastercard' : 'Visa',
+  last4: String(card.last4 ?? '0000').trim() || '0000',
+  status: card.status === 'Active' ? 'Active' : card.status === 'Frozen' ? 'Frozen' : 'Review',
+  spendLimitUsd: Number(card.spendLimitUsd ?? 0),
+  utilizationUsd: Number(card.utilizationUsd ?? 0),
+  issuedAt: String(card.issuedAt ?? '').trim(),
+  requestOnly: Boolean(card.requestOnly),
+  requestedAt: String(card.requestedAt ?? '').trim(),
+  holderName: String(card.holderName ?? '').trim(),
+  applicationFeeUsd: Number(card.applicationFeeUsd ?? 0),
 });
+
+const mapAdminUser = (user, options = {}) => {
+  const cards = parseJson(user.cards_json, []).map((card) => mapAdminCard(card));
+
+  return {
+    id: String(user.id),
+    name: user.name,
+    email: user.email,
+    uuid: user.uuid,
+    country: user.country,
+    deskLabel: user.desk_label,
+    tier: user.tier,
+    status: user.status,
+    kycStatus: user.kyc_status,
+    riskLevel: user.risk_level,
+    portfolioUsd: Number(user.portfolio_usd),
+    availableUsd: Number(user.available_usd),
+    plan: user.plan_name,
+    lastSeen: user.last_seen,
+    note: user.note,
+    openCards: cards.filter((card) => !card.requestOnly).length,
+    holdings: buildAdminHoldings(user, options),
+    cards,
+  };
+};
 
 const getSetting = async (key, fallback = null) => {
   const row = await queryOne('SELECT setting_value FROM settings WHERE setting_key = :key', { key });
@@ -359,6 +601,21 @@ const revokeCurrentSession = async (user, sessionId, reason) => {
 
 const createPrefixedId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
 
+const createTemporaryPassword = (length = 12) => {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+  return Array.from({ length }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+};
+
+const createUserNotification = ({ title, message, tone = 'info', category = 'Security' }) => ({
+  id: createPrefixedId('notif'),
+  title,
+  message,
+  category,
+  time: createTimestampLabel(),
+  unread: true,
+  tone,
+});
+
 const appendAdminTimelineEntry = async (title, detail) => {
   const dashboardMeta = await getSetting('adminDashboard', { alerts: [], timeline: [] });
   const nextTimeline = [
@@ -389,25 +646,6 @@ const adminHoldingStatuses = ['Enabled', 'Watch', 'Paused'];
 const formatAmountLabel = (amount) =>
   Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 8 });
 
-const getHoldingPrice = (holding) => {
-  const explicitPrice = Number(holding.price ?? 0);
-  if (explicitPrice > 0) {
-    return explicitPrice;
-  }
-
-  const balance = Number(holding.balance ?? 0);
-  if (balance <= 0) {
-    return 0;
-  }
-
-  return Number(holding.valueUsd ?? 0) / balance;
-};
-
-const sumHoldingValue = (holdings = []) =>
-  holdings.reduce((total, holding) => total + Number(holding.valueUsd ?? 0), 0);
-
-
-
 const getAdminProfileState = async (user) => {
   const defaults = {
     fullName: user.name,
@@ -430,30 +668,42 @@ const getBrandName = async () => {
 
 const getClientBootstrap = async (userId) => {
   const user = await queryOne('SELECT * FROM users WHERE id = :id', { id: userId });
+  const kycCases = await query(
+    'SELECT * FROM kyc_cases WHERE user_id = :userId ORDER BY rowid DESC',
+    { userId },
+  );
   const referralMilestones = await getSetting('referralMilestones', []);
   const recentReferrals = parseJson(user.referrals_json, []);
-  
-  const settingsWallets = await getSetting('wallets', {});
-  const rails = collectWalletRails(settingsWallets, buildWalletRailFallbacksFromHoldings([parseJson(user.holdings_json)]));
-  const rawAssets = buildEffectiveWalletAssets({ 
-    user, 
-    holdings: parseJson(user.holdings_json), 
-    rails, 
-    includeLegacyHoldings: true 
+  const rawHoldings = parseJson(user.holdings_json, []);
+  const marketAssets = priceFeed.getMarketAssets();
+  const settingsWallets = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  const effectiveAssets = buildUserWalletAssets({
+    user,
+    holdings: rawHoldings,
+    marketAssets,
+    walletSettings: settingsWallets,
   });
+  const visiblePortfolioUsd = Number(sumVisiblePortfolioValue(effectiveAssets).toFixed(2));
+  const totalWalletUsd = Number(sumWalletValue(effectiveAssets).toFixed(2));
+  const changeUsd = Number(
+    effectiveAssets
+      .filter((asset) => asset.enabledByDefault)
+      .reduce((total, asset) => {
+        const multiplier = 1 + Number(asset.change ?? 0) / 100;
+        if (!Number.isFinite(multiplier) || multiplier === 0) {
+          return total;
+        }
 
-  const livePrices = priceFeed.getAllPrices();
-  const effectiveAssets = rawAssets.map((asset) => {
-    const live = livePrices[asset.symbol];
-    if (!live) return asset;
-    const livePrice = live.price ?? asset.price;
-    return {
-      ...asset,
-      price: livePrice,
-      change: live.change ?? asset.change,
-      valueUsd: Number((asset.balance * livePrice).toFixed(2)),
-    };
-  });
+        const previousValue = Number(asset.valueUsd ?? 0) / multiplier;
+        return total + (Number(asset.valueUsd ?? 0) - previousValue);
+      }, 0)
+      .toFixed(2),
+  );
+  const previousPortfolioUsd = visiblePortfolioUsd - changeUsd;
+  const changePct = visiblePortfolioUsd > 0 && previousPortfolioUsd !== 0
+    ? Number(((changeUsd / previousPortfolioUsd) * 100).toFixed(2))
+    : 0;
+  const cards = parseJson(user.cards_json, []).map((card) => mapAdminCard(card));
 
   return {
     profile: {
@@ -469,35 +719,42 @@ const getClientBootstrap = async (userId) => {
       kycStatus: user.kyc_status,
     },
     summary: {
-      portfolioUsd: Number(user.portfolio_usd),
-      availableUsd: Number(user.available_usd),
-      changeUsd: Number(user.portfolio_change_usd),
-      changePct: Number(user.portfolio_change_pct),
+      portfolioUsd: visiblePortfolioUsd,
+      availableUsd: totalWalletUsd,
+      changeUsd,
+      changePct,
       walletConnected: Boolean(user.wallet_connected),
     },
     walletAssets: effectiveAssets,
-    depositActivity: parseJson(user.deposit_activity_json, []),
-    withdrawalActivity: parseJson(user.withdrawal_activity_json, []),
+    marketAssets: buildAdminAssetCatalog(marketAssets, settingsWallets),
+    depositActivity: normalizeActivityRecords(parseJson(user.deposit_activity_json, []), rawHoldings),
+    withdrawalActivity: normalizeActivityRecords(parseJson(user.withdrawal_activity_json, []), rawHoldings),
     notificationItems: parseJson(user.notifications_json, []),
     addressBookEntries: parseJson(user.address_book_json, []),
     recentSessions: parseJson(user.sessions_json, []),
     kycChecklist: parseJson(user.kyc_checklist_json, []),
+    kycCases: kycCases.map((item) => mapKycCase(item)),
     referralMilestones,
     recentReferrals,
+    cards: cards.filter((card) => !card.requestOnly),
+    cardRequests: cards.filter((card) => card.requestOnly),
+    cardApplicationFeeUsd: settingsWallets.cardApplicationFeeUsd,
   };
 };
 
 const getAdminBootstrap = async () => {
   const users = await query('SELECT * FROM users WHERE role = :role ORDER BY id ASC', { role: 'user' });
   const transactions = await query('SELECT * FROM transactions ORDER BY created_at_label DESC');
-  const kycCases = await query('SELECT * FROM kyc_cases ORDER BY id ASC');
+  const kycCases = await query('SELECT * FROM kyc_cases ORDER BY rowid DESC');
+  const marketAssets = priceFeed.getMarketAssets();
 
-  const adminUsers = users.map((user) => mapAdminUser(user));
   const settingsGeneral = await getGeneralSettings();
   const settingsEmail = await getSetting('email', {});
-  const settingsWallets = await getSetting('wallets', {});
+  const settingsWallets = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  const adminUsers = users.map((user) => mapAdminUser(user, { walletSettings: settingsWallets, marketAssets }));
   const dashboardMeta = await getSetting('adminDashboard', { alerts: [], timeline: [] });
   const sanitizedEmailSettings = sanitizeEmailSettings(settingsEmail);
+  const adminAssetCatalog = buildAdminAssetCatalog(marketAssets, settingsWallets);
 
   const totalCryptoValue = adminUsers.reduce(
     (total, user) => total + user.holdings.reduce((subTotal, holding) => subTotal + holding.valueUsd, 0),
@@ -511,10 +768,9 @@ const getAdminBootstrap = async () => {
       { id: 'transactions', label: 'Transactions', value: String(transactions.length), change: `${transactions.filter((item) => item.status === 'Pending').length} pending`, tone: 'emerald', detail: 'Combined funding, transfer, and withdrawal records.' },
       { id: 'aum', label: 'Total Crypto Value', value: `$${totalCryptoValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: 'Live assets', tone: 'rose', detail: 'Aggregated holdings from admin-visible wallet records.' },
     ],
-    adminKycCases: kycCases.map((item) => ({ id: String(item.id), userId: String(item.user_id), documentType: item.document_type, submittedAt: item.submitted_at_label, country: item.country, riskLevel: item.risk_level, status: item.status, note: item.note })),
+    adminKycCases: kycCases.map((item) => mapKycCase(item)),
     adminTransactions: transactions.map((transaction) => ({ id: String(transaction.id), userId: String(transaction.user_id), type: transaction.type, asset: transaction.asset, amount: transaction.amount, channel: transaction.channel, destination: transaction.destination, status: transaction.status, createdAt: transaction.created_at_label, fromAsset: transaction.from_asset, toAsset: transaction.to_asset, whichCrypto: transaction.which_crypto, networkFee: transaction.network_fee, rate: transaction.rate })),
-    adminWalletRails: settingsWallets.rails ?? [],
-    adminEmailTemplates: sanitizedEmailSettings.templates ?? [],
+    adminAssetCatalog,
     adminAlerts: dashboardMeta.alerts ?? [],
     adminTimeline: dashboardMeta.timeline ?? [],
     adminSettings: { general: settingsGeneral, email: sanitizedEmailSettings, wallets: settingsWallets },
@@ -534,7 +790,8 @@ app.get('/api/health', async (_req, res) => {
 app.get('/api/prices', (_req, res) => {
   const prices = priceFeed.getAllPrices();
   const updatedAt = priceFeed.lastUpdatedAt;
-  return res.json({ prices, updatedAt });
+  const marketAssets = priceFeed.getMarketAssets();
+  return res.json({ prices, updatedAt, marketAssets });
 });
 
 app.get('/api/public/settings', async (_req, res) => {
@@ -652,6 +909,139 @@ app.get('/api/client/bootstrap', requireAuth, requireRole('user'), async (req, r
   return res.json(await getClientBootstrap(req.user.id));
 });
 
+app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) => {
+  kycUpload.fields(kycDocumentFields.map((fieldName) => ({ name: fieldName, maxCount: 1 })))(req, res, async (err) => {
+    if (err) {
+      const message = err instanceof multer.MulterError
+        ? (err.code === 'LIMIT_FILE_SIZE' ? 'Each KYC document must be under 8 MB.' : err.message)
+        : err.message || 'KYC upload failed.';
+      return res.status(400).json({ message });
+    }
+
+    const uploadedFiles = Object.values(req.files ?? {}).flat();
+    if (!uploadedFiles.length) {
+      return res.status(400).json({ message: 'Upload at least your government ID and proof of address.' });
+    }
+
+    const submittedAt = createTimestampLabel();
+    const documents = buildStoredKycDocuments(uploadedFiles, submittedAt);
+    const hasGovernmentId = documents.some((document) => document.fieldName === 'governmentId');
+    const hasProofOfAddress = documents.some((document) => document.fieldName === 'proofOfAddress');
+
+    if (!hasGovernmentId || !hasProofOfAddress) {
+      deleteKycStoredFiles(documents);
+      return res.status(400).json({ message: 'Government ID and proof of address are both required.' });
+    }
+
+    const documentType = buildKycDocumentType(documents);
+    const noteInput = String(req.body.note ?? '').trim();
+    const note = noteInput || 'Documents submitted from the client dashboard and queued for manual review.';
+    const currentCase = await queryOne(
+      'SELECT rowid, * FROM kyc_cases WHERE user_id = :userId AND status != :approved ORDER BY rowid DESC LIMIT 1',
+      { userId: req.user.id, approved: 'Approved' },
+    );
+
+    if (currentCase) {
+      deleteKycStoredFiles(readKycDocuments(currentCase));
+      await query(
+        `UPDATE kyc_cases
+         SET document_type = :documentType,
+             submitted_at_label = :submittedAt,
+             country = :country,
+             risk_level = :riskLevel,
+             status = 'Pending',
+             note = :note,
+             documents_json = :documents
+         WHERE id = :id`,
+        {
+          id: currentCase.id,
+          documentType,
+          submittedAt,
+          country: req.user.country,
+          riskLevel: req.user.risk_level,
+          note,
+          documents: JSON.stringify(documents),
+        },
+      );
+    } else {
+      await query(
+        `INSERT INTO kyc_cases (
+          id, user_id, document_type, submitted_at_label, country, risk_level, status, note, documents_json
+        ) VALUES (
+          :id, :userId, :documentType, :submittedAt, :country, :riskLevel, 'Pending', :note, :documents
+        )`,
+        {
+          id: createPrefixedId(`kyc-${req.user.id}`),
+          userId: req.user.id,
+          documentType,
+          submittedAt,
+          country: req.user.country,
+          riskLevel: req.user.risk_level,
+          note,
+          documents: JSON.stringify(documents),
+        },
+      );
+    }
+
+    const nextNotifications = [
+      createUserNotification({
+        title: 'KYC documents received',
+        message: `${documentType} was submitted and is now pending compliance review.`,
+        tone: 'info',
+      }),
+      ...parseJson(req.user.notifications_json, []),
+    ].slice(0, 20);
+
+    await query(
+      `UPDATE users
+       SET kyc_status = 'Pending',
+           kyc_checklist_json = :checklist,
+           notifications_json = :notifications,
+           last_seen = :lastSeen
+       WHERE id = :id`,
+      {
+        id: req.user.id,
+        checklist: JSON.stringify(buildKycChecklist({ documents, status: 'Pending' })),
+        notifications: JSON.stringify(nextNotifications),
+        lastSeen: `Updated ${submittedAt}`,
+      },
+    );
+
+    const emailSettings = await getSetting('email', {});
+    if (emailSettings.notifyOnKycSubmission !== false) {
+      const brandName = await getBrandName();
+      await sendSystemEmailSafely({
+        logContext: `kyc submission email to ${req.user.email}`,
+        to: req.user.email,
+        subject: `${brandName} received your KYC documents`,
+        title: 'Documents received',
+        preheader: 'Your verification documents are now in the review queue.',
+        intro: 'We received your document upload and forwarded it to the compliance review queue.',
+        recipientName: req.user.name,
+        paragraphs: [
+          'Your submission is now attached to your account and will remain visible from the KYC page while the review is open.',
+          'If the review team needs clearer files or more supporting evidence, the KYC page and your notifications feed will reflect that.',
+        ],
+        highlights: [
+          `Documents: ${documentType}`,
+          `Submitted: ${submittedAt}`,
+          'Current status: Pending',
+        ],
+        ctaLabel: 'Open KYC center',
+        ctaUrl: await toClientUrl('/app/kyc'),
+        signatureRole: 'Compliance Desk',
+      });
+    }
+
+    await appendAdminTimelineEntry(
+      `${req.user.name} submitted KYC documents`,
+      `${documentType} was uploaded from the client dashboard.`,
+    );
+
+    return res.status(201).json({ ok: true, message: 'KYC documents submitted successfully.' });
+  });
+});
+
 // FIX: was missing closing });
 app.patch('/api/client/notifications/read-all', requireAuth, requireRole('user'), async (req, res) => {
   const notifications = parseJson(req.user.notifications_json).map((item) => ({ ...item, unread: false }));
@@ -661,10 +1051,35 @@ app.patch('/api/client/notifications/read-all', requireAuth, requireRole('user')
 
 // FIX: was missing closing });
 app.patch('/api/client/assets/:assetId/toggle', requireAuth, requireRole('user'), async (req, res) => {
-  const assetId = String(req.params.assetId);
-  const holdings = parseJson(req.user.holdings_json).map((asset) => (asset.id === assetId ? { ...asset, enabledByDefault: !asset.enabledByDefault } : asset));
-  await query('UPDATE users SET holdings_json = :payload WHERE id = :id', { payload: JSON.stringify(holdings), id: req.user.id });
-  return res.json({ walletAssets: holdings });
+  const assetId = String(req.params.assetId ?? '').trim();
+  const holdings = parseJson(req.user.holdings_json, []);
+  const marketAssets = priceFeed.getMarketAssets();
+  const walletSettings = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  const walletAssets = buildUserWalletAssets({
+    user: req.user,
+    holdings,
+    marketAssets,
+    walletSettings,
+  });
+  const asset = walletAssets.find((item) => item.id === assetId);
+
+  if (!asset) {
+    return res.status(404).json({ message: 'Asset not available in this wallet.' });
+  }
+
+  const nextEnabled = !asset.enabledByDefault;
+  const updatedHoldings = upsertWalletHolding(holdings, {
+    ...asset,
+    enabledByDefault: nextEnabled,
+    status: asset.status === 'Watch' ? 'Watch' : nextEnabled ? 'Enabled' : 'Paused',
+  });
+
+  await query('UPDATE users SET holdings_json = :payload WHERE id = :id', {
+    payload: JSON.stringify(updatedHoldings),
+    id: req.user.id,
+  });
+
+  return res.json({ ok: true });
 });
 
 // FIX: was missing closing });
@@ -695,6 +1110,217 @@ app.put('/api/client/security', requireAuth, requireRole('user'), async (req, re
   return res.json({ ok: true, message: 'Security details updated successfully.' });
 });
 
+app.post('/api/client/cards/apply', requireAuth, requireRole('user'), async (req, res) => {
+  const holderName = String(req.body.holderName ?? req.user.name).trim() || req.user.name;
+  const brand = String(req.body.brand ?? 'Visa').trim() === 'Mastercard' ? 'Mastercard' : 'Visa';
+  const note = String(req.body.note ?? '').trim();
+  const cards = parseJson(req.user.cards_json, []);
+
+  if (cards.some((card) => Boolean(card?.requestOnly))) {
+    return res.status(400).json({ message: 'A card request is already pending for this account.' });
+  }
+
+  const marketAssets = priceFeed.getMarketAssets();
+  const walletSettings = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  const walletAssets = buildUserWalletAssets({
+    user: req.user,
+    holdings: parseJson(req.user.holdings_json, []),
+    marketAssets,
+    walletSettings,
+  });
+  const applicationFeeUsd = Number(walletSettings.cardApplicationFeeUsd ?? 0);
+  const rankedFundingAssets = [...walletAssets]
+    .filter((asset) => Number(asset.balance ?? 0) > 0 && Number(asset.price ?? 0) > 0)
+    .sort((left, right) => {
+      const stableRank = (asset) => (asset.symbol === 'USDT' || asset.symbol === 'USDC' ? 1 : 0);
+      if (stableRank(left) !== stableRank(right)) {
+        return stableRank(right) - stableRank(left);
+      }
+      return Number(right.valueUsd ?? 0) - Number(left.valueUsd ?? 0);
+    });
+
+  const fundingAsset = rankedFundingAssets.find((asset) => Number(asset.valueUsd ?? 0) >= applicationFeeUsd);
+  if (applicationFeeUsd > 0 && !fundingAsset) {
+    return res.status(400).json({ message: 'Insufficient wallet value to cover the card application fee.' });
+  }
+
+  const feeAssetAmount =
+    applicationFeeUsd > 0 && fundingAsset
+      ? Number((applicationFeeUsd / Number(fundingAsset.price ?? 1)).toFixed(8))
+      : 0;
+
+  if (fundingAsset && feeAssetAmount > Number(fundingAsset.balance ?? 0)) {
+    return res.status(400).json({ message: 'The selected wallet cannot cover the card application fee.' });
+  }
+
+  const updatedFundingAsset = fundingAsset
+    ? {
+      ...fundingAsset,
+      balance: Number((Number(fundingAsset.balance ?? 0) - feeAssetAmount).toFixed(8)),
+      valueUsd: Number((Math.max(Number(fundingAsset.valueUsd ?? 0) - applicationFeeUsd, 0)).toFixed(2)),
+    }
+    : null;
+
+  const updatedHoldings = updatedFundingAsset
+    ? upsertWalletHolding(parseJson(req.user.holdings_json, []), updatedFundingAsset)
+    : parseJson(req.user.holdings_json, []);
+  const updatedWalletAssets = updatedFundingAsset
+    ? walletAssets.map((asset) => (asset.id === updatedFundingAsset.id ? updatedFundingAsset : asset))
+    : walletAssets;
+  const nextTotalWalletUsd = Number(sumWalletValue(updatedWalletAssets).toFixed(2));
+  const requestedAt = createTimestampLabel();
+  const requestCard = {
+    id: createPrefixedId('card-req'),
+    label: `${brand} card request`,
+    brand,
+    holderName,
+    last4: '0000',
+    status: 'Review',
+    spendLimitUsd: 0,
+    utilizationUsd: 0,
+    issuedAt: '',
+    requestedAt,
+    requestOnly: true,
+    applicationFeeUsd,
+    note,
+  };
+  const nextCards = [requestCard, ...cards];
+  const nextNotifications = [
+    createUserNotification({
+      title: 'Card request submitted',
+      message:
+        applicationFeeUsd > 0 && fundingAsset
+          ? `${brand} card request submitted. ${formatAmountLabel(feeAssetAmount)} ${fundingAsset.symbol} covered the application fee.`
+          : `${brand} card request submitted and is now pending review.`,
+      tone: 'info',
+      category: 'Transfers',
+    }),
+    ...parseJson(req.user.notifications_json, []),
+  ].slice(0, 20);
+
+  await query(
+    `UPDATE users
+     SET holdings_json = :holdings,
+         cards_json = :cards,
+         notifications_json = :notifications,
+         portfolio_usd = :portfolioUsd,
+         available_usd = :availableUsd,
+         last_seen = :lastSeen
+     WHERE id = :id`,
+    {
+      id: req.user.id,
+      holdings: JSON.stringify(updatedHoldings),
+      cards: JSON.stringify(nextCards),
+      notifications: JSON.stringify(nextNotifications),
+      portfolioUsd: nextTotalWalletUsd,
+      availableUsd: nextTotalWalletUsd,
+      lastSeen: `Updated ${requestedAt}`,
+    },
+  );
+
+  await query(
+    `INSERT INTO transactions (
+      id, user_id, type, asset, amount, channel, destination, status, created_at_label,
+      from_asset, to_asset, which_crypto, network_fee, rate
+    ) VALUES (
+      :id, :userId, 'Transfer', :asset, :amount, :channel, :destination, 'Pending', :createdAt,
+      :fromAsset, '', :whichCrypto, :networkFee, :rate
+    )`,
+    {
+      id: createPrefixedId('txn'),
+      userId: req.user.id,
+      asset: fundingAsset?.symbol ?? 'USD',
+      amount:
+        fundingAsset && applicationFeeUsd > 0
+          ? `${formatAmountLabel(feeAssetAmount)} ${fundingAsset.symbol}`
+          : '$0.00',
+      channel: 'Card Application',
+      destination: `${brand} card request`,
+      createdAt: requestedAt,
+      fromAsset: fundingAsset?.symbol ?? '',
+      whichCrypto: fundingAsset?.symbol ?? '',
+      networkFee: '0',
+      rate: String(fundingAsset?.price ?? 0),
+    },
+  );
+
+  await sendSystemEmailSafely({
+    logContext: `card request email to ${req.user.email}`,
+    to: req.user.email,
+    subject: `${brand} card request received`,
+    title: 'Card request received',
+    preheader: 'Your card application is now pending operations review.',
+    intro: 'We received your card request and queued it for operator review.',
+    recipientName: req.user.name,
+    paragraphs: [
+      'The request will remain pending until an administrator reviews it and issues the card record.',
+      applicationFeeUsd > 0 && fundingAsset
+        ? `${formatAmountLabel(feeAssetAmount)} ${fundingAsset.symbol} was applied as the card application fee.`
+        : 'No application fee was charged for this request.',
+    ],
+    highlights: [
+      `Requested card: ${brand}`,
+      `Requested at: ${requestedAt}`,
+      `Application fee: $${applicationFeeUsd.toFixed(2)}`,
+    ],
+    ctaLabel: 'Open cards',
+    ctaUrl: await toClientUrl('/app/cards'),
+    signatureRole: 'Card Services Desk',
+  });
+
+  await appendAdminTimelineEntry(
+    `${req.user.name} submitted a ${brand} card request`,
+    applicationFeeUsd > 0 && fundingAsset
+      ? `${formatAmountLabel(feeAssetAmount)} ${fundingAsset.symbol} was charged as the application fee.`
+      : 'Card request submitted with no application fee.',
+  );
+
+  return res.status(201).json({ ok: true, message: 'Card request submitted successfully.' });
+});
+
+app.get('/api/kyc/cases/:caseId/documents/:documentId', requireAuth, async (req, res) => {
+  const caseId = String(req.params.caseId ?? '').trim();
+  const documentId = String(req.params.documentId ?? '').trim();
+
+  if (!caseId || !documentId) {
+    return res.status(400).json({ message: 'Case ID and document ID are required.' });
+  }
+
+  const kycCase = await queryOne('SELECT * FROM kyc_cases WHERE id = :id', { id: caseId });
+  if (!kycCase) {
+    return res.status(404).json({ message: 'KYC case not found.' });
+  }
+
+  if (req.user.role !== 'admin' && Number(kycCase.user_id) !== Number(req.user.id)) {
+    return res.status(403).json({ message: 'You do not have permission to view this document.' });
+  }
+
+  const document = readKycDocuments(kycCase).find((item) => item.id === documentId);
+  if (!document || !document.storedName) {
+    return res.status(404).json({ message: 'KYC document not found.' });
+  }
+
+  const filePath = join(secureKycUploadsDir, document.storedName);
+  if (!existsSync(filePath)) {
+    return res.status(404).json({ message: 'KYC document file is unavailable.' });
+  }
+
+  if (document.mimeType) {
+    res.setHeader('Content-Type', document.mimeType);
+  }
+
+  if (document.sizeBytes > 0) {
+    res.setHeader('Content-Length', String(document.sizeBytes));
+  }
+
+  res.setHeader(
+    'Content-Disposition',
+    `inline; filename="${sanitizeFileName(document.originalName, 'document')}"`,
+  );
+
+  return createReadStream(filePath).pipe(res);
+});
+
 app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req, res) => {
   const assetId = String(req.body.assetId ?? '').trim();
   const method = String(req.body.method ?? 'external').trim().toLowerCase();
@@ -720,7 +1346,15 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
   }
 
   const holdings = parseJson(req.user.holdings_json, []);
-  const asset = holdings.find((item) => item.id === assetId);
+  const marketAssets = priceFeed.getMarketAssets();
+  const walletSettings = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  const walletAssets = buildUserWalletAssets({
+    user: req.user,
+    holdings,
+    marketAssets,
+    walletSettings,
+  });
+  const asset = walletAssets.find((item) => item.id === assetId);
 
   if (!asset) {
     return res.status(404).json({ message: 'Asset not found in this wallet.' });
@@ -737,25 +1371,16 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
     return res.status(400).json({ message: 'Insufficient balance for amount plus fee.' });
   }
 
-  // FIX: map callback was missing closing } and });
-  const updatedHoldings = holdings.map((item) => {
-    if (item.id !== assetId) {
-      return item;
-    }
+  const updatedAsset = {
+    ...asset,
+    balance: Number((Number(asset.balance ?? 0) - totalDebit).toFixed(8)),
+    valueUsd: Number(((Number(asset.balance ?? 0) - totalDebit) * Number(asset.price ?? 0)).toFixed(2)),
+  };
+  const updatedHoldings = upsertWalletHolding(holdings, updatedAsset);
+  const updatedWalletAssets = walletAssets.map((item) => (item.id === assetId ? updatedAsset : item));
 
-    const nextBalance = Number((Number(item.balance) - totalDebit).toFixed(8));
-    const nextValueUsd = Number((nextBalance * Number(item.price ?? 0)).toFixed(2));
-
-    return {
-      ...item,
-      balance: nextBalance,
-      valueUsd: nextValueUsd,
-    };
-  });
-
-  const totalUsd = Number((totalDebit * Number(asset.price ?? 0)).toFixed(2));
-  const nextPortfolioUsd = Math.max(Number(req.user.portfolio_usd) - totalUsd, 0);
-  const nextAvailableUsd = Math.max(Number(req.user.available_usd) - totalUsd, 0);
+  const nextPortfolioUsd = Number(sumWalletValue(updatedWalletAssets).toFixed(2));
+  const nextAvailableUsd = nextPortfolioUsd;
   const createdAt = createTimestampLabel();
   const transactionId = createPrefixedId('txn');
 
@@ -974,7 +1599,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
 // FIX: queryOne call was missing }); and route itself was missing });
 app.put('/api/admin/users/:userId/password', requireAuth, requireRole('admin'), async (req, res) => {
   const userId = Number(req.params.userId ?? 0);
-  const password = String(req.body.password ?? '').trim();
   const existing = await queryOne('SELECT id, name, email FROM users WHERE id = :id AND role = :role', {
     id: userId,
     role: 'user',
@@ -984,9 +1608,7 @@ app.put('/api/admin/users/:userId/password', requireAuth, requireRole('admin'), 
     return res.status(404).json({ message: 'User not found.' });
   }
 
-  if (!password) {
-    return res.status(400).json({ message: 'Password is required.' });
-  }
+  const password = String(req.body.password ?? '').trim() || createTemporaryPassword();
 
   await query(
     'UPDATE users SET password_hash = :passwordHash, sessions_json = :sessions WHERE id = :id',
@@ -998,11 +1620,33 @@ app.put('/api/admin/users/:userId/password', requireAuth, requireRole('admin'), 
   );
 
   await appendAdminTimelineEntry(
-    `${req.user.name} updated ${existing.name}'s password`,
-    `Password was refreshed for ${existing.email}.`,
+    `${req.user.name} reset ${existing.name}'s password`,
+    `Temporary password generated for ${existing.email}.`,
   );
 
-  return res.json({ ok: true });
+  await sendSystemEmailSafely({
+    logContext: `password reset email to ${existing.email}`,
+    to: existing.email,
+    subject: 'Your password has been reset',
+    title: 'Temporary password generated',
+    preheader: 'A new temporary password was created for your account.',
+    intro: 'An administrator reset your account password and signed out previous sessions.',
+    recipientName: existing.name,
+    paragraphs: [
+      'Use the temporary password below to sign back in and change it immediately from your security settings.',
+      'If you did not expect this reset, contact support before using the new credentials.',
+    ],
+    highlights: [
+      `Temporary password: ${password}`,
+      'All previous sessions were signed out',
+    ],
+    ctaLabel: 'Open login',
+    ctaUrl: await toClientUrl('/login'),
+    signatureName: req.user.name,
+    signatureRole: 'Operations Desk',
+  });
+
+  return res.json({ ok: true, temporaryPassword: password });
 });
 
 // FIX: holdings.map callback was missing closing } and }); and route itself was missing });
@@ -1016,7 +1660,15 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
   }
 
   const holdings = parseJson(user.holdings_json, []);
-  const current = holdings.find((item) => item.id === assetId);
+  const marketAssets = priceFeed.getMarketAssets();
+  const settingsWallets = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  const effectiveAssets = buildUserWalletAssets({
+    user,
+    holdings,
+    marketAssets,
+    walletSettings: settingsWallets,
+  });
+  const current = effectiveAssets.find((item) => item.id === assetId);
 
   if (!current) {
     return res.status(404).json({ message: 'Asset record not found.' });
@@ -1027,13 +1679,15 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
   const nextStatus = req.body.status
     ? pickAllowedValue(req.body.status, adminHoldingStatuses, '')
     : '';
-  const nextAddress = req.body.address ? String(req.body.address).trim() : '';
+  const hasAddressUpdate = req.body.address !== undefined;
+  const nextAddress = hasAddressUpdate ? String(req.body.address ?? '').trim() : String(current.address ?? '').trim();
 
   if (action && (!['add', 'subtract'].includes(action) || !Number.isFinite(amount) || amount <= 0)) {
     return res.status(400).json({ message: 'A valid adjustment action and amount are required.' });
   }
 
-  const updatedHoldings = holdings.map((item) => {
+  let invalidAdjustment = false;
+  const updatedAssets = effectiveAssets.map((item) => {
     if (item.id !== assetId) {
       return item;
     }
@@ -1045,16 +1699,17 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
       nextItem.enabledByDefault = nextStatus !== 'Paused';
     }
 
-    if (nextAddress) {
+    if (hasAddressUpdate) {
       nextItem.address = nextAddress;
     }
 
     if (action) {
       const currentBalance = Number(nextItem.balance ?? 0);
-      const price = getHoldingPrice(nextItem);
+      const price = Number(nextItem.price ?? 0);
       const nextBalance = action === 'add' ? currentBalance + amount : currentBalance - amount;
 
       if (nextBalance < 0) {
+        invalidAdjustment = true;
         return nextItem;
       }
 
@@ -1065,16 +1720,33 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
     return nextItem;
   });
 
-  const nextTotal = sumHoldingValue(updatedHoldings);
-  const updatedAsset = updatedHoldings.find((item) => item.id === assetId);
-
-  if (action && Number(updatedAsset?.balance ?? 0) === Number(current.balance ?? 0)) {
+  if (invalidAdjustment) {
     return res.status(400).json({ message: 'Adjustment would reduce the balance below zero.' });
   }
+
+  const updatedAsset = updatedAssets.find((item) => item.id === assetId);
+  const updatedHoldings = upsertWalletHolding(holdings, updatedAsset);
+  const nextTotal = Number(sumWalletValue(updatedAssets).toFixed(2));
+  const updatedAt = createTimestampLabel();
+  const nextNotifications = action
+    ? [
+      createUserNotification({
+        title: action === 'add' ? 'Wallet credited' : 'Wallet debited',
+        message:
+          action === 'add'
+            ? `${formatAmountLabel(amount)} ${current.symbol} was credited to your wallet by the admin team.`
+            : `${formatAmountLabel(amount)} ${current.symbol} was removed from your wallet by the admin team.`,
+        tone: action === 'add' ? 'success' : 'warning',
+        category: 'Transfers',
+      }),
+      ...parseJson(user.notifications_json, []),
+    ].slice(0, 20)
+    : parseJson(user.notifications_json, []);
 
   await query(
     `UPDATE users
      SET holdings_json = :holdings,
+         notifications_json = :notifications,
          portfolio_usd = :portfolioUsd,
          available_usd = :availableUsd,
          last_seen = :lastSeen
@@ -1082,15 +1754,81 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
     {
       id: userId,
       holdings: JSON.stringify(updatedHoldings),
+      notifications: JSON.stringify(nextNotifications),
       portfolioUsd: nextTotal,
       availableUsd: nextTotal,
-      lastSeen: `Updated ${createTimestampLabel()}`,
+      lastSeen: `Updated ${updatedAt}`,
     },
   );
 
+  const updateSummary = [];
+  if (nextStatus && nextStatus !== String(current.status ?? '').trim()) {
+    updateSummary.push(`status set to ${nextStatus}`);
+  }
+  if (hasAddressUpdate && nextAddress !== String(current.address ?? '').trim()) {
+    updateSummary.push(nextAddress ? 'deposit address updated' : 'deposit address cleared');
+  }
+  if (action) {
+    updateSummary.push(`${action === 'add' ? 'added' : 'subtracted'} ${formatAmountLabel(amount)} ${current.symbol}`);
+  }
+
+  if (action) {
+    await query(
+      `INSERT INTO transactions (
+        id, user_id, type, asset, amount, channel, destination, status, created_at_label,
+        from_asset, to_asset, which_crypto, network_fee, rate
+      ) VALUES (
+        :id, :userId, :type, :asset, :amount, :channel, :destination, 'Completed', :createdAt,
+        :fromAsset, '', :whichCrypto, '0', :rate
+      )`,
+      {
+        id: createPrefixedId('txn'),
+        userId,
+        type: action === 'add' ? 'Deposit' : 'Withdrawal',
+        asset: current.symbol,
+        amount: `${formatAmountLabel(amount)} ${current.symbol}`,
+        channel: 'Admin Wallet Funding',
+        destination: action === 'add' ? 'User wallet credit' : 'User wallet debit',
+        createdAt: updatedAt,
+        fromAsset: current.symbol,
+        whichCrypto: current.symbol,
+        rate: String(current.price ?? 0),
+      },
+    );
+
+    await sendSystemEmailSafely({
+      logContext: `admin wallet update email to ${user.email}`,
+      to: user.email,
+      subject: action === 'add' ? `${current.symbol} credited to your wallet` : `${current.symbol} removed from your wallet`,
+      title: action === 'add' ? 'Wallet credit completed' : 'Wallet debit completed',
+      preheader: `${formatAmountLabel(amount)} ${current.symbol} was ${action === 'add' ? 'credited' : 'debited'} by the admin team.`,
+      intro:
+        action === 'add'
+          ? 'An administrator credited your wallet and the transaction is now complete.'
+          : 'An administrator debited your wallet and the transaction is now complete.',
+      recipientName: user.name,
+      paragraphs: [
+        'The updated wallet balance is reflected in your account immediately.',
+        'If you need the transaction reviewed, contact support and reference the wallet activity timestamp shown in your dashboard.',
+      ],
+      highlights: [
+        `Asset: ${current.symbol}`,
+        `Amount: ${formatAmountLabel(amount)} ${current.symbol}`,
+        `Updated balance: ${formatAmountLabel(updatedAsset.balance)} ${current.symbol}`,
+        `Processed at: ${updatedAt}`,
+      ],
+      ctaLabel: 'Open wallet',
+      ctaUrl: await toClientUrl('/app'),
+      signatureName: req.user.name,
+      signatureRole: 'Wallet Operations',
+    });
+  }
+
   await appendAdminTimelineEntry(
     `${req.user.name} updated ${user.name}'s ${current.symbol} wallet`,
-    `Asset ${current.symbol} on ${current.network} was adjusted from the admin wallet controls.`,
+    updateSummary.length > 0
+      ? `Asset ${current.symbol} on ${current.network}: ${updateSummary.join('; ')}.`
+      : `Asset ${current.symbol} on ${current.network} was updated from the admin wallet controls.`,
   );
 
   return res.json({ ok: true });
@@ -1123,8 +1861,16 @@ app.post('/api/admin/users/:userId/cards', requireAuth, requireRole('admin'), as
     return res.status(400).json({ message: 'Initial balance must be a valid positive amount.' });
   }
 
+  const requestId = String(req.body.requestId ?? '').trim();
   const cards = parseJson(user.cards_json, []);
+  const requestCard = requestId ? cards.find((card) => String(card.id) === requestId && Boolean(card.requestOnly)) : null;
+
+  if (requestId && !requestCard) {
+    return res.status(404).json({ message: 'Card request not found.' });
+  }
+
   const cardId = createPrefixedId('card');
+  const createdAt = createTimestampLabel();
   const nextCard = {
     id: cardId,
     label: `${holderName || user.name} ${brand}`.trim(),
@@ -1133,26 +1879,53 @@ app.post('/api/admin/users/:userId/cards', requireAuth, requireRole('admin'), as
     status: 'Review',
     spendLimitUsd: Number(initialBalance.toFixed(2)),
     utilizationUsd: 0,
-    issuedAt: `Issued ${createTimestampLabel()}`,
+    issuedAt: `Issued ${createdAt}`,
     expiry: expiryMonth && expiryYear ? `${expiryMonth}/${expiryYear}` : '',
     billingAddress,
     zipCode,
     cvv,
   };
+  const remainingCards = requestId ? cards.filter((card) => String(card.id) !== requestId) : cards;
 
   await query(
     'UPDATE users SET cards_json = :cards, last_seen = :lastSeen WHERE id = :id',
     {
       id: userId,
-      cards: JSON.stringify([nextCard, ...cards]),
-      lastSeen: `Updated ${createTimestampLabel()}`,
+      cards: JSON.stringify([nextCard, ...remainingCards]),
+      lastSeen: `Updated ${createdAt}`,
     },
   );
 
   await appendAdminTimelineEntry(
     `${req.user.name} issued a new card for ${user.name}`,
-    `${brand} card ending in ${last4} was added from the admin dashboard.`,
+    requestCard
+      ? `${brand} card ending in ${last4} was issued from a pending application.`
+      : `${brand} card ending in ${last4} was added from the admin dashboard.`,
   );
+
+  await sendSystemEmailSafely({
+    logContext: `card issued email to ${user.email}`,
+    to: user.email,
+    subject: `${brand} card issued`,
+    title: 'Your card has been issued',
+    preheader: `${brand} card ending in ${last4} is now active in your account records.`,
+    intro: 'Your card request has been processed and the card record is now available.',
+    recipientName: user.name,
+    paragraphs: [
+      'Card details are now attached to your account and visible from the wallet workspace.',
+      'If funding was applied during issuance, the spend limit already reflects the approved amount.',
+    ],
+    highlights: [
+      `Card brand: ${brand}`,
+      `Card ending: ${last4}`,
+      `Issued at: ${createdAt}`,
+      `Spend limit: $${initialBalance.toFixed(2)}`,
+    ],
+    ctaLabel: 'Open cards',
+    ctaUrl: await toClientUrl('/app/cards'),
+    signatureName: req.user.name,
+    signatureRole: 'Card Services Desk',
+  });
 
   return res.status(201).json({ ok: true, cardId });
 });
@@ -1171,6 +1944,10 @@ app.put('/api/admin/users/:userId/cards/:cardId', requireAuth, requireRole('admi
 
   if (!current) {
     return res.status(404).json({ message: 'Card record not found.' });
+  }
+
+  if (current.requestOnly) {
+    return res.status(400).json({ message: 'This card request must be issued before it can be managed.' });
   }
 
   const action = String(req.body.action ?? '').trim().toLowerCase();
@@ -1282,7 +2059,9 @@ app.get('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
     return res.status(404).json({ message: 'User not found.' });
   }
 
-  return res.json(mapAdminUser(user));
+  const marketAssets = priceFeed.getMarketAssets();
+  const settingsWallets = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  return res.json(mapAdminUser(user, { walletSettings: settingsWallets, marketAssets }));
 });
 
 // PUT /api/admin/settings/:section — save general, email, or wallets settings
@@ -1299,6 +2078,7 @@ app.put('/api/admin/settings/:section', requireAuth, requireRole('admin'), async
   if (section === 'email') {
     const incomingPassword = String(req.body.mailPassword ?? '').trim();
     const next = { ...current, ...req.body };
+    delete next.templates;
 
     if (!incomingPassword) {
       // Keep the existing stored password
@@ -1317,9 +2097,9 @@ app.put('/api/admin/settings/:section', requireAuth, requireRole('admin'), async
   }
 
   if (section === 'wallets') {
-    const next = { ...current, ...req.body };
-    const rails = next.rails && Array.isArray(next.rails) ? next.rails : [];
-    await upsertSetting('wallets', { ...current, rails });
+    const marketAssets = priceFeed.getMarketAssets();
+    const next = normalizeWalletSettings({ ...current, ...req.body }, marketAssets);
+    await upsertSetting('wallets', next);
     return res.json({ ok: true });
   }
 
@@ -1458,8 +2238,11 @@ app.put('/api/admin/kyc/:caseId', requireAuth, requireRole('admin'), async (req,
     return res.status(404).json({ message: 'KYC case not found.' });
   }
 
+  const targetUser = await queryOne('SELECT * FROM users WHERE id = :id', { id: existing.user_id });
   const updates = [];
   const params = { id: caseId };
+  const nextStatus = status || existing.status;
+  const nextNote = note !== null ? note : (existing.note ?? '');
 
   if (status) {
     updates.push('status = :status');
@@ -1475,9 +2258,78 @@ app.put('/api/admin/kyc/:caseId', requireAuth, requireRole('admin'), async (req,
     await query(`UPDATE kyc_cases SET ${updates.join(', ')} WHERE id = :id`, params);
   }
 
+  if (targetUser) {
+    const documents = readKycDocuments(existing);
+    const nextChecklist = documents.length
+      ? buildKycChecklist({ documents, status: nextStatus, reviewNote: nextNote })
+      : parseJson(targetUser.kyc_checklist_json, []);
+    const nextNotifications = parseJson(targetUser.notifications_json, []);
+
+    if (status) {
+      nextNotifications.unshift(
+        createUserNotification({
+          title: nextStatus === 'Approved'
+            ? 'KYC approved'
+            : nextStatus === 'Needs review'
+              ? 'KYC needs attention'
+              : 'KYC review updated',
+          message: nextStatus === 'Approved'
+            ? 'Your verification case was approved and the account review is complete.'
+            : nextStatus === 'Needs review'
+              ? (nextNote || 'Compliance requested clearer documents or more information.')
+              : 'Your verification case remains pending manual review.',
+          tone: nextStatus === 'Approved' ? 'success' : nextStatus === 'Needs review' ? 'warning' : 'info',
+        }),
+      );
+    }
+
+    await query(
+      `UPDATE users
+       SET kyc_status = :kycStatus,
+           kyc_checklist_json = :checklist,
+           notifications_json = :notifications,
+           last_seen = :lastSeen
+       WHERE id = :id`,
+      {
+        id: targetUser.id,
+        kycStatus: nextStatus,
+        checklist: JSON.stringify(nextChecklist),
+        notifications: JSON.stringify(nextNotifications.slice(0, 20)),
+        lastSeen: `Updated ${createTimestampLabel()}`,
+      },
+    );
+
+    const emailSettings = await getSetting('email', {});
+    if (status === 'Approved' && emailSettings.notifyOnKycApproval !== false) {
+      const brandName = await getBrandName();
+      await sendSystemEmailSafely({
+        logContext: `kyc approval email to ${targetUser.email}`,
+        to: targetUser.email,
+        subject: `Your ${brandName} verification is approved`,
+        title: 'Verification approved',
+        preheader: 'Your KYC review is complete and the case is now approved.',
+        intro: 'The compliance team approved your verification case.',
+        recipientName: targetUser.name,
+        paragraphs: [
+          'Your account now reflects an approved verification state in the client dashboard.',
+          'If legal identity details or source-of-funds documents change later, submit a fresh document set before your next high-limit transfer window.',
+        ],
+        highlights: [
+          `Case ID: ${caseId}`,
+          `Approved: ${createTimestampLabel()}`,
+          'Current status: Approved',
+        ],
+        ctaLabel: 'Open KYC center',
+        ctaUrl: await toClientUrl('/app/kyc'),
+        signatureName: req.user.name,
+        signatureRole: 'Compliance Desk',
+      });
+    }
+  }
+
   await appendAdminTimelineEntry(
     `${req.user.name} updated KYC case ${caseId}`,
-    `Status set to ${status || existing.status} for case ${caseId}.`,
+    `Status set to ${nextStatus} for case ${caseId}.`,
   );
 
   return res.json({ ok: true });
@@ -1687,7 +2539,9 @@ app.put('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
   );
 
   const updatedUser = await queryOne('SELECT * FROM users WHERE id = :id', { id: userId });
-  return res.json(mapAdminUser(updatedUser));
+  const marketAssets = priceFeed.getMarketAssets();
+  const settingsWallets = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  return res.json(mapAdminUser(updatedUser, { walletSettings: settingsWallets, marketAssets }));
 });
 
 app.use((error, _req, res, next) => {
@@ -1720,7 +2574,6 @@ app.listen(config.apiPort, () => {
   const runPriceTask = async () => {
     try {
       await priceFeed.update();
-      updateWalletRailPresets(priceFeed.getAllPrices());
     } catch (error) {
       console.error('Price Task failed', error);
     }

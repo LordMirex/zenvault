@@ -39,6 +39,24 @@ const escapeHtml = (value) =>
 
 const normalizeEmail = (value) => String(value ?? '').trim().toLowerCase();
 
+const resolveAssetUrl = (origin, assetPath) => {
+  const normalized = String(assetPath ?? '').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  const base = String(origin ?? '').replace(/\/$/, '');
+  if (!base) {
+    return normalized;
+  }
+
+  return normalized.startsWith('/') ? `${base}${normalized}` : `${base}/${normalized}`;
+};
+
 const formatAddress = (name, address) => {
   if (!name) {
     return address;
@@ -81,6 +99,7 @@ export const sanitizeEmailSettings = (settings = {}) => {
   const password = String(settings.mailPassword ?? '').trim();
 
   delete sanitized.mailPassword;
+  delete sanitized.templates;
 
   if (password) {
     sanitized.mailPasswordMasked = String(settings.mailPasswordMasked ?? '********');
@@ -159,6 +178,10 @@ export const createMailClient = async () => {
       siteName: String((generalSettings.siteName ?? fromName) || 'Operations Desk').trim(),
       logoUrl: String(generalSettings.logoUrl ?? '').trim(),
       siteUrl: resolveSiteOrigin(generalSettings) || config.clientOrigin,
+      footerSummary: String(generalSettings.footerSummary ?? '').trim(),
+      companyAddress: String(generalSettings.companyAddress ?? '').trim(),
+      companyPhone: String(generalSettings.companyPhone ?? '').trim(),
+      companyEmail: String(generalSettings.companyEmail ?? '').trim(),
       from: formatAddress(fromName, fromAddress),
       fromAddress,
       fromName,
@@ -198,22 +221,26 @@ export const buildBrandedEmail = ({
   const greeting = recipientName ? `Hello ${recipientName},` : 'Hello,';
   const signatureLines = [signatureName || brand.fromName || brand.companyName, signatureRole].filter(Boolean);
   const footerLines = [
-    brand.siteName,
+    brand.footerSummary,
+    brand.companyAddress,
+    brand.companyPhone,
     brand.companyEmail,
+    brand.siteUrl,
   ].filter(Boolean);
+  const logoUrl = resolveAssetUrl(brand.siteUrl || brand.clientOrigin, brand.logoUrl);
 
   const paragraphMarkup = safeParagraphs
     .map(
       (paragraph) =>
-        `<p style="margin:0 0 16px;color:#334155;font-size:16px;line-height:1.7;">${escapeHtml(paragraph)}</p>`,
+        `<p style="margin:0 0 16px;color:#3f3a31;font-size:16px;line-height:1.78;">${escapeHtml(paragraph)}</p>`,
     )
     .join('');
 
   const highlightMarkup = safeHighlights.length
     ? `
-      <div style="margin:24px 0;padding:20px;border-radius:18px;background:#f8fafc;border:1px solid #e2e8f0;">
-        <p style="margin:0 0 12px;color:#0f172a;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Details</p>
-        <ul style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.7;">
+      <div style="margin:28px 0;padding:22px;border-radius:24px;background:#fffaf2;border:1px solid rgba(17,17,17,0.08);">
+        <p style="margin:0 0 12px;color:#8b5e11;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">Details</p>
+        <ul style="margin:0;padding-left:20px;color:#3f3a31;font-size:15px;line-height:1.72;">
           ${safeHighlights.map((item) => `<li style="margin-bottom:8px;">${escapeHtml(item)}</li>`).join('')}
         </ul>
       </div>
@@ -224,7 +251,7 @@ export const buildBrandedEmail = ({
     ctaLabel && ctaUrl
       ? `
         <div style="margin:28px 0 8px;">
-          <a href="${escapeHtml(ctaUrl)}" style="display:inline-block;border-radius:999px;background:#7c3aed;color:#ffffff;padding:14px 22px;font-size:14px;font-weight:700;text-decoration:none;">
+          <a href="${escapeHtml(ctaUrl)}" style="display:inline-block;border-radius:999px;background:#f7931a;color:#111111;padding:14px 22px;font-size:14px;font-weight:700;text-decoration:none;">
             ${escapeHtml(ctaLabel)}
           </a>
         </div>
@@ -232,7 +259,7 @@ export const buildBrandedEmail = ({
       : '';
 
   const signatureMarkup = signatureLines.length
-    ? `<p style="margin:24px 0 0;color:#334155;font-size:15px;line-height:1.7;">${signatureLines
+    ? `<p style="margin:24px 0 0;color:#3f3a31;font-size:15px;line-height:1.72;">${signatureLines
         .map((line) => escapeHtml(line))
         .join('<br />')}</p>`
     : '';
@@ -245,29 +272,31 @@ export const buildBrandedEmail = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${escapeHtml(title)}</title>
       </head>
-      <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+      <body style="margin:0;padding:0;background:#f6efe5;font-family:Arial,Helvetica,sans-serif;">
         <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
           ${escapeHtml(preheader || intro || safeParagraphs[0] || title)}
         </div>
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9;padding:32px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6efe5;padding:32px 16px;">
           <tr>
             <td align="center">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border-radius:28px;overflow:hidden;border:1px solid #e2e8f0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border-radius:30px;overflow:hidden;border:1px solid rgba(17,17,17,0.08);box-shadow:0 18px 70px rgba(17,17,17,0.08);">
                 <tr>
-                  <td style="padding:32px 36px;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);">
-                    ${brand.logoUrl
-                      ? `<img src="${escapeHtml(brand.siteUrl || brand.clientOrigin)}${escapeHtml(brand.logoUrl)}" alt="${escapeHtml(brand.siteName)}" style="max-height:48px;width:auto;margin-bottom:16px;" />`
-                      : `<p style="margin:0 0 10px;color:#cbd5e1;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">
-                      ${escapeHtml(brand.siteName)}
-                    </p>`
+                  <td style="padding:32px 36px;background:linear-gradient(135deg,#111111 0%,#24211b 100%);">
+                    <div style="display:inline-flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;background:rgba(247,147,26,0.14);border:1px solid rgba(247,147,26,0.24);">
+                      <span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#f7931a;"></span>
+                      <span style="color:#f8dfb5;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">${escapeHtml(brand.siteName)}</span>
+                    </div>
+                    ${logoUrl
+                      ? `<div style="margin:18px 0 0;"><img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(brand.siteName)}" style="max-height:44px;width:auto;display:block;" /></div>`
+                      : ''
                     }
-                    <h1 style="margin:0;color:#ffffff;font-size:30px;line-height:1.2;">${escapeHtml(title)}</h1>
-                    <p style="margin:14px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6;">${escapeHtml(intro)}</p>
+                    <h1 style="margin:20px 0 0;color:#ffffff;font-size:32px;line-height:1.15;">${escapeHtml(title)}</h1>
+                    <p style="margin:14px 0 0;color:#e8dccb;font-size:15px;line-height:1.7;">${escapeHtml(intro)}</p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:36px;">
-                    <p style="margin:0 0 16px;color:#0f172a;font-size:17px;font-weight:700;">${escapeHtml(greeting)}</p>
+                    <p style="margin:0 0 16px;color:#111111;font-size:17px;font-weight:700;">${escapeHtml(greeting)}</p>
                     ${paragraphMarkup}
                     ${highlightMarkup}
                     ${ctaMarkup}
@@ -275,8 +304,8 @@ export const buildBrandedEmail = ({
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:24px 36px;background:#f8fafc;border-top:1px solid #e2e8f0;">
-                    <p style="margin:0;color:#64748b;font-size:13px;line-height:1.8;">
+                  <td style="padding:24px 36px;background:#fffaf2;border-top:1px solid rgba(17,17,17,0.08);">
+                    <p style="margin:0;color:#6d6558;font-size:13px;line-height:1.8;">
                       ${footerLines.map((line) => escapeHtml(line)).join('<br />')}
                     </p>
                   </td>
