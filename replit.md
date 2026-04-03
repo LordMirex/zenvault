@@ -27,6 +27,8 @@ The database file lives at `server/data/qfs_wallet.db` and is excluded from git 
 - `npm run dev` — Runs Vite (port 5000) and Express API (port 4000) concurrently
 - `npm run db:setup` — Drops and recreates tables, seeds data (destructive!)
 - `npm run build` — TypeScript compile + Vite build
+- `npm run start` — Starts API server only (requires `dist/` to already exist)
+- `npm run start:prod` — **Full production start**: builds frontend, sets up DB, then starts server (use this on VPS)
 
 ## Environment Variables
 
@@ -44,6 +46,21 @@ The SQLite database file is gitignored. When cloning to a new environment:
 2. Run `npm install`
 3. Run `npm run db:setup`
 4. Run `npm run dev`
+
+## VPS Deployment (AAPanel / NodePanel)
+
+The app is a unified Node.js server in production. The Express server builds the React frontend into `dist/` and serves it as static files, with a catch-all for React Router SPA navigation.
+
+**Steps on VPS:**
+1. Pull latest code from GitHub
+2. Set environment variables: `JWT_SECRET`, `CLIENT_ORIGIN` (your domain), `NODE_ENV=production`
+3. Run `npm install`
+4. In the panel, set **Run opt** to `start:prod` — this runs build + db setup + server in one step
+5. Set **Port** to `4000` (the Express API/static server port)
+6. Save and boot
+
+**Why `start:prod` and not `start`?**  
+`start` only runs the Express server but requires `dist/` to exist already. `start:prod` builds the frontend first, so a blank white page will never happen due to a missing build.
 
 ## Live Price Feed
 

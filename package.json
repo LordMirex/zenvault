@@ -12,7 +12,8 @@
     "lint": "eslint . --ext .js,.mjs,.ts,.tsx --report-unused-disable-directives --max-warnings 0",
     "test": "node --test",
     "preview": "vite preview",
-    "start": "node ./server/index.mjs"
+    "start": "node ./server/index.mjs",
+    "start:prod": "npm run build && npm run db:setup && node ./server/index.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -25,9 +26,7 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.395.0",
     "multer": "^2.1.1",
-    "mysql2": "^3.20.0",
     "nodemailer": "^8.0.4",
-    "pg": "^8.20.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.23.1",
