@@ -10,7 +10,6 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '../../lib/cn';
-import { useBranding } from '../../context/BrandingContext';
 import { BrandLogo } from '../common/BrandLogo';
 
 const groups = [
@@ -44,8 +43,6 @@ export const AdminSidebar = ({
   open: boolean;
   onClose: () => void;
 }) => {
-  const { branding } = useBranding();
-
   return (
   <>
     <div
@@ -59,11 +56,8 @@ export const AdminSidebar = ({
       )}
     >
       <div className="flex items-center justify-between border-b border-slate-700 pb-5">
-        <Link to="/admin/dashboard" className="flex items-center gap-3">
-          <BrandLogo size="lg" variant="full" invertFallback textClassName="text-xl font-black text-white" />
-          <div className="min-w-0">
-            <p className="truncate text-sm text-slate-400">{branding.siteName} operations dashboard</p>
-          </div>
+        <Link to="/admin/dashboard">
+          <BrandLogo size="xl" variant="icon" stretch invertFallback />
         </Link>
         <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 md:hidden">
           <X className="h-5 w-5" />

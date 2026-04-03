@@ -13,28 +13,21 @@ const sizeMap = {
 type BrandLogoSize = keyof typeof sizeMap;
 
 type BrandLogoProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'alt' | 'onError'> & {
-  /** Preset size — controls width & height of the container. Default: 'md' */
   size?: BrandLogoSize;
-  /** 'icon' renders just the logo mark; 'full' adds the site name beside it */
   variant?: 'icon' | 'full';
-  /** Override the logo URL (defaults to branding.logoUrl) */
   logoUrl?: string;
-  /** Override the alt text (defaults to branding.siteName) */
   altText?: string;
-  /** Additional class names on the wrapper */
   wrapperClassName?: string;
-  /** Text class for the name in 'full' variant */
   textClassName?: string;
-  /** Whether to invert colors for dark backgrounds */
   invertFallback?: boolean;
+  /**
+   * When true the logo image uses height=size and width=auto so it stretches
+   * horizontally to its natural aspect ratio instead of being forced square.
+   * Ideal for sidebar / header areas where the full logo width should show.
+   */
+  stretch?: boolean;
 };
 
-/**
- * Unified logo component used across the entire app.
- * - Renders the configured logo image when available
- * - Automatically falls back to a styled letter‑mark when the image is missing or fails to load
- * - Guarantees no broken <img> tags anywhere in the system
- */
 export const BrandLogo = ({
   size = 'md',
   variant = 'icon',
@@ -43,6 +36,7 @@ export const BrandLogo = ({
   wrapperClassName,
   textClassName,
   invertFallback = false,
+  stretch = false,
   className,
   ...imgProps
 }: BrandLogoProps) => {
@@ -53,21 +47,24 @@ export const BrandLogo = ({
 
   const [imgFailed, setImgFailed] = useState(false);
 
-  // Determine the first letter for the fallback mark
-  const markLetter =
-    (branding.siteName || 'W').trim().charAt(0).toUpperCase();
-
+  const markLetter = (branding.siteName || 'W').trim().charAt(0).toUpperCase();
   const hasValidUrl = resolvedUrl && resolvedUrl.trim().length > 0 && !imgFailed;
 
-  const containerStyle: CSSProperties = {
+  const squareStyle: CSSProperties = {
     width: px,
     height: px,
     minWidth: px,
     minHeight: px,
   };
 
-  const fallbackFontSize = Math.max(12, Math.round(px * 0.44));
+  const stretchStyle: CSSProperties = {
+    height: px,
+    width: 'auto',
+    maxWidth: '100%',
+  };
 
+  const containerStyle = stretch ? stretchStyle : squareStyle;
+  const fallbackFontSize = Math.max(12, Math.round(px * 0.44));
   const displayName = branding.siteName || 'Wallet';
 
   return (
@@ -83,7 +80,7 @@ export const BrandLogo = ({
         />
       ) : (
         <div
-          style={containerStyle}
+          style={squareStyle}
           className={cn(
             'flex items-center justify-center rounded-xl font-black',
             invertFallback
@@ -99,12 +96,7 @@ export const BrandLogo = ({
       )}
 
       {variant === 'full' && (
-        <span
-          className={cn(
-            'truncate font-bold tracking-tight',
-            textClassName,
-          )}
-        >
+        <span className={cn('truncate font-bold tracking-tight', textClassName)}>
           {displayName}
         </span>
       )}
