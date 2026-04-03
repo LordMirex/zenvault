@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { BrandLogo } from '../common/BrandLogo';
 import { formatPercent, formatUsd } from '../../lib/format';
 
 const getInitials = (value: string) =>
@@ -114,9 +113,7 @@ export const Navbar = () => {
     <header className={`sticky top-0 z-40 shrink-0 border-b px-4 py-4 backdrop-blur-md md:px-8 ${headerClasses}`}>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-4">
-          <Link to="/app" className="flex shrink-0 items-center justify-center md:hidden">
-            <BrandLogo size="md" variant="icon" invertFallback={!isLightTheme} />
-          </Link>
+          {/* Desktop sidebar already shows the logo — on mobile just show the page title, clean and prominent */}
           <div className="min-w-0 max-w-[16rem]">
             <h1 className={`truncate text-lg font-bold md:text-xl ${titleClasses}`}>{currentTitle}</h1>
             <p className={`hidden truncate text-xs sm:block ${metaClasses}`}>{accountLabel}</p>

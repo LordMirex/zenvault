@@ -35,7 +35,10 @@ export const PublicShell = () => {
       <header className="sticky top-0 z-50 border-b border-black/10 bg-[rgba(246,239,229,0.94)] backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 lg:px-6">
           <Link to="/" className="flex items-center gap-3">
-            <BrandLogo size="md" variant="full" textClassName="text-lg font-black tracking-tight text-slate-900" />
+            {/* Mobile: logo icon only — no site name text */}
+            <BrandLogo size="lg" variant="icon" wrapperClassName="lg:hidden" />
+            {/* Desktop: logo + full site name */}
+            <BrandLogo size="md" variant="full" textClassName="text-lg font-black tracking-tight text-slate-900" wrapperClassName="hidden lg:flex" />
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
