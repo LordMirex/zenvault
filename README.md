@@ -1,73 +1,81 @@
-# QFS Wallet Full Stack
+# ZenVault Wallet
 
-## Important
+A full-stack crypto wallet and OTC trading platform. React + Vite frontend, Express API backend, SQLite database.
 
-`npm run db:setup` is destructive.
+## How It Works
 
-It drops and recreates application tables for a fresh local seed. Do not run it against a live or shared database.
+The system has two parts that run together:
 
-## Run Guide
+**Frontend (React/Vite)** — the user interface served on port 5000 in dev. Handles all pages: public marketing site, login/signup, the client wallet portal (`/app`), and the admin operations dashboard (`/admin`). It talks to the backend via `/api/...` requests.
 
-Use the local Node installation explicitly. MySQL/MariaDB should be running first.
+**Backend (Express API)** — runs on port 4000. Handles authentication, wallet data, transactions, admin controls, email delivery, and crypto price feeds. In production, the backend also builds and serves the frontend — so only one port (4000) is needed.
 
-```powershell
-& "C:\nodejs\npm.cmd" install
-& "C:\nodejs\node.exe" .\server\scripts\setup-db.mjs
-& "C:\nodejs\npm.cmd" run api:dev
-& "C:\nodejs\npm.cmd" run dev
+**Database (SQLite)** — a single file at `server/data/qfs_wallet.db`. It is committed to this repo so it travels with the code. No database server, no setup scripts needed on a fresh clone.
+
+**Auth flow** — two-step: password login → 6-digit passcode. JWT tokens are used (access token stored in localStorage, 12h expiry). Admin and user roles have separate dashboards.
+
+**Live prices** — the server fetches crypto prices from CoinGecko every 60 seconds and caches them. The frontend polls for updates every 30 seconds while logged in.
+
+## Development
+
+```bash
+npm install
+npm run dev
 ```
 
-## Build
+Runs the Vite frontend on port 5000 and the Express API on port 4000 simultaneously. Vite proxies `/api` requests to the API automatically.
 
-```powershell
-& "C:\nodejs\npm.cmd" run build
+## VPS Deployment (AAPanel / NodePanel)
+
+The database is already in the repo. Steps:
+
+1. Clone or pull the repo
+2. `npm install`
+3. Set environment variables (see below)
+4. In the panel: **Run opt** → `start:prod` | **Port** → `4000`
+5. Boot — done
+
+The `start:prod` command builds the React frontend into `dist/` and then starts the Express server. The server serves both the API and the compiled frontend from port 4000.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in:
+
+| Variable | Required | Description |
+|---|---|---|
+| `JWT_SECRET` | Yes | Min 32 characters, random string |
+| `CLIENT_ORIGIN` | Yes (prod) | Your domain e.g. `https://zenvault.one` |
+| `API_PORT` | No | Express port, default `4000` |
+| `ACCESS_TOKEN_TTL` | No | JWT expiry, default `12h` |
+| `PENDING_TOKEN_TTL` | No | Passcode session expiry, default `10m` |
+
+SMTP email settings are configured through the admin panel (Admin → Settings → Email), not environment variables.
+
+## NPM Scripts
+
+| Script | What it does |
+|---|---|
+| `npm run dev` | Start dev server (frontend + API together) |
+| `npm run build` | Compile TypeScript + build React into `dist/` |
+| `npm start` | Start API only (needs `dist/` already built) |
+| `npm run start:prod` | Build then start — use this on VPS |
+| `npm run db:setup` | Wipe and reseed the database (destructive) |
+| `npm run db:import path/to/dump.sql` | Sync data from a MySQL dump into SQLite |
+
+## Login Credentials
+
+| Role | Email | Password | Passcode |
+|---|---|---|---|
+| Admin | support@developerplug.com | 12345678 | 123456 |
+| User | ofofonobs@gmail.com | 12345678 | 123456 |
+
+## Project Structure
+
 ```
-
-If `npm run build` fails on Windows with `'node' is not recognized`, add `C:\nodejs` to `PATH` before running npm scripts.
-
-## Environment
-
-Copy `.env.example` to `.env` before first run and replace the placeholder secrets and database credentials.
-
-- `API_PORT=4000`
-- `DB_HOST=127.0.0.1`
-- `DB_PORT=3306`
-- `DB_USER=qfs_wallet_app`
-- `DB_PASSWORD=replace-with-a-strong-db-password`
-- `DB_NAME=qfs_wallet`
-- `JWT_SECRET=replace-with-your-own-64-character-random-secret`
-- `CLIENT_ORIGIN=http://localhost:5173`
-- `VITE_API_BASE_URL=http://127.0.0.1:4000`
-- `ACCESS_TOKEN_TTL=12h`
-- `PENDING_TOKEN_TTL=10m`
-
-SMTP delivery is read from the `email` record in the `settings` table through the admin settings screen.
-
-## Deployment
-
-Set `CLIENT_ORIGIN` to the public frontend origin the API should allow through CORS.
-
-Set `VITE_API_BASE_URL` only when the frontend talks to a different origin than the page itself.
-
-If the frontend and API are served from the same origin, leave `VITE_API_BASE_URL` empty so the client uses relative `/api/...` requests.
-
-Confirm SMTP settings from the admin email settings screen before relying on signup or operational email delivery.
-
-Run `npm run lint`, `npm test`, and `npm run build` before release.
-
-The API now fails fast when `JWT_SECRET` is missing or weak, and production startup also rejects `DB_USER=root` or an empty `DB_PASSWORD`.
-
-Run `npm run build` and start the API with `npm start` on the target host only after the production `.env` values are in place.
-
-## Seed Accounts
-
-- User: `ofofonobs@gmail.com` / `12345678` / passcode `123456`
-- Admin: `support@developerplug.com` / `12345678` / passcode `123456`
-
-## Structure
-
-- `/` public marketing and landing pages
-- `/login`, `/signup`, and `/passcode` two-step auth flows
-- `/app` user wallet and trading portal backed by the Express API
-- `/admin` operations dashboard backed by MySQL
-- `/server` Express API, auth, seed data, and database setup scripts
+/src              React frontend (pages, components, context)
+/server           Express API (auth, routes, DB, mailer, price feed)
+/server/data      SQLite database file
+/server/scripts   DB setup and import utilities
+/public           Static assets served by Vite
+/dist             Built frontend (generated by npm run build)
+```
