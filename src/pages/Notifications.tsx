@@ -1,6 +1,6 @@
 import { Bell, Gift, Shield, Trash2, TrendingUp, Wallet } from 'lucide-react';
-import { useState } from 'react';
-import { notificationItems, type NotificationItem } from '../data/wallet';
+import { useEffect, useState } from 'react';
+import type { NotificationItem } from '../data/wallet';
 import { useAuth } from '../context/AuthContext';
 
 type NotificationFilter = 'All' | 'Unread' | NotificationItem['category'];
@@ -21,9 +21,13 @@ const categoryIcons: Record<NotificationItem['category'], typeof Wallet> = {
 };
 
 export const Notifications = () => {
-  const { markAllNotificationsRead } = useAuth();
-  const [items, setItems] = useState(notificationItems);
+  const { clientNotificationItems, markAllNotificationsRead } = useAuth();
+  const [items, setItems] = useState<NotificationItem[]>(clientNotificationItems);
   const [filter, setFilter] = useState<NotificationFilter>('All');
+
+  useEffect(() => {
+    setItems(clientNotificationItems);
+  }, [clientNotificationItems]);
 
   const filteredItems = items.filter((item) => {
     if (filter === 'All') {

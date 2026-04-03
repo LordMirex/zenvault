@@ -113,6 +113,7 @@ type AuthContextValue = {
   clientProfile: ClientBootstrap['profile'] | null;
   clientSummary: ClientBootstrap['summary'] | null;
   clientWalletAssets: WalletAsset[];
+  clientNotificationItems: NotificationItem[];
   adminSettings: AdminBootstrap['adminSettings'] | null;
   adminUsers: AdminBootstrap['adminUsers'];
   adminKycCases: AdminBootstrap['adminKycCases'];
@@ -165,6 +166,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [clientProfile, setClientProfile] = useState<ClientBootstrap['profile'] | null>(null);
   const [clientSummary, setClientSummary] = useState<ClientBootstrap['summary'] | null>(null);
   const [clientWalletAssets, setClientWalletAssets] = useState<WalletAsset[]>([]);
+  const [clientNotificationItems, setClientNotificationItems] = useState<NotificationItem[]>([]);
   const [adminSettings, setAdminSettings] = useState<AdminBootstrap['adminSettings'] | null>(null);
   const [adminUsers, setAdminUsers] = useState<AdminBootstrap['adminUsers']>([]);
   const [adminKycCases, setAdminKycCases] = useState<AdminBootstrap['adminKycCases']>([]);
@@ -181,6 +183,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setClientProfile(null);
     setClientSummary(null);
     setClientWalletAssets([]);
+    setClientNotificationItems([]);
     setAdminSettings(null);
     setAdminUsers([]);
     setAdminKycCases([]);
@@ -203,6 +206,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       setClientProfile(payload.profile);
       setClientSummary(payload.summary);
       setClientWalletAssets(payload.walletAssets ?? []);
+      setClientNotificationItems(payload.notificationItems ?? []);
       setAdminSettings(null);
     } else {
       const payload = await apiRequest<AdminBootstrap>('/api/admin/bootstrap');
@@ -383,8 +387,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   };
 
   const markAllNotificationsRead = async () => {
+    setClientNotificationItems((prev) => prev.map((item) => ({ ...item, unread: false })));
     await apiRequest('/api/client/notifications/read-all', { method: 'PATCH' });
-    await refreshBootstrap();
   };
 
   const toggleClientAsset = async (assetId: string) => {
@@ -474,6 +478,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       clientProfile,
       clientSummary,
       clientWalletAssets,
+      clientNotificationItems,
       adminSettings,
       adminUsers,
       adminKycCases,
@@ -497,8 +502,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       refreshBootstrap,
     }),
     [
-      status, user, clientProfile, clientSummary, clientWalletAssets, adminSettings,
-      adminUsers, adminKycCases, adminTransactions, adminWalletRails,
+      status, user, clientProfile, clientSummary, clientWalletAssets, clientNotificationItems,
+      adminSettings, adminUsers, adminKycCases, adminTransactions, adminWalletRails,
       adminEmailTemplates, adminAlerts, adminTimeline, adminMetrics, bootstrapReady
     ],
   );

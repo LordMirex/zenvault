@@ -12,6 +12,7 @@ import {
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { BrandLogo } from '../common/BrandLogo';
+import { useAuth } from '../../context/AuthContext';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -25,13 +26,15 @@ const navItems = [
   { name: 'Settings', href: '/app/settings', icon: Settings },
 ];
 
-const cryptoItems = [
+const cryptoBaseItems = [
   { name: 'Manage Crypto', href: '/app/crypto-manage', icon: LayoutGrid },
   { name: 'Wallet Addresses', href: '/app/crypto-address', icon: BookUser },
-  { name: 'Notifications', href: '/app/notifications', icon: Bell, badge: 3 },
+  { name: 'Notifications', href: '/app/notifications', icon: Bell },
 ];
 
 export const Sidebar = () => {
+  const { clientNotificationItems } = useAuth();
+  const unreadCount = clientNotificationItems.filter((n) => n.unread).length;
 
   return (
     <aside className="hidden h-screen w-64 shrink-0 overflow-y-auto overflow-x-hidden border-r border-gray-800 bg-dark-900 md:flex">
@@ -73,31 +76,34 @@ export const Sidebar = () => {
               Crypto
             </h2>
             <nav className="space-y-1">
-              {cryptoItems.map((item) => (
-                <NavLink
-                  key={item.name}
-                  to={item.href}
-                  className={({ isActive }) => cn(
-                    "flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group text-sm font-medium",
-                    isActive 
-                      ? "bg-dark-800 text-primary border border-gray-800 shadow-lg" 
-                      : "text-gray-400 hover:text-white hover:bg-dark-800/50"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon className={cn(
-                      "w-5 h-5 transition-colors",
-                      "group-hover:text-primary"
-                    )} />
-                    {item.name}
-                  </div>
-                  {item.badge && (
-                    <span className="bg-danger text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                      {item.badge}
-                    </span>
-                  )}
-                </NavLink>
-              ))}
+              {cryptoBaseItems.map((item) => {
+                const badge = item.name === 'Notifications' && unreadCount > 0 ? unreadCount : null;
+                return (
+                  <NavLink
+                    key={item.name}
+                    to={item.href}
+                    className={({ isActive }) => cn(
+                      "flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group text-sm font-medium",
+                      isActive 
+                        ? "bg-dark-800 text-primary border border-gray-800 shadow-lg" 
+                        : "text-gray-400 hover:text-white hover:bg-dark-800/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className={cn(
+                        "w-5 h-5 transition-colors",
+                        "group-hover:text-primary"
+                      )} />
+                      {item.name}
+                    </div>
+                    {badge !== null && (
+                      <span className="bg-danger text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        {badge}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
             </nav>
           </div>
         </div>
