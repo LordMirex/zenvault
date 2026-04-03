@@ -88,11 +88,15 @@ export const publicStats = [
 export const publicCoins = [
   { name: 'Bitcoin', symbol: 'BTC', icon: '/crypto/btc.png' },
   { name: 'Ethereum', symbol: 'ETH', icon: '/crypto/eth.png' },
-  { name: 'Litecoin', symbol: 'LTC', icon: '/crypto/ltc.png' },
-  { name: 'Ripple', symbol: 'XRP', icon: '/crypto/xlm.png' },
-  { name: 'Dogecoin', symbol: 'DOGE', icon: '/crypto/dash.png' },
-  { name: 'USD Coin', symbol: 'USDC', icon: '/crypto/usdt.png' },
+  { name: 'Tether', symbol: 'USDT', icon: '/crypto/usdt.png' },
+  { name: 'BNB', symbol: 'BNB', icon: '/crypto/bnb.png' },
   { name: 'Solana', symbol: 'SOL', icon: '/crypto/sol.png' },
+  { name: 'TRON', symbol: 'TRX', icon: '/crypto/trx.png' },
+  { name: 'Litecoin', symbol: 'LTC', icon: '/crypto/ltc.png' },
+  { name: 'Stellar', symbol: 'XLM', icon: '/crypto/xlm.png' },
+  { name: 'Polkadot', symbol: 'DOT', icon: '/crypto/dot.png' },
+  { name: 'Dash', symbol: 'DASH', icon: '/crypto/dash.png' },
+  { name: 'Bitcoin Cash', symbol: 'BCH', icon: '/crypto/bch.png' },
 ];
 
 export const publicServices: PublicService[] = [

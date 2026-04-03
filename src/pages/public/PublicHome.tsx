@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -56,9 +56,29 @@ const serviceArtwork: Record<string, string> = {
   'fees-and-pricing': '/marketing/live-support.png',
 };
 
+type LivePrice = { symbol: string; price: number; change: number };
+
 export const PublicHome = () => {
   const [testimonialIndex, setTestimonialIndex] = useState(0);
+  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
   const { branding } = useBranding();
+
+  useEffect(() => {
+    fetch('/api/prices')
+      .then((res) => res.json())
+      .then((data: { marketAssets?: LivePrice[] }) => {
+        const assets = data?.marketAssets;
+        if (Array.isArray(assets)) {
+          const map: Record<string, LivePrice> = {};
+          for (const item of assets) {
+            map[item.symbol] = item;
+          }
+          setLivePrices(map);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const testimonialCount = publicTestimonials.length;
   const featuredServices = publicServices.filter((service) => !hiddenServiceSlugs.has(service.slug));
 
@@ -243,18 +263,37 @@ export const PublicHome = () => {
               </div>
               <Wallet className="hidden h-10 w-10 text-[var(--vb-orange)] sm:block" />
             </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {publicCoins.map((coin) => (
-                <div key={coin.symbol} className="rounded-[1.5rem] border border-black/10 bg-[var(--vb-cream)] p-4">
-                  <div className="flex items-center gap-3">
-                    <img src={coin.icon} alt={coin.name} className="h-10 w-10 rounded-full bg-white p-1.5 shadow-sm" />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-950">{coin.symbol}</p>
-                      <p className="text-xs text-slate-500">{coin.name}</p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {publicCoins.map((coin) => {
+                const live = livePrices[coin.symbol];
+                const priceText = live
+                  ? live.price >= 1
+                    ? `$${live.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : `$${live.price.toFixed(4)}`
+                  : null;
+                const change = live?.changePercent24h ?? 0;
+                const isUp = change >= 0;
+
+                return (
+                  <div key={coin.symbol} className="flex items-center justify-between rounded-[1.5rem] border border-black/10 bg-[var(--vb-cream)] p-4">
+                    <div className="flex items-center gap-3">
+                      <img src={coin.icon} alt={coin.name} className="h-9 w-9 shrink-0 rounded-full bg-white p-1 shadow-sm" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-950">{coin.symbol}</p>
+                        <p className="text-xs text-slate-500">{coin.name}</p>
+                      </div>
                     </div>
+                    {priceText && (
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-slate-950">{priceText}</p>
+                        <p className={`text-xs font-semibold ${isUp ? 'text-emerald-600' : 'text-rose-500'}`}>
+                          {isUp ? '+' : ''}{change.toFixed(2)}%
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { Link, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Mail,
+  Megaphone,
   Settings,
   ShieldCheck,
   UserCircle2,
@@ -22,6 +23,7 @@ const groups = [
       { label: 'Users', to: '/admin/users', icon: Users },
       { label: 'KYC Verification', to: '/admin/kyc', icon: ShieldCheck },
       { label: 'Transactions', to: '/admin/transactions', icon: Wallet },
+      { label: 'Broadcasts', to: '/admin/broadcasts', icon: Megaphone },
     ],
   },
   {

@@ -222,13 +222,10 @@ export const AdminUserRecordsPage = () => {
                 <option>Visa</option>
                 <option>Mastercard</option>
               </AdminSelect>
-              <AdminTextInput label="Last 4 Digits" value={cardForm.last4} onChange={(event) => setCardForm((current) => ({ ...current, last4: event.target.value.replace(/\D/g, '').slice(-4) }))} />
-              <AdminTextInput label="Initial Balance (USD)" value={cardForm.initialBalance} onChange={(event) => setCardForm((current) => ({ ...current, initialBalance: event.target.value }))} />
-              <AdminTextInput label="Expiry Month" value={cardForm.expiryMonth} onChange={(event) => setCardForm((current) => ({ ...current, expiryMonth: event.target.value }))} />
-              <AdminTextInput label="Expiry Year" value={cardForm.expiryYear} onChange={(event) => setCardForm((current) => ({ ...current, expiryYear: event.target.value }))} />
-              <AdminTextInput label="Billing Address" value={cardForm.billingAddress} onChange={(event) => setCardForm((current) => ({ ...current, billingAddress: event.target.value }))} />
-              <AdminTextInput label="ZIP Code" value={cardForm.zipCode} onChange={(event) => setCardForm((current) => ({ ...current, zipCode: event.target.value }))} />
-              <AdminTextInput label="CVV" value={cardForm.cvv} onChange={(event) => setCardForm((current) => ({ ...current, cvv: event.target.value.replace(/\D/g, '').slice(0, 4) }))} />
+              <AdminTextInput label="Last 4 Digits (optional)" value={cardForm.last4} onChange={(event) => setCardForm((current) => ({ ...current, last4: event.target.value.replace(/\D/g, '').slice(-4) }))} />
+              <AdminTextInput label="Spend Limit (USD)" value={cardForm.initialBalance} onChange={(event) => setCardForm((current) => ({ ...current, initialBalance: event.target.value }))} />
+              <AdminTextInput label="Expiry Month (MM)" value={cardForm.expiryMonth} onChange={(event) => setCardForm((current) => ({ ...current, expiryMonth: event.target.value.replace(/\D/g, '').slice(0, 2) }))} />
+              <AdminTextInput label="Expiry Year (YYYY)" value={cardForm.expiryYear} onChange={(event) => setCardForm((current) => ({ ...current, expiryYear: event.target.value.replace(/\D/g, '').slice(0, 4) }))} />
             </div>
 
             <div className="mt-5 flex justify-end">
