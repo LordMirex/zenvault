@@ -15,7 +15,6 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 type VisibilityMap = {
-  passcode: boolean;
   currentPassword: boolean;
   newPassword: boolean;
   confirmPassword: boolean;
@@ -25,13 +24,11 @@ export const ProfileSecurity = () => {
   const { updateClientSecurity } = useAuth();
   const { isLightTheme } = useTheme();
   const [form, setForm] = useState({
-    passcode: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
   const [visibility, setVisibility] = useState<VisibilityMap>({
-    passcode: false,
     currentPassword: false,
     newPassword: false,
     confirmPassword: false,
@@ -40,7 +37,7 @@ export const ProfileSecurity = () => {
   const [error, setError] = useState('');
 
   const passwordsMatch = form.newPassword.length > 0 && form.newPassword === form.confirmPassword;
-  const canSave = form.passcode.length === 6 && form.currentPassword.length > 0 && passwordsMatch;
+  const canSave = form.currentPassword.length > 0 && passwordsMatch;
   const passwordChecks = [
     { label: '12+ characters', passed: form.newPassword.length >= 12 },
     { label: 'Upper and lower case', passed: /[a-z]/.test(form.newPassword) && /[A-Z]/.test(form.newPassword) },
@@ -73,7 +70,7 @@ export const ProfileSecurity = () => {
     setError('');
     setForm((current) => ({
       ...current,
-      [field]: field === 'passcode' ? value.replace(/\D/g, '').slice(0, 6) : value,
+      [field]: value,
     }));
   };
 
@@ -91,13 +88,11 @@ export const ProfileSecurity = () => {
 
     try {
       await updateClientSecurity({
-        passcode: form.passcode,
         currentPassword: form.currentPassword,
         newPassword: form.newPassword,
       });
       setSaved(true);
       setForm({
-        passcode: '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
@@ -133,7 +128,7 @@ export const ProfileSecurity = () => {
 
             <div className="space-y-4">
               <h2 className={`wallet-display max-w-3xl text-[clamp(2.6rem,6vw,4.85rem)] font-semibold leading-[0.94] ${titleClasses}`}>
-                Lock down passcodes, passwords, and every device touching your wallet.
+                Lock down passwords and every device touching your wallet.
               </h2>
               <p className={`max-w-2xl text-base leading-7 md:text-lg ${bodyClasses}`}>
                 This screen now reads like a control room instead of a form dump. Rotate credentials, check session trust,
@@ -164,7 +159,7 @@ export const ProfileSecurity = () => {
                     <p className={`wallet-display text-6xl font-semibold leading-none ${titleClasses}`}>94</p>
                     <div className="pb-2">
                       <p className="text-sm font-semibold text-emerald-500">Excellent coverage</p>
-                      <p className={`mt-1 text-sm ${bodyClasses}`}>Passcode and trusted sessions are fully active.</p>
+                      <p className={`mt-1 text-sm ${bodyClasses}`}>Password and trusted sessions are fully active.</p>
                     </div>
                   </div>
                 </div>
@@ -190,12 +185,6 @@ export const ProfileSecurity = () => {
                   ))}
                 </div>
               </div>
-            </div>
-
-            <div className={`rounded-[1.8rem] border p-5 ${panelClasses}`}>
-              <p className={`text-[11px] font-bold uppercase tracking-[0.22em] ${labelClasses}`}>2FA</p>
-              <p className={`mt-3 text-2xl font-semibold ${titleClasses}`}>Enabled</p>
-              <p className={`mt-2 text-sm leading-6 ${bodyClasses}`}>Triggered outside trusted locations and on sensitive withdrawals.</p>
             </div>
 
             <div className={`rounded-[1.8rem] border p-5 ${panelClasses}`}>
@@ -232,18 +221,6 @@ export const ProfileSecurity = () => {
 
           <div className="space-y-6 p-6 md:p-7">
             <div className="grid gap-4 md:grid-cols-2">
-              <SecurityField
-                label="Your 6-digit passcode"
-                caption={`${form.passcode.length}/6`}
-                value={form.passcode}
-                type={visibility.passcode ? 'text' : 'password'}
-                placeholder="Enter passcode"
-                onChange={(value) => updateField('passcode', value)}
-                onToggle={() => toggleVisibility('passcode')}
-                visible={visibility.passcode}
-                inputMode="numeric"
-                isLightTheme={isLightTheme}
-              />
               <SecurityField
                 label="Current password"
                 caption="Required"
@@ -366,7 +343,7 @@ export const ProfileSecurity = () => {
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <p className={`max-w-xl text-sm leading-6 ${bodyClasses}`}>
-                Saving here rotates the current password while keeping your passcode validation step intact for future sign-ins.
+                Saving here rotates your password. Other active sessions will be signed out for security.
               </p>
               <button
                 type="button"
@@ -399,8 +376,8 @@ export const ProfileSecurity = () => {
             <div className="mt-6 space-y-3">
               {[
                 {
-                  title: 'Passcode gate',
-                  detail: 'Every outbound approval still requires a six-digit wallet passcode.',
+                  title: 'Password protection',
+                  detail: 'Every sign-in requires your current password for verification.',
                   status: 'Live',
                   icon: KeyRound,
                 },

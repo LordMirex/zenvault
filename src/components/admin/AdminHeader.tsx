@@ -11,7 +11,6 @@ const routeTitles = [
   { path: '/admin/transactions', title: 'Transactions' },
   { path: '/admin/settings', title: 'Settings' },
   { path: '/admin/profile', title: 'Profile Settings' },
-  { path: '/admin/2fa', title: '2FA Settings' },
 ];
 
 export const AdminHeader = ({ onOpenMenu }: { onOpenMenu: () => void }) => {
@@ -78,9 +77,6 @@ export const AdminHeader = ({ onOpenMenu }: { onOpenMenu: () => void }) => {
             <div className="absolute right-0 top-14 w-56 rounded-lg border border-slate-200 bg-white py-2 shadow-lg">
               <Link to="/admin/profile" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
                 Profile Settings
-              </Link>
-              <Link to="/admin/2fa" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                2FA Settings
               </Link>
               <div className="my-2 border-t border-slate-100" />
               <button

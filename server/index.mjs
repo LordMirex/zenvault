@@ -3,7 +3,7 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, extname, join } from 'path';
 import multer from 'multer';
-import { compareSecret, createAccessToken, createPendingToken, hashSecret, verifyToken } from './auth.mjs';
+import { compareSecret, createAccessToken, hashSecret, verifyToken } from './auth.mjs';
 import { config } from './config.mjs';
 import { query, queryOne } from './db.mjs';
 import {
@@ -16,9 +16,7 @@ import {
 import {
   createSessionId,
   findActiveSession,
-  generateRecoveryCodes,
   issueSession,
-  normalizeTwoFactorState,
   revokeOtherSessions,
   revokeSession,
 } from './session-utils.mjs';
@@ -90,13 +88,6 @@ const loginLimiter = createRateLimitMiddleware({
   max: 5,
   message: 'Too many login attempts. Please wait 10 minutes and try again.',
   keyBuilder: (req) => `${req.ip}:${String(req.body.email ?? '').trim().toLowerCase() || 'unknown-email'}`,
-});
-
-const passcodeLimiter = createRateLimitMiddleware({
-  windowMs: 10 * 60 * 1000,
-  max: 8,
-  message: 'Too many passcode attempts. Please wait 10 minutes and try again.',
-  keyBuilder: (req) => `${req.ip}:${String(req.body.pendingToken ?? '').slice(0, 24) || 'pending-session'}`,
 });
 
 const signupLimiter = createRateLimitMiddleware({
@@ -432,10 +423,6 @@ const getAdminProfileState = async (user) => {
   };
 };
 
-const getAdminTwoFactorState = async () => {
-  return normalizeTwoFactorState(await getSetting('adminTwoFactor', {}));
-};
-
 const getBrandName = async () => {
   const generalSettings = await getGeneralSettings();
   return String(generalSettings.siteName).trim();
@@ -574,44 +561,6 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     return res.status(401).json({ message: 'Invalid login credentials.' });
   }
 
-  return res.json({
-    pendingToken: createPendingToken(user),
-    role: user.role,
-    user: mapSessionUser(user),
-    requiresPasscode: true,
-  });
-});
-
-app.post('/api/auth/verify-passcode', passcodeLimiter, async (req, res) => {
-  const pendingToken = String(req.body.pendingToken ?? '');
-  const passcode = String(req.body.passcode ?? '');
-
-  if (!pendingToken || !passcode) {
-    return res.status(400).json({ message: 'Pending token and passcode are required.' });
-  }
-
-  let payload;
-
-  try {
-    payload = verifyToken(pendingToken);
-  } catch {
-    return res.status(401).json({ message: 'Pending session expired. Please log in again.' });
-  }
-
-  if (payload.type !== 'pending') {
-    return res.status(401).json({ message: 'Invalid passcode session.' });
-  }
-
-  const user = await queryOne('SELECT * FROM users WHERE id = :id', { id: payload.userId });
-  if (!user) {
-    return res.status(401).json({ message: 'User not found.' });
-  }
-
-  const matches = await compareSecret(passcode, user.passcode_hash);
-  if (!matches) {
-    return res.status(401).json({ message: 'Incorrect passcode.' });
-  }
-
   const { sessionId } = await createAuthenticatedSession(user, req);
 
   return res.json({
@@ -626,14 +575,9 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
   const phone = String(req.body.phone ?? '').trim();
   const city = String(req.body.city ?? '').trim();
   const password = String(req.body.password ?? '');
-  const passcode = String(req.body.passcode ?? '');
 
-  if (!fullName || !email || !password || !passcode) {
-    return res.status(400).json({ message: 'Full name, email, password, and passcode are required.' });
-  }
-
-  if (passcode.length !== 6) {
-    return res.status(400).json({ message: 'Passcode must be 6 digits.' });
+  if (!fullName || !email || !password) {
+    return res.status(400).json({ message: 'Full name, email, and password are required.' });
   }
 
   const existing = await queryOne('SELECT id FROM users WHERE email = :email', { email });
@@ -664,7 +608,7 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
       city,
       uuid,
       passwordHash: await hashSecret(password),
-      passcodeHash: await hashSecret(passcode),
+      passcodeHash: await hashSecret(Math.random().toString(36)),
     },
   );
 
@@ -755,7 +699,6 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
   const assetId = String(req.body.assetId ?? '').trim();
   const method = String(req.body.method ?? 'external').trim().toLowerCase();
   const recipient = String(req.body.recipient ?? '').trim();
-
   const passcode = String(req.body.passcode ?? '').trim();
   const amount = Number(req.body.amount ?? 0);
 
@@ -918,7 +861,6 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
   });
 });
 
-// FIX: was missing closing });
 app.post('/api/client/passcode/verify', requireAuth, requireRole('user'), async (req, res) => {
   const passcode = String(req.body.passcode ?? '').trim();
 
@@ -944,7 +886,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
   const name = String(req.body.name ?? '').trim();
   const email = String(req.body.email ?? '').trim().toLowerCase();
   const password = String(req.body.password ?? '12345678');
-  const passcode = String(req.body.passcode ?? '123456');
   const country = String(req.body.country ?? 'Nigeria');
   const tier = String(req.body.tier ?? 'Tier 1');
   const status = String(req.body.status ?? 'Active');
@@ -990,7 +931,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       plan,
       note: String(req.body.note ?? 'Created from admin panel.'),
       passwordHash: await hashSecret(password),
-      passcodeHash: await hashSecret(passcode),
+      passcodeHash: await hashSecret(Math.random().toString(36)),
     },
   );
 
@@ -1007,13 +948,12 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       intro: `A ${brandName} administrator created a client account for you.`,
       recipientName: name,
       paragraphs: [
-        'Use the temporary credentials below to sign in. For security, change your password and passcode after your first login.',
+        'Use the temporary credentials below to sign in. For security, change your password after your first login.',
         'If you were not expecting this account, reply to this email before using the credentials.',
       ],
       highlights: [
         `Login email: ${email}`,
         `Temporary password: ${password}`,
-        `Temporary passcode: ${passcode}`,
         `Plan: ${plan}`,
       ],
       ctaLabel: 'Sign in now',
@@ -1035,7 +975,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
 app.put('/api/admin/users/:userId/password', requireAuth, requireRole('admin'), async (req, res) => {
   const userId = Number(req.params.userId ?? 0);
   const password = String(req.body.password ?? '').trim();
-  const passcode = String(req.body.passcode ?? '').trim();
   const existing = await queryOne('SELECT id, name, email FROM users WHERE id = :id AND role = :role', {
     id: userId,
     role: 'user',
@@ -1045,23 +984,22 @@ app.put('/api/admin/users/:userId/password', requireAuth, requireRole('admin'), 
     return res.status(404).json({ message: 'User not found.' });
   }
 
-  if (!password || !passcode || passcode.length !== 6) {
-    return res.status(400).json({ message: 'Password and a 6-digit passcode are required.' });
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required.' });
   }
 
   await query(
-    'UPDATE users SET password_hash = :passwordHash, passcode_hash = :passcodeHash, sessions_json = :sessions WHERE id = :id',
+    'UPDATE users SET password_hash = :passwordHash, sessions_json = :sessions WHERE id = :id',
     {
       id: userId,
       passwordHash: await hashSecret(password),
-      passcodeHash: await hashSecret(passcode),
       sessions: '[]',
     },
   );
 
   await appendAdminTimelineEntry(
-    `${req.user.name} updated ${existing.name}'s credentials`,
-    `Password and passcode were refreshed for ${existing.email}.`,
+    `${req.user.name} updated ${existing.name}'s password`,
+    `Password was refreshed for ${existing.email}.`,
   );
 
   return res.json({ ok: true });
@@ -1588,40 +1526,6 @@ app.put('/api/admin/profile', requireAuth, requireRole('admin'), async (req, res
 
   await upsertSetting('adminProfile', next);
   return res.json({ profile: next });
-});
-
-// GET /api/admin/2fa — load 2FA state
-app.get('/api/admin/2fa', requireAuth, requireRole('admin'), async (_req, res) => {
-  const state = await getAdminTwoFactorState();
-  return res.json({ state });
-});
-
-// PUT /api/admin/2fa — toggle 2FA enabled/disabled
-app.put('/api/admin/2fa', requireAuth, requireRole('admin'), async (req, res) => {
-  const current = await getAdminTwoFactorState();
-  const enabled = req.body.enabled === true;
-  const next = {
-    ...current,
-    enabled,
-    recoveryCodes: enabled && current.recoveryCodes.length === 0 ? generateRecoveryCodes(6) : current.recoveryCodes,
-    lastUpdated: enabled ? createTimestampLabel() : (enabled === false && current.enabled ? createTimestampLabel() : current.lastUpdated),
-  };
-
-  await upsertSetting('adminTwoFactor', next);
-  return res.json({ state: normalizeTwoFactorState(next) });
-});
-
-// POST /api/admin/2fa/recovery-codes — generate fresh recovery codes
-app.post('/api/admin/2fa/recovery-codes', requireAuth, requireRole('admin'), async (_req, res) => {
-  const current = await getAdminTwoFactorState();
-  const next = {
-    ...current,
-    recoveryCodes: generateRecoveryCodes(6),
-    lastUpdated: createTimestampLabel(),
-  };
-
-  await upsertSetting('adminTwoFactor', next);
-  return res.json({ state: normalizeTwoFactorState(next) });
 });
 
 // POST /api/admin/transactions — create a new transaction record

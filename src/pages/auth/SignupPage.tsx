@@ -14,7 +14,6 @@ export const SignupPage = () => {
     phone: '',
     city: '',
     password: '',
-    passcode: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -23,7 +22,7 @@ export const SignupPage = () => {
   const updateField = (field: keyof typeof form, value: string) => {
     setForm((current) => ({
       ...current,
-      [field]: field === 'passcode' ? value.replace(/\D/g, '').slice(0, 6) : value,
+      [field]: value,
     }));
   };
 
@@ -102,17 +101,6 @@ export const SignupPage = () => {
                   onChange={(event) => updateField('password', event.target.value)}
                   type="password"
                   placeholder="Create a strong password"
-                  className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
-                />
-              </Field>
-            </div>
-            <div className="md:col-span-2">
-              <Field label="6-digit passcode">
-                <input
-                  value={form.passcode}
-                  onChange={(event) => updateField('passcode', event.target.value)}
-                  inputMode="numeric"
-                  placeholder="123456"
                   className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
                 />
               </Field>

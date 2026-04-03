@@ -10,7 +10,6 @@ export const AdminUserPasswordPage = () => {
   const { adminUsers } = useAuth();
   const user = id ? adminUsers.find((u) => String(u.id) === String(id)) : undefined;
   const [password, setPassword] = useState('12345678');
-  const [passcode, setPasscode] = useState('123456');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +27,7 @@ export const AdminUserPasswordPage = () => {
     try {
       await apiRequest(`/api/admin/users/${user.id}/password`, {
         method: 'PUT',
-        body: JSON.stringify({ password, passcode }),
+        body: JSON.stringify({ password }),
       });
       setFeedback('User credentials updated.');
     } catch (caughtError) {
@@ -47,7 +46,7 @@ export const AdminUserPasswordPage = () => {
 
       <AdminPageHeading
         title={`Reset ${user.name} Credentials`}
-        description={`Update the login password and 6-digit passcode for ${user.email}.`}
+        description={`Update the login password for ${user.email}.`}
       />
 
       {feedback && <AdminCard className="border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">{feedback}</AdminCard>}
@@ -55,19 +54,13 @@ export const AdminUserPasswordPage = () => {
 
       <form className="max-w-2xl space-y-6" onSubmit={handleSubmit}>
         <AdminCard className="p-6">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4">
             <AdminTextInput
               label="New Password"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="12345678"
-            />
-            <AdminTextInput
-              label="New Passcode"
-              value={passcode}
-              onChange={(event) => setPasscode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="123456"
             />
           </div>
           <div className="mt-5 flex justify-end">

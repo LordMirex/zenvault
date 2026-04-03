@@ -25,12 +25,9 @@ import { hydrateWalletData } from '../data/wallet';
 import {
   AUTH_EXPIRED_EVENT,
   apiRequest,
-  clearPendingToken,
   clearStoredAuth,
   getAccessToken,
-  getPendingToken,
   setAccessToken,
-  setPendingToken,
 } from '../lib/api';
 
 type SessionUser = {
@@ -108,7 +105,7 @@ type AdminBootstrap = {
 };
 
 type AuthContextValue = {
-  status: 'loading' | 'anonymous' | 'pending-passcode' | 'authenticated';
+  status: 'loading' | 'anonymous' | 'authenticated';
   user: SessionUser | null;
   clientProfile: ClientBootstrap['profile'] | null;
   clientSummary: ClientBootstrap['summary'] | null;
@@ -124,21 +121,18 @@ type AuthContextValue = {
   adminTimeline: AdminBootstrap['adminTimeline'];
   adminMetrics: AdminBootstrap['adminMetrics'];
   bootstrapReady: boolean;
-  login: (email: string, password: string) => Promise<{ user: SessionUser; requiresPasscode: boolean }>;
-  verifyPasscode: (passcode: string) => Promise<SessionUser>;
+  login: (email: string, password: string) => Promise<{ user: SessionUser }>;
   signup: (input: {
     fullName: string;
     email: string;
     phone: string;
     city: string;
     password: string;
-    passcode: string;
   }) => Promise<string>;
   logout: () => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   toggleClientAsset: (assetId: string) => Promise<void>;
   updateClientSecurity: (input: {
-    passcode: string;
     currentPassword: string;
     newPassword: string;
   }) => Promise<string>;
@@ -237,10 +231,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     const initialize = async () => {
       const accessToken = getAccessToken();
-      const pendingToken = getPendingToken();
 
       if (!accessToken) {
-        setStatus(pendingToken ? 'pending-passcode' : 'anonymous');
+        setStatus('anonymous');
         setBootstrapReady(false);
         return;
       }
@@ -253,7 +246,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       } catch {
         clearStoredAuth();
         resetAuthState();
-        setStatus(pendingToken ? 'pending-passcode' : 'anonymous');
+        setStatus('anonymous');
       }
     };
 
@@ -300,9 +293,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
   const login = async (email: string, password: string) => {
     const payload = await apiRequest<{
-      pendingToken?: string;
-      accessToken?: string;
-      requiresPasscode: boolean;
+      accessToken: string;
       user: SessionUser;
     }>('/api/auth/login', {
       method: 'POST',
@@ -312,18 +303,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     clearStoredAuth();
     resetAuthState();
 
-    if (payload.requiresPasscode) {
-      if (!payload.pendingToken) {
-        throw new Error('Passcode session could not be created.');
-      }
-
-      setUser(payload.user);
-      setPendingToken(payload.pendingToken);
-      setStatus('pending-passcode');
-      setBootstrapReady(false);
-      return { user: payload.user, requiresPasscode: true };
-    }
-
     if (!payload.accessToken) {
       throw new Error('Access token could not be created.');
     }
@@ -332,28 +311,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setAccessToken(payload.accessToken);
     await loadBootstrap(payload.user);
     setStatus('authenticated');
-    return { user: payload.user, requiresPasscode: false };
-  };
-
-  const verifyPasscode = async (passcode: string) => {
-    const pendingToken = getPendingToken();
-
-    if (!pendingToken) {
-      throw new Error('No pending login session found. Please log in again.');
-    }
-
-    const payload = await apiRequest<{ accessToken: string; user: SessionUser }>('/api/auth/verify-passcode', {
-      method: 'POST',
-      body: JSON.stringify({ pendingToken, passcode }),
-      token: null,
-    });
-
-    setAccessToken(payload.accessToken);
-    clearPendingToken();
-    setUser(payload.user);
-    await loadBootstrap(payload.user);
-    setStatus('authenticated');
-    return payload.user;
+    return { user: payload.user };
   };
 
   const signup = async (input: {
@@ -362,7 +320,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     phone: string;
     city: string;
     password: string;
-    passcode: string;
   }) => {
     const payload = await apiRequest<{ message: string }>('/api/auth/signup', {
       method: 'POST',
@@ -397,7 +354,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   };
 
   const updateClientSecurity = async (input: {
-    passcode: string;
     currentPassword: string;
     newPassword: string;
   }) => {
@@ -490,7 +446,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       adminMetrics,
       bootstrapReady,
       login,
-      verifyPasscode,
       signup,
       logout,
       markAllNotificationsRead,

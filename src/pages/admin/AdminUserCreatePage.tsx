@@ -19,7 +19,6 @@ export const AdminUserCreatePage = () => {
     name: '',
     email: '',
     password: '12345678',
-    passcode: '123456',
     uuid: '',
     country: 'Nigeria',
     deskLabel: 'New Desk',
@@ -94,7 +93,6 @@ export const AdminUserCreatePage = () => {
               <option>Tier 3</option>
             </AdminSelect>
             <AdminTextInput label="Password" type="password" value={form.password} onChange={(event) => updateField('password', event.target.value)} placeholder="12345678" />
-            <AdminTextInput label="Passcode" value={form.passcode} onChange={(event) => updateField('passcode', event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456" />
           </div>
         </AdminCard>
 

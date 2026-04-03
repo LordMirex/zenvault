@@ -1,7 +1,7 @@
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
 import { BrandLogo } from '../../components/common/BrandLogo';
@@ -31,7 +31,7 @@ export const LoginPage = () => {
 
     try {
       const result = await login(email, password);
-      navigate(result.requiresPasscode ? '/passcode' : result.user.role === 'admin' ? '/admin/dashboard' : '/dashboard', { replace: true });
+      navigate(result.user.role === 'admin' ? '/admin/dashboard' : '/dashboard', { replace: true });
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Unable to sign in.');
     } finally {
@@ -54,8 +54,8 @@ export const LoginPage = () => {
           <div className="space-y-4">
             {[
               'Secure account access with password verification.',
-              'Second-step passcode confirmation before entry.',
               'Protected access to wallet activity and account controls.',
+              'Your session is secured and tied to your device.',
             ].map((item) => (
               <div key={item} className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 text-sm leading-7 text-slate-200">
                 {item}
@@ -114,14 +114,6 @@ export const LoginPage = () => {
                   </button>
                 </div>
               </Field>
-
-              <div className="flex items-center justify-between gap-4 rounded-[1.3rem] border border-emerald-200 bg-emerald-50 p-4">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck className="h-5 w-5 text-[var(--vb-orange)]" />
-                  <p className="text-sm font-semibold text-slate-800">Protected login flow</p>
-                </div>
-                <p className="text-xs font-medium text-slate-500">Password plus passcode verification</p>
-              </div>
 
               {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
 

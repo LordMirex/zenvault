@@ -43,7 +43,6 @@ const PublicLegalPage = lazyNamed(() => import('./pages/public/PublicLegalPage')
 const PublicContactPage = lazyNamed(() => import('./pages/public/PublicContactPage'), 'PublicContactPage');
 const LoginPage = lazyNamed(() => import('./pages/auth/LoginPage'), 'LoginPage');
 const SignupPage = lazyNamed(() => import('./pages/auth/SignupPage'), 'SignupPage');
-const PasscodePage = lazyNamed(() => import('./pages/auth/PasscodePage'), 'PasscodePage');
 const AdminDashboard = lazyNamed(() => import('./pages/admin/AdminDashboard'), 'AdminDashboard');
 const AdminUsersPage = lazyNamed(() => import('./pages/admin/AdminUsersPage'), 'AdminUsersPage');
 const AdminUserCreatePage = lazyNamed(() => import('./pages/admin/AdminUserCreatePage'), 'AdminUserCreatePage');
@@ -60,7 +59,6 @@ const AdminTransactionsPage = lazyNamed(
 );
 const AdminSettingsPage = lazyNamed(() => import('./pages/admin/AdminSettingsPage'), 'AdminSettingsPage');
 const AdminProfilePage = lazyNamed(() => import('./pages/admin/AdminProfilePage'), 'AdminProfilePage');
-const AdminTwoFactorPage = lazyNamed(() => import('./pages/admin/AdminTwoFactorPage'), 'AdminTwoFactorPage');
 const AdminEmailPage = lazyNamed(() => import('./pages/admin/AdminEmailPage'), 'AdminEmailPage');
 
 const FullPageState = ({ message }: { message: string }) => (
@@ -70,19 +68,10 @@ const FullPageState = ({ message }: { message: string }) => (
 );
 
 const GuestOnly = () => {
-  const location = useLocation();
   const { status, user } = useAuth();
 
   if (status === 'loading') {
     return <FullPageState message="Loading session" />;
-  }
-
-  if (status === 'pending-passcode') {
-    if (location.pathname !== '/passcode') {
-      return <Navigate to="/passcode" replace />;
-    }
-
-    return <Outlet />;
   }
 
   if (status === 'authenticated' && user) {
@@ -99,10 +88,6 @@ const RequireRole = ({ role }: { role: 'user' | 'admin' }) => {
     return <FullPageState message="Loading session" />;
   }
 
-  if (status === 'pending-passcode') {
-    return <Navigate to="/passcode" replace />;
-  }
-
   if (status !== 'authenticated' || !user) {
     return <Navigate to="/login" replace />;
   }
@@ -116,24 +101,6 @@ const RequireRole = ({ role }: { role: 'user' | 'admin' }) => {
   }
 
   return <Outlet />;
-};
-
-const PasscodeRoute = () => {
-  const { status, user } = useAuth();
-
-  if (status === 'loading') {
-    return <FullPageState message="Loading session" />;
-  }
-
-  if (status === 'authenticated' && user) {
-    return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />;
-  }
-
-  if (status !== 'pending-passcode') {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <PasscodePage />;
 };
 
 const AppAliasRedirect = () => {
@@ -176,7 +143,6 @@ function App() {
             <Route element={<GuestOnly />}>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
-              <Route path="/passcode" element={<PasscodeRoute />} />
             </Route>
 
             <Route element={<RequireRole role="user" />}>
@@ -219,8 +185,6 @@ function App() {
                 <Route path="settings/wallets" element={<AdminSettingsPage />} />
                 <Route path="email" element={<AdminEmailPage />} />
                 <Route path="profile" element={<AdminProfilePage />} />
-                <Route path="2fa" element={<AdminTwoFactorPage />} />
-                <Route path="2fa/setup" element={<AdminTwoFactorPage />} />
               </Route>
             </Route>
 
