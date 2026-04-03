@@ -135,6 +135,7 @@ type AuthContextValue = {
   updateClientSecurity: (input: {
     currentPassword: string;
     newPassword: string;
+    passcode: string;
   }) => Promise<string>;
   createAdminUser: (input: Record<string, unknown>) => Promise<void>;
   sendAdminEmail: (input: {
@@ -356,6 +357,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const updateClientSecurity = async (input: {
     currentPassword: string;
     newPassword: string;
+    passcode: string;
   }) => {
     const payload = await apiRequest<{ message: string }>('/api/client/security', {
       method: 'PUT',

@@ -18,6 +18,7 @@ type VisibilityMap = {
   currentPassword: boolean;
   newPassword: boolean;
   confirmPassword: boolean;
+  passcode: boolean;
 };
 
 export const ProfileSecurity = () => {
@@ -27,17 +28,19 @@ export const ProfileSecurity = () => {
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
+    passcode: '',
   });
   const [visibility, setVisibility] = useState<VisibilityMap>({
     currentPassword: false,
     newPassword: false,
     confirmPassword: false,
+    passcode: false,
   });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
   const passwordsMatch = form.newPassword.length > 0 && form.newPassword === form.confirmPassword;
-  const canSave = form.currentPassword.length > 0 && passwordsMatch;
+  const canSave = form.currentPassword.length > 0 && passwordsMatch && form.passcode.length === 6;
   const passwordChecks = [
     { label: '12+ characters', passed: form.newPassword.length >= 12 },
     { label: 'Upper and lower case', passed: /[a-z]/.test(form.newPassword) && /[A-Z]/.test(form.newPassword) },
@@ -90,12 +93,14 @@ export const ProfileSecurity = () => {
       await updateClientSecurity({
         currentPassword: form.currentPassword,
         newPassword: form.newPassword,
+        passcode: form.passcode,
       });
       setSaved(true);
       setForm({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
+        passcode: '',
       });
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Unable to update security settings.');
@@ -252,6 +257,17 @@ export const ProfileSecurity = () => {
                 onChange={(value) => updateField('confirmPassword', value)}
                 onToggle={() => toggleVisibility('confirmPassword')}
                 visible={visibility.confirmPassword}
+                isLightTheme={isLightTheme}
+              />
+              <SecurityField
+                label="6-digit passcode"
+                caption="Required"
+                value={form.passcode}
+                type={visibility.passcode ? 'text' : 'password'}
+                placeholder="123456"
+                onChange={(value) => updateField('passcode', value.replace(/\D/g, '').slice(0, 6))}
+                onToggle={() => toggleVisibility('passcode')}
+                visible={visibility.passcode}
                 isLightTheme={isLightTheme}
               />
             </div>

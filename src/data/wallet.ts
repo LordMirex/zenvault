@@ -228,7 +228,7 @@ export let notificationItems: NotificationItem[] = [
   {
     id: 'notif-1',
     title: 'Withdrawal approved',
-    message: '0.500 BTC was approved for release after passcode and 2FA validation.',
+    message: '0.500 BTC was approved for release after passcode validation.',
     category: 'Transfers',
     time: '12 minutes ago',
     unread: true,
