@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, Search } from 'lucide-react';
+import { ChevronDown, Megaphone, Menu, Search } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { useAuth } from '../../context/AuthContext';
 
@@ -58,37 +58,56 @@ export const AdminHeader = ({ onOpenMenu }: { onOpenMenu: () => void }) => {
           />
         </div>
 
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setDropdownOpen((current) => !current)}
-            className="flex items-center gap-3 rounded-full px-3 py-2 transition-colors hover:bg-slate-100"
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/broadcasts"
+            title="Send Broadcast"
+            className={cn(
+              'hidden items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors sm:flex',
+              location.pathname.startsWith('/admin/broadcasts')
+                ? 'bg-violet-100 text-violet-700'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+            )}
           >
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-slate-700">{displayName}</p>
-              <p className="text-xs text-slate-500">{displayRole}</p>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-sm font-bold text-slate-700">
-              {initials}
-            </div>
-            <ChevronDown className={cn('h-4 w-4 text-slate-500 transition-transform', dropdownOpen && 'rotate-180')} />
-          </button>
+            <Megaphone className="h-4 w-4" />
+            <span className="hidden lg:inline">Broadcasts</span>
+          </Link>
 
-          {dropdownOpen && (
-            <div className="absolute right-0 top-14 w-56 rounded-lg border border-slate-200 bg-white py-2 shadow-lg">
-              <Link to="/admin/profile" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                Profile Settings
-              </Link>
-              <div className="my-2 border-t border-slate-100" />
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                className="block w-full px-4 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
-              >
-                Logout
-              </button>
-            </div>
-          )}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDropdownOpen((current) => !current)}
+              className="flex items-center gap-3 rounded-full px-3 py-2 transition-colors hover:bg-slate-100"
+            >
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-semibold text-slate-700">{displayName}</p>
+                <p className="text-xs text-slate-500">{displayRole}</p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-sm font-bold text-slate-700">
+                {initials}
+              </div>
+              <ChevronDown className={cn('h-4 w-4 text-slate-500 transition-transform', dropdownOpen && 'rotate-180')} />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 top-14 w-56 rounded-lg border border-slate-200 bg-white py-2 shadow-lg">
+                <Link to="/admin/profile" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  Profile Settings
+                </Link>
+                <Link to="/admin/broadcasts" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  Broadcasts
+                </Link>
+                <div className="my-2 border-t border-slate-100" />
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className="block w-full px-4 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

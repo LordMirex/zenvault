@@ -54,10 +54,19 @@ If you need to sync data from a MySQL dump: `npm run db:import path/to/dump.sql`
 - **Dashboard Alerts**: Admin can add and dismiss alerts from the dashboard (POST/DELETE /api/admin/alerts)
 - **Crypto Records Live Prices**: Admin crypto records page polls /api/prices every 30s and shows live price + 24h change per asset
 - **Wallet Address**: Admin can set per-user deposit addresses via the crypto records page; address saved to user's holdings_json
+- **Broadcast / Email**: Admin header has a Megaphone quick-access button linking to the Broadcasts page (POST /api/admin/broadcasts)
+- **Send Transaction Alert**: Admin crypto records page has a "Send Transaction Alert" form — sends in-app notification + branded email to the user and optionally creates a transaction record (POST /api/admin/users/:userId/notify)
+- **Cards Quick-Access**: Admin user list table now has a CreditCard icon action linking directly to the user's card management page
+- **Wallet Funding**: Admin can top-up or debit any user coin holding directly from the crypto records page (PUT /api/admin/users/:userId/assets/:assetId)
 
 ## Live Price Feed
 
-Crypto prices fetched from Binance every 60 seconds. Symbols: BTC, ETH, USDT, SOL, BNB, DOT, TRX, LTC, BCH, XLM, DASH
+Crypto prices fetched from CoinGecko every 60 seconds for 19 supported assets. Field name is `change` (not `changePercent24h`) for 24h percent change.
+
+## Important Notes for Server Edits
+
+- `server/index.mjs` has Windows CRLF line endings — edits via the `edit` tool can fail. Use `write` (full rewrite) or `node -e` bash scripts for reliable modifications.
+- Price feed asset field: `asset.change` (not `asset.changePercent24h`)
 
 ## Login Credentials
 

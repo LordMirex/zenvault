@@ -14,6 +14,7 @@ import {
   AdminCard,
   AdminPageHeading,
   AdminSelect,
+  AdminTextArea,
   AdminTextInput,
 } from '../../components/admin/AdminUi';
 
@@ -39,6 +40,14 @@ export const AdminUserRecordsPage = () => {
     billingAddress: '',
     zipCode: '',
     cvv: '',
+  });
+  const [alertForm, setAlertForm] = useState({
+    type: 'Deposit',
+    asset: '',
+    amount: '',
+    subject: '',
+    message: '',
+    createTransaction: true,
   });
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
@@ -174,6 +183,28 @@ export const AdminUserRecordsPage = () => {
     });
   };
 
+  const handleSendAlert = async () => {
+    if (!alertForm.subject.trim() || !alertForm.message.trim()) {
+      setError('Subject and message are required to send an alert.');
+      return;
+    }
+    await runAction('send-alert', async () => {
+      await apiRequest(`/api/admin/users/${user.id}/notify`, {
+        method: 'POST',
+        body: JSON.stringify({
+          type: alertForm.type,
+          asset: alertForm.asset.trim().toUpperCase(),
+          amount: alertForm.amount.trim(),
+          subject: alertForm.subject.trim(),
+          message: alertForm.message.trim(),
+          createTransaction: alertForm.createTransaction,
+        }),
+      });
+      setFeedback('Transaction alert sent and notification delivered.');
+      setAlertForm((current) => ({ ...current, subject: '', message: '', asset: '', amount: '' }));
+    });
+  };
+
   return (
     <div className="space-y-6">
       <Link to={`/admin/users/${user.id}`} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900">
@@ -205,8 +236,8 @@ export const AdminUserRecordsPage = () => {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Issue Card</h3>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                  Issue a card directly or fulfill a pending client application. Pending applications appear below and can
-                  prefill this form.
+                  Fulfill a pending client application or issue a card directly. The user applies and the fee is automatically
+                  deducted from their wallet. Pending applications appear below and can prefill this form.
                 </p>
               </div>
               {selectedRequestId && (
@@ -216,6 +247,15 @@ export const AdminUserRecordsPage = () => {
               )}
             </div>
 
+            {pendingCardRequests.length > 0 && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-sm font-semibold text-amber-800">
+                  {pendingCardRequests.length} pending application{pendingCardRequests.length > 1 ? 's' : ''} awaiting review.
+                  Click "Use Request" below to prefill the issuance form from an existing application.
+                </p>
+              </div>
+            )}
+
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <AdminTextInput label="Holder Name" value={cardForm.holderName} onChange={(event) => setCardForm((current) => ({ ...current, holderName: event.target.value }))} />
               <AdminSelect label="Brand" value={cardForm.brand} onChange={(event) => setCardForm((current) => ({ ...current, brand: event.target.value }))}>
@@ -223,7 +263,7 @@ export const AdminUserRecordsPage = () => {
                 <option>Mastercard</option>
               </AdminSelect>
               <AdminTextInput label="Last 4 Digits (optional)" value={cardForm.last4} onChange={(event) => setCardForm((current) => ({ ...current, last4: event.target.value.replace(/\D/g, '').slice(-4) }))} />
-              <AdminTextInput label="Spend Limit (USD)" value={cardForm.initialBalance} onChange={(event) => setCardForm((current) => ({ ...current, initialBalance: event.target.value }))} />
+              <AdminTextInput label="Initial Spend Limit (USD)" value={cardForm.initialBalance} onChange={(event) => setCardForm((current) => ({ ...current, initialBalance: event.target.value }))} />
               <AdminTextInput label="Expiry Month (MM)" value={cardForm.expiryMonth} onChange={(event) => setCardForm((current) => ({ ...current, expiryMonth: event.target.value.replace(/\D/g, '').slice(0, 2) }))} />
               <AdminTextInput label="Expiry Year (YYYY)" value={cardForm.expiryYear} onChange={(event) => setCardForm((current) => ({ ...current, expiryYear: event.target.value.replace(/\D/g, '').slice(0, 4) }))} />
             </div>
@@ -237,6 +277,9 @@ export const AdminUserRecordsPage = () => {
 
           <AdminCard className="p-6">
             <h3 className="text-lg font-semibold text-slate-900">Pending Card Applications</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              The user applied for a card and the application fee was deducted from their wallet balance automatically.
+            </p>
             <div className="mt-5 grid gap-4 xl:grid-cols-2">
               {pendingCardRequests.length === 0 && (
                 <p className="text-sm text-slate-500">No pending card requests for this user.</p>
@@ -252,7 +295,7 @@ export const AdminUserRecordsPage = () => {
                     <AdminBadge value="Review" />
                   </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <InfoTile label="Application Fee" value={formatUsd(request.applicationFeeUsd ?? 0)} />
+                    <InfoTile label="Application Fee Paid" value={formatUsd(request.applicationFeeUsd ?? 0)} />
                     <InfoTile label="Request Status" value="Pending" />
                   </div>
                   <div className="mt-5 flex gap-2">
@@ -292,7 +335,7 @@ export const AdminUserRecordsPage = () => {
 
                 <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto]">
                   <AdminTextInput
-                    label="Funding Adjustment"
+                    label="Funding Adjustment (USD)"
                     value={cardFunding[card.id] ?? ''}
                     onChange={(event) => setCardFunding((current) => ({ ...current, [card.id]: event.target.value }))}
                     placeholder="0.00"
@@ -326,50 +369,126 @@ export const AdminUserRecordsPage = () => {
           </div>
         </div>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-2">
-          {user.holdings.map((holding) => (
-            <AdminCard key={holding.id} className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <img src={holding.icon} alt={holding.name} className="h-12 w-12 rounded-full border border-slate-200 bg-white p-1.5" />
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">{holding.symbol}</p>
-                    <p className="text-sm text-slate-500">
-                      {holding.name} - {holding.network}
-                    </p>
+        <div className="space-y-6">
+          <div className="grid gap-5 xl:grid-cols-2">
+            {user.holdings.map((holding) => (
+              <AdminCard key={holding.id} className="p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <img src={holding.icon} alt={holding.name} className="h-12 w-12 rounded-full border border-slate-200 bg-white p-1.5" />
+                    <div>
+                      <p className="text-lg font-semibold text-slate-900">{holding.symbol}</p>
+                      <p className="text-sm text-slate-500">
+                        {holding.name} - {holding.network}
+                      </p>
+                    </div>
+                  </div>
+                  <AdminBadge value={holding.status} />
+                </div>
+
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  <InfoTile label="Balance" value={formatNumber(holding.balance, 8)} />
+                  <InfoTile label="Value" value={formatUsd(holding.valueUsd)} />
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-500">Fund or debit this wallet</p>
+                  <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
+                    <AdminTextInput
+                      label="Amount"
+                      value={assetForms[holding.id] ?? ''}
+                      onChange={(event) => setAssetForms((current) => ({ ...current, [holding.id]: event.target.value }))}
+                      placeholder="0.00"
+                    />
+                    <div className="flex items-end">
+                      <AdminActionBar>
+                        <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'add')} disabled={activeKey === `asset-add-${holding.id}`}>
+                          Send To User
+                        </AdminButton>
+                        <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'subtract')} disabled={activeKey === `asset-subtract-${holding.id}`}>
+                          Debit
+                        </AdminButton>
+                      </AdminActionBar>
+                    </div>
                   </div>
                 </div>
-                <AdminBadge value={holding.status} />
-              </div>
+              </AdminCard>
+            ))}
+          </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <InfoTile label="Balance" value={formatNumber(holding.balance, 8)} />
-                <InfoTile label="Value" value={formatUsd(holding.valueUsd)} />
-              </div>
+          <AdminCard className="p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Send Transaction Alert</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Send a transaction notification and email to the user. Optionally create a transaction record in their history.
+              Use this to notify the user of deposits, withdrawals, or any wallet event.
+            </p>
 
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-medium text-slate-500">Fund or debit this wallet</p>
-                <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
-                  <AdminTextInput
-                    label="Amount"
-                    value={assetForms[holding.id] ?? ''}
-                    onChange={(event) => setAssetForms((current) => ({ ...current, [holding.id]: event.target.value }))}
-                    placeholder="0.00"
-                  />
-                  <div className="flex items-end">
-                    <AdminActionBar>
-                      <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'add')} disabled={activeKey === `asset-add-${holding.id}`}>
-                        Send To User
-                      </AdminButton>
-                      <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'subtract')} disabled={activeKey === `asset-subtract-${holding.id}`}>
-                        Debit
-                      </AdminButton>
-                    </AdminActionBar>
-                  </div>
-                </div>
-              </div>
-            </AdminCard>
-          ))}
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <AdminSelect
+                label="Transaction Type"
+                value={alertForm.type}
+                onChange={(event) => setAlertForm((current) => ({ ...current, type: event.target.value }))}
+              >
+                <option value="Deposit">Deposit</option>
+                <option value="Withdrawal">Withdrawal</option>
+                <option value="Transfer">Transfer</option>
+                <option value="Swap">Swap</option>
+              </AdminSelect>
+
+              <AdminTextInput
+                label="Asset Symbol (e.g. BTC, ETH, USDT)"
+                value={alertForm.asset}
+                onChange={(event) => setAlertForm((current) => ({ ...current, asset: event.target.value.toUpperCase() }))}
+                placeholder="BTC"
+              />
+
+              <AdminTextInput
+                label="Amount (optional)"
+                value={alertForm.amount}
+                onChange={(event) => setAlertForm((current) => ({ ...current, amount: event.target.value }))}
+                placeholder="0.00"
+              />
+
+              <AdminTextInput
+                label="Email Subject"
+                value={alertForm.subject}
+                onChange={(event) => setAlertForm((current) => ({ ...current, subject: event.target.value }))}
+                placeholder="Transaction confirmed"
+              />
+            </div>
+
+            <div className="mt-4">
+              <AdminTextArea
+                label="Message to User"
+                rows={4}
+                value={alertForm.message}
+                onChange={(event) => setAlertForm((current) => ({ ...current, message: event.target.value }))}
+                placeholder="Your transaction has been processed and is now reflected in your wallet..."
+              />
+            </div>
+
+            <div className="mt-4 flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="createTxn"
+                checked={alertForm.createTransaction}
+                onChange={(event) => setAlertForm((current) => ({ ...current, createTransaction: event.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300 text-violet-600"
+              />
+              <label htmlFor="createTxn" className="text-sm text-slate-700">
+                Also create a transaction record in the user's history
+              </label>
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <AdminButton
+                onClick={() => void handleSendAlert()}
+                disabled={activeKey === 'send-alert'}
+              >
+                {activeKey === 'send-alert' ? 'Sending...' : 'Send Alert'}
+              </AdminButton>
+            </div>
+          </AdminCard>
         </div>
       )}
 

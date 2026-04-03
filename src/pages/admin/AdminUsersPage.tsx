@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, KeyRound, Coins } from 'lucide-react';
+import { Eye, KeyRound, Coins, CreditCard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatCompactUsd } from '../../lib/format';
 import {
@@ -103,7 +103,8 @@ export const AdminUsersPage = () => {
                   <AdminActionBar>
                     <AdminIconAction icon={Eye} label={`Inspect ${user.name}`} tone="violet" to={`/admin/users/${user.id}`} />
                     <AdminIconAction icon={KeyRound} label={`Reset ${user.name} password`} tone="amber" to={`/admin/users/${user.id}/password`} />
-                    <AdminIconAction icon={Coins} label={`Open ${user.name} crypto records`} tone="blue" to={`/admin/users/${user.id}/crypto`} />
+                    <AdminIconAction icon={Coins} label={`Fund ${user.name} crypto wallet`} tone="blue" to={`/admin/users/${user.id}/crypto`} />
+                    <AdminIconAction icon={CreditCard} label={`Manage ${user.name} cards`} tone="emerald" to={`/admin/users/${user.id}/cards`} />
                   </AdminActionBar>
                 </td>
               </tr>

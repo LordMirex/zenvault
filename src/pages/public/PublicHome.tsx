@@ -263,34 +263,44 @@ export const PublicHome = () => {
               </div>
               <Wallet className="hidden h-10 w-10 text-[var(--vb-orange)] sm:block" />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               {publicCoins.map((coin) => {
                 const live = livePrices[coin.symbol];
+                const pricesLoaded = Object.keys(livePrices).length > 0;
                 const priceText = live
                   ? live.price >= 1
                     ? `$${live.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : `$${live.price.toFixed(4)}`
+                    : `$${live.price.toFixed(6)}`
                   : null;
-                const change = live?.changePercent24h ?? 0;
+                const change = live?.change ?? 0;
                 const isUp = change >= 0;
 
                 return (
-                  <div key={coin.symbol} className="flex items-center justify-between rounded-[1.5rem] border border-black/10 bg-[var(--vb-cream)] p-4">
-                    <div className="flex items-center gap-3">
-                      <img src={coin.icon} alt={coin.name} className="h-9 w-9 shrink-0 rounded-full bg-white p-1 shadow-sm" />
-                      <div>
-                        <p className="text-sm font-bold text-slate-950">{coin.symbol}</p>
-                        <p className="text-xs text-slate-500">{coin.name}</p>
+                  <div key={coin.symbol} className="flex items-center justify-between rounded-2xl border border-black/10 bg-[var(--vb-cream)] px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img src={coin.icon} alt={coin.name} className="h-8 w-8 shrink-0 rounded-full bg-white p-1 shadow-sm" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-950 truncate">{coin.symbol}</p>
+                        <p className="text-xs text-slate-500 truncate">{coin.name}</p>
                       </div>
                     </div>
-                    {priceText && (
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-slate-950">{priceText}</p>
-                        <p className={`text-xs font-semibold ${isUp ? 'text-emerald-600' : 'text-rose-500'}`}>
-                          {isUp ? '+' : ''}{change.toFixed(2)}%
-                        </p>
-                      </div>
-                    )}
+                    <div className="text-right ml-2 shrink-0">
+                      {priceText ? (
+                        <>
+                          <p className="text-sm font-bold text-slate-950">{priceText}</p>
+                          <p className={`text-xs font-semibold ${isUp ? 'text-emerald-600' : 'text-rose-500'}`}>
+                            {isUp ? '+' : ''}{change.toFixed(2)}%
+                          </p>
+                        </>
+                      ) : pricesLoaded ? (
+                        <p className="text-xs text-slate-400">N/A</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <div className="h-3 w-16 animate-pulse rounded bg-slate-200" />
+                          <div className="h-2.5 w-10 animate-pulse rounded bg-slate-200" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}

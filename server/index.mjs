@@ -2064,6 +2064,98 @@ app.get('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
   return res.json(mapAdminUser(user, { walletSettings: settingsWallets, marketAssets }));
 });
 
+// POST /api/admin/users/:userId/notify -- send a custom transaction alert to a user
+app.post('/api/admin/users/:userId/notify', requireAuth, requireRole('admin'), async (req, res) => {
+  const userId = Number(req.params.userId ?? 0);
+  const user = await queryOne('SELECT * FROM users WHERE id = :id AND role = :role', { id: userId, role: 'user' });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+
+  const type = String(req.body.type ?? 'Transfer').trim();
+  const asset = String(req.body.asset ?? '').trim().toUpperCase();
+  const amount = String(req.body.amount ?? '').trim();
+  const subject = String(req.body.subject ?? '').trim();
+  const messageText = String(req.body.message ?? '').trim();
+  const createTxn = req.body.createTransaction === true || req.body.createTransaction === 'true';
+
+  if (!subject || !messageText) {
+    return res.status(400).json({ message: 'Subject and message are required.' });
+  }
+
+  const allowedTypes = ['Deposit', 'Withdrawal', 'Transfer', 'Swap'];
+  const resolvedType = allowedTypes.includes(type) ? type : 'Transfer';
+  const notifTitle = asset && amount ? (resolvedType + ': ' + amount + ' ' + asset) : subject;
+
+  const nextNotifications = [
+    createUserNotification({
+      title: notifTitle,
+      message: messageText,
+      tone: resolvedType === 'Deposit' ? 'success' : resolvedType === 'Withdrawal' ? 'warning' : 'info',
+      category: 'Transfers',
+    }),
+    ...parseJson(user.notifications_json, []),
+  ].slice(0, 20);
+
+  const updatedAt = createTimestampLabel();
+
+  if (createTxn && asset && amount) {
+    await query(
+      `INSERT INTO transactions (
+        id, user_id, type, asset, amount, channel, destination, status, created_at_label,
+        from_asset, to_asset, which_crypto, network_fee, rate
+      ) VALUES (
+        :id, :userId, :type, :asset, :amount, :channel, :destination, 'Completed', :createdAt,
+        :fromAsset, '', :whichCrypto, '0', '0'
+      )`,
+      {
+        id: createPrefixedId('txn'),
+        userId,
+        type: resolvedType,
+        asset,
+        amount: amount + ' ' + asset,
+        channel: 'Admin Transaction',
+        destination: messageText.slice(0, 80),
+        createdAt: updatedAt,
+        fromAsset: asset,
+        whichCrypto: asset,
+      },
+    );
+  }
+
+  await query('UPDATE users SET notifications_json = :notifications WHERE id = :id', {
+    id: userId,
+    notifications: JSON.stringify(nextNotifications),
+  });
+
+  await sendSystemEmailSafely({
+    logContext: 'admin transaction alert to ' + user.email,
+    to: user.email,
+    subject,
+    title: subject,
+    preheader: messageText.slice(0, 100),
+    intro: messageText,
+    recipientName: user.name,
+    paragraphs: [
+      'This is an official communication from your wallet operations team.',
+      'If you have any questions regarding this transaction, please contact support.',
+    ],
+    highlights: [
+      ...(asset && amount ? ['Asset: ' + asset, 'Amount: ' + amount + ' ' + asset] : []),
+      'Processed at: ' + updatedAt,
+    ],
+    ctaLabel: 'Open wallet',
+    ctaUrl: await toClientUrl('/app'),
+    signatureName: req.user.name,
+    signatureRole: 'Wallet Operations',
+  });
+
+  await appendAdminTimelineEntry(
+    req.user.name + ' sent a transaction alert to ' + user.name,
+    'Type: ' + resolvedType + (asset && amount ? ' -- ' + amount + ' ' + asset : '') + '. Subject: "' + subject + '".',
+  );
+
+  return res.json({ ok: true });
+});
+
 // PUT /api/admin/settings/:section — save general, email, or wallets settings
 app.put('/api/admin/settings/:section', requireAuth, requireRole('admin'), async (req, res) => {
   const section = String(req.params.section ?? '').trim().toLowerCase();
