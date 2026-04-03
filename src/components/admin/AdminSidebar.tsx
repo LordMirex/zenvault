@@ -60,10 +60,9 @@ export const AdminSidebar = ({
     >
       <div className="flex items-center justify-between border-b border-slate-700 pb-5">
         <Link to="/admin/dashboard" className="flex items-center gap-3">
-          <BrandLogo size="md" variant="icon" invertFallback />
-          <div>
-            <p className="text-lg font-black">{branding.siteName}<span className="text-violet-300"> Admin</span></p>
-            <p className="text-xs text-slate-400">{branding.siteName} operations dashboard</p>
+          <BrandLogo size="lg" variant="full" invertFallback textClassName="text-xl font-black text-white" />
+          <div className="min-w-0">
+            <p className="truncate text-sm text-slate-400">{branding.siteName} operations dashboard</p>
           </div>
         </Link>
         <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 md:hidden">

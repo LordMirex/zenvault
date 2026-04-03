@@ -6,8 +6,8 @@ const sizeMap = {
   xs: 24,
   sm: 32,
   md: 40,
-  lg: 48,
-  xl: 64,
+  lg: 56,
+  xl: 72,
 } as const;
 
 type BrandLogoSize = keyof typeof sizeMap;
@@ -71,9 +71,7 @@ export const BrandLogo = ({
   const displayName = branding.siteName || 'Wallet';
 
   return (
-    <div
-      className={cn('flex items-center gap-2.5', wrapperClassName)}
-    >
+    <div className={cn('flex min-w-0 items-center gap-3', wrapperClassName)}>
       {hasValidUrl ? (
         <img
           {...imgProps}

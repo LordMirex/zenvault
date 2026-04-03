@@ -115,9 +115,9 @@ export const Navbar = () => {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-4">
           <Link to="/app" className="flex shrink-0 items-center justify-center md:hidden">
-            <BrandLogo size="sm" variant="icon" invertFallback={!isLightTheme} />
+            <BrandLogo size="md" variant="icon" invertFallback={!isLightTheme} />
           </Link>
-          <div className="min-w-0">
+          <div className="min-w-0 max-w-[16rem]">
             <h1 className={`truncate text-lg font-bold md:text-xl ${titleClasses}`}>{currentTitle}</h1>
             <p className={`hidden truncate text-xs sm:block ${metaClasses}`}>{accountLabel}</p>
           </div>
