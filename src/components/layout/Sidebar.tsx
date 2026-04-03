@@ -40,7 +40,7 @@ export const Sidebar = () => {
     <aside className="hidden h-screen w-64 shrink-0 overflow-y-auto overflow-x-hidden border-r border-gray-800 bg-dark-900 md:flex">
       <div className="px-6 py-8">
         <div className="mb-10 px-2">
-          <BrandLogo size="xl" variant="icon" stretch invertFallback />
+          <BrandLogo size="lg" variant="icon" stretch invertFallback />
         </div>
 
         <div className="space-y-8">

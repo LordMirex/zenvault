@@ -35,7 +35,7 @@ export const PublicShell = () => {
       <header className="sticky top-0 z-50 border-b border-black/10 bg-[rgba(246,239,229,0.94)] backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 lg:px-6">
           <Link to="/" className="flex items-center">
-            <BrandLogo size="lg" variant="icon" stretch />
+            <BrandLogo size="md" variant="icon" stretch />
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">

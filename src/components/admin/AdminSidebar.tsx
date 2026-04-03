@@ -57,7 +57,7 @@ export const AdminSidebar = ({
     >
       <div className="flex items-center justify-between border-b border-slate-700 pb-5">
         <Link to="/admin/dashboard">
-          <BrandLogo size="xl" variant="icon" stretch invertFallback />
+          <BrandLogo size="lg" variant="icon" stretch invertFallback />
         </Link>
         <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 md:hidden">
           <X className="h-5 w-5" />
