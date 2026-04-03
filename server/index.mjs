@@ -1612,6 +1612,31 @@ app.delete('/api/admin/transactions/:id', requireAuth, requireRole('admin'), asy
   return res.json({ ok: true });
 });
 
+// POST /api/admin/alerts — add a new dashboard alert
+app.post('/api/admin/alerts', requireAuth, requireRole('admin'), async (req, res) => {
+  const text = String(req.body.text ?? '').trim();
+  if (!text) {
+    return res.status(400).json({ message: 'Alert text is required.' });
+  }
+  const dashboardMeta = await getSetting('adminDashboard', { alerts: [], timeline: [] });
+  const nextAlerts = [text, ...(dashboardMeta.alerts ?? [])].slice(0, 10);
+  await upsertSetting('adminDashboard', { ...dashboardMeta, alerts: nextAlerts });
+  return res.json({ ok: true, alerts: nextAlerts });
+});
+
+// DELETE /api/admin/alerts/:index — dismiss a dashboard alert by index
+app.delete('/api/admin/alerts/:index', requireAuth, requireRole('admin'), async (req, res) => {
+  const index = Number(req.params.index ?? -1);
+  const dashboardMeta = await getSetting('adminDashboard', { alerts: [], timeline: [] });
+  const current = Array.isArray(dashboardMeta.alerts) ? dashboardMeta.alerts : [];
+  if (index < 0 || index >= current.length) {
+    return res.status(400).json({ message: 'Invalid alert index.' });
+  }
+  const nextAlerts = current.filter((_, i) => i !== index);
+  await upsertSetting('adminDashboard', { ...dashboardMeta, alerts: nextAlerts });
+  return res.json({ ok: true, alerts: nextAlerts });
+});
+
 // PUT /api/admin/users/:userId — update user profile fields
 app.put('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (req, res) => {
   const userId = Number(req.params.userId ?? 0);

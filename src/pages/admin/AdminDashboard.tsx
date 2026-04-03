@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Coins, CreditCard, Mail } from 'lucide-react';
+import { Coins, CreditCard, Mail, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { apiRequest } from '../../lib/api';
 import { formatCompactUsd, formatUsd } from '../../lib/format';
 import {
   AdminActionBar,
@@ -8,8 +10,11 @@ import {
   AdminCard,
   AdminIconAction,
   AdminMetricCard,
+  AdminNotice,
   AdminPageHeading,
   AdminTableWrap,
+  AdminTextInput,
+  AdminButton,
 } from '../../components/admin/AdminUi';
 
 export const AdminDashboard = () => {
@@ -19,7 +24,12 @@ export const AdminDashboard = () => {
     adminTimeline,
     adminTransactions,
     adminUsers,
+    refreshBootstrap,
   } = useAuth();
+
+  const [alertText, setAlertText] = useState('');
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [alertError, setAlertError] = useState('');
 
   const totalCards = adminUsers.reduce((count, user) => count + user.cards.length, 0);
   const totalCryptoValue = adminUsers.reduce(
@@ -27,12 +37,46 @@ export const AdminDashboard = () => {
     0,
   );
 
+  const handleAddAlert = async () => {
+    const text = alertText.trim();
+    if (!text) return;
+    setAlertBusy(true);
+    setAlertError('');
+    try {
+      await apiRequest('/api/admin/alerts', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      });
+      setAlertText('');
+      await refreshBootstrap();
+    } catch (err) {
+      setAlertError(err instanceof Error ? err.message : 'Failed to add alert.');
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
+  const handleDismissAlert = async (index: number) => {
+    setAlertBusy(true);
+    setAlertError('');
+    try {
+      await apiRequest(`/api/admin/alerts/${index}`, { method: 'DELETE' });
+      await refreshBootstrap();
+    } catch (err) {
+      setAlertError(err instanceof Error ? err.message : 'Failed to dismiss alert.');
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <AdminPageHeading
         title="Admin Dashboard"
         description="Operational metrics, alerts, users, and recent transactions."
       />
+
+      {alertError && <AdminNotice tone="danger">{alertError}</AdminNotice>}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <AdminMetricCard label="Total Users" value={String(adminUsers.length)} detail="Onboarded client accounts" accent="text-violet-600" />
@@ -136,10 +180,38 @@ export const AdminDashboard = () => {
 
           <AdminCard className="p-5">
             <h3 className="text-lg font-semibold text-slate-900">Admin Alerts</h3>
+
+            <div className="mt-4 flex gap-2">
+              <AdminTextInput
+                label=""
+                value={alertText}
+                onChange={(e) => setAlertText(e.target.value)}
+                placeholder="Add an alert message..."
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleAddAlert(); }}
+              />
+              <div className="flex items-end">
+                <AdminButton variant="secondary" onClick={() => void handleAddAlert()} disabled={alertBusy || !alertText.trim()}>
+                  Add
+                </AdminButton>
+              </div>
+            </div>
+
             <div className="mt-4 space-y-3">
-              {adminAlerts.map((alert) => (
-                <div key={alert} className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
-                  {alert}
+              {adminAlerts.length === 0 && (
+                <p className="text-sm text-slate-400">No active alerts.</p>
+              )}
+              {adminAlerts.map((alert, index) => (
+                <div key={`${alert}-${index}`} className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm leading-7 text-amber-900">{alert}</p>
+                  <button
+                    type="button"
+                    disabled={alertBusy}
+                    onClick={() => void handleDismissAlert(index)}
+                    className="shrink-0 rounded p-1 text-amber-600 hover:bg-amber-100 hover:text-amber-900 disabled:opacity-50"
+                    title="Dismiss alert"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
             </div>

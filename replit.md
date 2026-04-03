@@ -48,9 +48,16 @@ If you need to sync data from a MySQL dump: `npm run db:import path/to/dump.sql`
 - `ACCESS_TOKEN_TTL` — JWT expiry (default 12h)
 - `PENDING_TOKEN_TTL` — Pending token expiry (default 10m)
 
+## Admin Features
+
+- **User Detail Edit**: Admin can edit user profile fields (name, email, country, tier, status, KYC status, risk level, plan, desk label, note) via PUT /api/admin/users/:userId
+- **Dashboard Alerts**: Admin can add and dismiss alerts from the dashboard (POST/DELETE /api/admin/alerts)
+- **Crypto Records Live Prices**: Admin crypto records page polls /api/prices every 30s and shows live price + 24h change per asset
+- **Wallet Address**: Admin can set per-user deposit addresses via the crypto records page; address saved to user's holdings_json
+
 ## Live Price Feed
 
-Crypto prices fetched from CoinGecko every 60 seconds. Symbols: BTC, ETH, USDT, SOL, BNB, DOT, TRX, LTC, BCH, XLM, DASH
+Crypto prices fetched from Binance every 60 seconds. Symbols: BTC, ETH, USDT, SOL, BNB, DOT, TRX, LTC, BCH, XLM, DASH
 
 ## Login Credentials
 

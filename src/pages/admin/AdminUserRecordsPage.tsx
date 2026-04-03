@@ -19,6 +19,7 @@ import {
 
 type AssetFormState = Record<string, { status: string; address: string; amount: string }>;
 type CardFundingState = Record<string, string>;
+type LivePrices = Record<string, { price: number; change: number }>;
 
 export const AdminUserRecordsPage = () => {
   const { id } = useParams();
@@ -29,6 +30,7 @@ export const AdminUserRecordsPage = () => {
   const userTransactions = user ? adminTransactions.filter((item) => item.userId === user.id) : [];
   const [assetForms, setAssetForms] = useState<AssetFormState>({});
   const [cardFunding, setCardFunding] = useState<CardFundingState>({});
+  const [livePrices, setLivePrices] = useState<LivePrices>({});
   const [cardForm, setCardForm] = useState({
     holderName: '',
     brand: 'Visa',
@@ -67,6 +69,23 @@ export const AdminUserRecordsPage = () => {
       ),
     );
   }, [user]);
+
+  useEffect(() => {
+    if (isCardsPage) return;
+
+    const fetchPrices = async () => {
+      try {
+        const payload = await apiRequest<{ prices: LivePrices }>('/api/prices');
+        setLivePrices(payload.prices);
+      } catch {
+        // keep cached prices
+      }
+    };
+
+    void fetchPrices();
+    const interval = setInterval(() => void fetchPrices(), 30000);
+    return () => clearInterval(interval);
+  }, [isCardsPage]);
 
   if (!user) {
     return <Navigate to="/admin/users" replace />;
@@ -301,6 +320,10 @@ export const AdminUserRecordsPage = () => {
         <div className="grid gap-5 xl:grid-cols-2">
           {user.holdings.map((holding) => {
             const form = assetForms[holding.id] ?? { status: holding.status, address: holding.address, amount: '' };
+            const live = livePrices[holding.symbol];
+            const livePrice = live?.price ?? null;
+            const liveChange = live?.change ?? null;
+            const liveValueUsd = livePrice !== null ? holding.balance * livePrice : holding.valueUsd;
 
             return (
               <AdminCard key={holding.id} className="p-6">
@@ -314,12 +337,24 @@ export const AdminUserRecordsPage = () => {
                       </p>
                     </div>
                   </div>
-                  <AdminBadge value={holding.status} />
+                  <div className="flex flex-col items-end gap-1">
+                    <AdminBadge value={holding.status} />
+                    {livePrice !== null && (
+                      <p className="text-xs font-semibold text-slate-500">
+                        ${livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                        {liveChange !== null && (
+                          <span className={liveChange >= 0 ? 'ml-1 text-emerald-600' : 'ml-1 text-rose-500'}>
+                            {liveChange >= 0 ? '+' : ''}{liveChange.toFixed(2)}%
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   <InfoTile label="Balance" value={formatNumber(holding.balance, 8)} />
-                  <InfoTile label="Value" value={formatUsd(holding.valueUsd)} />
+                  <InfoTile label="Value (Live)" value={formatUsd(liveValueUsd)} />
                 </div>
 
                 <div className="mt-5 grid gap-4">
