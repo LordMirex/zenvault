@@ -43,6 +43,7 @@ const PublicLegalPage = lazyNamed(() => import('./pages/public/PublicLegalPage')
 const PublicContactPage = lazyNamed(() => import('./pages/public/PublicContactPage'), 'PublicContactPage');
 const LoginPage = lazyNamed(() => import('./pages/auth/LoginPage'), 'LoginPage');
 const SignupPage = lazyNamed(() => import('./pages/auth/SignupPage'), 'SignupPage');
+const Bots = lazyNamed(() => import('./pages/Bots'), 'Bots');
 const AdminDashboard = lazyNamed(() => import('./pages/admin/AdminDashboard'), 'AdminDashboard');
 const AdminUsersPage = lazyNamed(() => import('./pages/admin/AdminUsersPage'), 'AdminUsersPage');
 const AdminUserCreatePage = lazyNamed(() => import('./pages/admin/AdminUserCreatePage'), 'AdminUserCreatePage');
@@ -165,6 +166,7 @@ function App() {
                 <Route path="crypto-address" element={<CryptoAddress />} />
                 <Route path="crypto/details/:symbol/:network" element={<AssetDetailPage />} />
                 <Route path="notifications" element={<Notifications />} />
+                <Route path="bots" element={<Bots />} />
               </Route>
             </Route>
 
@@ -206,6 +208,7 @@ function App() {
             <Route path="/crypto-address" element={<Navigate to="/app/crypto-address" replace />} />
             <Route path="/crypto/details/:symbol/:network" element={<AppAliasRedirect />} />
             <Route path="/notifications" element={<Navigate to="/app/notifications" replace />} />
+            <Route path="/bots" element={<Navigate to="/app/bots" replace />} />
           </Routes>
         </Suspense>
       </BrandingProvider>

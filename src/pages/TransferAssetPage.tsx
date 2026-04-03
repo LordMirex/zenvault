@@ -7,10 +7,11 @@ import { apiRequest } from '../lib/api';
 import { formatNumber, formatUsd, truncateMiddle } from '../lib/format';
 import { findWalletAssetByRoute } from '../lib/walletRoutes';
 
+
 export const TransferAssetPage = () => {
   const { symbol, network } = useParams();
   const location = useLocation();
-  const { refreshBootstrap } = useAuth();
+  const { refreshBootstrap, clientWalletAssets } = useAuth();
   const { branding } = useBranding();
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
@@ -21,7 +22,7 @@ export const TransferAssetPage = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
-  const asset = symbol && network ? findWalletAssetByRoute(symbol, network) : undefined;
+  const asset = symbol && network ? findWalletAssetByRoute(symbol, network, clientWalletAssets) : undefined;
   const method = location.pathname.includes('/payid/') ? 'payid' : 'external';
   const mode = location.pathname.includes('/receive/') ? 'receive' : 'send';
 

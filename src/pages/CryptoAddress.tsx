@@ -1,21 +1,22 @@
 import { useState } from 'react';
 import { Copy, Plus, Search } from 'lucide-react';
-import { addressBookEntries, walletAssets } from '../data/wallet';
+import { useAuth } from '../context/AuthContext';
 import { truncateMiddle } from '../lib/format';
 
 type AddressView = 'wallet' | 'contacts';
 
 export const CryptoAddress = () => {
+  const { clientWalletAssets, clientAddressBookEntries } = useAuth();
   const [query, setQuery] = useState('');
   const [view, setView] = useState<AddressView>('wallet');
   const [copied, setCopied] = useState<string | null>(null);
 
-  const walletResults = walletAssets.filter((asset) => {
+  const walletResults = clientWalletAssets.filter((asset) => {
     const search = query.toLowerCase();
     return asset.name.toLowerCase().includes(search) || asset.symbol.toLowerCase().includes(search);
   });
 
-  const contactResults = addressBookEntries.filter((entry) => {
+  const contactResults = clientAddressBookEntries.filter((entry) => {
     const search = query.toLowerCase();
     return (
       entry.label.toLowerCase().includes(search) ||

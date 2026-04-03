@@ -1,4 +1,4 @@
-import { walletAssets, type WalletAsset } from '../data/wallet';
+import { type WalletAsset } from '../data/wallet';
 
 const slugify = (value: string) =>
   value
@@ -41,8 +41,8 @@ export const getReceiveAssetPath = (asset: WalletAsset, method: 'payid' | 'exter
 export const isSensitiveAsset = (asset: WalletAsset) =>
   asset.symbol === 'BTC' && getAssetNetworkSlug(asset) === 'native';
 
-export const findWalletAssetByRoute = (symbol: string, network: string) =>
-  walletAssets.find(
+export const findWalletAssetByRoute = (symbol: string, network: string, assets: WalletAsset[]) =>
+  assets.find(
     (asset) =>
       getAssetSymbolSlug(asset) === String(symbol).toLowerCase() &&
       getAssetNetworkSlug(asset) === String(network).toLowerCase(),

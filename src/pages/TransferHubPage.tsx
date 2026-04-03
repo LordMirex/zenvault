@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, Search } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { walletAssets } from '../data/wallet';
 import { formatCompactUsd } from '../lib/format';
 import { getReceiveAssetPath, getSendAssetPath } from '../lib/walletRoutes';
 import { useBranding } from '../context/BrandingContext';
+import { useAuth } from '../context/AuthContext';
 
 export const TransferHubPage = () => {
   const location = useLocation();
   const { branding } = useBranding();
+  const { clientWalletAssets } = useAuth();
   const [query, setQuery] = useState('');
   const method = location.pathname.includes('/payid') ? 'payid' : 'external';
   const mode = location.pathname.includes('/receive/') ? 'receive' : 'send';
@@ -16,13 +17,13 @@ export const TransferHubPage = () => {
   const filteredAssets = useMemo(() => {
     const search = query.trim().toLowerCase();
     if (!search) {
-      return walletAssets;
+      return clientWalletAssets;
     }
 
-    return walletAssets.filter((asset) =>
+    return clientWalletAssets.filter((asset) =>
       [asset.symbol, asset.name, asset.network].some((value) => value.toLowerCase().includes(search)),
     );
-  }, [query]);
+  }, [query, clientWalletAssets]);
 
   const title =
     mode === 'send'

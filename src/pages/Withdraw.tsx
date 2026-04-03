@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ArrowUpRight, CheckCircle2, Search, ShieldCheck, Wallet } from 'lucide-react';
-import { walletAssets, withdrawalActivity } from '../data/wallet';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { formatNumber, formatUsd } from '../lib/format';
@@ -15,11 +14,11 @@ const statusClasses: Record<'Completed' | 'Pending' | 'Review', string> = {
 };
 
 export const Withdraw = () => {
-  const { refreshBootstrap } = useAuth();
+  const { refreshBootstrap, clientWalletAssets, clientWithdrawalActivity } = useAuth();
   const { branding } = useBranding();
   const [query, setQuery] = useState('');
   const [method, setMethod] = useState<WithdrawalMethod>('external');
-  const [selectedAssetId, setSelectedAssetId] = useState(walletAssets[0]!.id);
+  const [selectedAssetId, setSelectedAssetId] = useState(clientWalletAssets[0]?.id ?? '');
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [passcode, setPasscode] = useState('');
@@ -28,7 +27,7 @@ export const Withdraw = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
 
-  const filteredAssets = walletAssets.filter((asset) => {
+  const filteredAssets = clientWalletAssets.filter((asset) => {
     const search = query.toLowerCase();
 
     return (
@@ -41,7 +40,17 @@ export const Withdraw = () => {
   const selectedAsset =
     filteredAssets.find((asset) => asset.id === selectedAssetId) ??
     filteredAssets[0] ??
-    walletAssets[0]!;
+    clientWalletAssets[0];
+
+  if (!selectedAsset) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="rounded-[2rem] border border-gray-800 bg-dark-800 p-8 text-center text-gray-500">
+          Loading assets...
+        </div>
+      </div>
+    );
+  }
 
   const amountNumber = Number.parseFloat(amount) || 0;
   const feeAmount = method === 'external' ? selectedAsset.withdrawFee : 0;
@@ -338,7 +347,7 @@ export const Withdraw = () => {
               <span className="text-xs text-gray-500">Today</span>
             </div>
             <div className="mt-4 space-y-3">
-              {withdrawalActivity.map((item) => (
+              {clientWithdrawalActivity.map((item) => (
                 <div key={item.id} className="rounded-[1.5rem] border border-gray-800 bg-dark-800/70 p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>

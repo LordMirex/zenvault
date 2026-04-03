@@ -110,6 +110,9 @@ type AuthContextValue = {
   clientProfile: ClientBootstrap['profile'] | null;
   clientSummary: ClientBootstrap['summary'] | null;
   clientWalletAssets: WalletAsset[];
+  clientDepositActivity: WalletActivity[];
+  clientWithdrawalActivity: WalletActivity[];
+  clientAddressBookEntries: AddressBookEntry[];
   clientNotificationItems: NotificationItem[];
   adminSettings: AdminBootstrap['adminSettings'] | null;
   adminUsers: AdminBootstrap['adminUsers'];
@@ -161,6 +164,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [clientProfile, setClientProfile] = useState<ClientBootstrap['profile'] | null>(null);
   const [clientSummary, setClientSummary] = useState<ClientBootstrap['summary'] | null>(null);
   const [clientWalletAssets, setClientWalletAssets] = useState<WalletAsset[]>([]);
+  const [clientDepositActivity, setClientDepositActivity] = useState<WalletActivity[]>([]);
+  const [clientWithdrawalActivity, setClientWithdrawalActivity] = useState<WalletActivity[]>([]);
+  const [clientAddressBookEntries, setClientAddressBookEntries] = useState<AddressBookEntry[]>([]);
   const [clientNotificationItems, setClientNotificationItems] = useState<NotificationItem[]>([]);
   const [adminSettings, setAdminSettings] = useState<AdminBootstrap['adminSettings'] | null>(null);
   const [adminUsers, setAdminUsers] = useState<AdminBootstrap['adminUsers']>([]);
@@ -178,6 +184,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setClientProfile(null);
     setClientSummary(null);
     setClientWalletAssets([]);
+    setClientDepositActivity([]);
+    setClientWithdrawalActivity([]);
+    setClientAddressBookEntries([]);
     setClientNotificationItems([]);
     setAdminSettings(null);
     setAdminUsers([]);
@@ -201,6 +210,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       setClientProfile(payload.profile);
       setClientSummary(payload.summary);
       setClientWalletAssets(payload.walletAssets ?? []);
+      setClientDepositActivity(payload.depositActivity ?? []);
+      setClientWithdrawalActivity(payload.withdrawalActivity ?? []);
+      setClientAddressBookEntries(payload.addressBookEntries ?? []);
       setClientNotificationItems(payload.notificationItems ?? []);
       setAdminSettings(null);
     } else {
@@ -436,6 +448,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       clientProfile,
       clientSummary,
       clientWalletAssets,
+      clientDepositActivity,
+      clientWithdrawalActivity,
+      clientAddressBookEntries,
       clientNotificationItems,
       adminSettings,
       adminUsers,
@@ -459,7 +474,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       refreshBootstrap,
     }),
     [
-      status, user, clientProfile, clientSummary, clientWalletAssets, clientNotificationItems,
+      status, user, clientProfile, clientSummary, clientWalletAssets, clientDepositActivity,
+      clientWithdrawalActivity, clientAddressBookEntries, clientNotificationItems,
       adminSettings, adminUsers, adminKycCases, adminTransactions, adminWalletRails,
       adminEmailTemplates, adminAlerts, adminTimeline, adminMetrics, bootstrapReady
     ],

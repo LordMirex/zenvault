@@ -14,7 +14,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { walletAssets } from '../data/wallet';
 import { useAuth } from '../context/AuthContext';
 import { formatCompactUsd, formatPercent, formatUsd } from '../lib/format';
 import { getWalletAssetPath } from '../lib/walletRoutes';
@@ -26,8 +25,8 @@ function cn(...inputs: ClassValue[]) {
 export const Dashboard = () => {
   const [showBalance, setShowBalance] = useState(true);
   const navigate = useNavigate();
-  const { clientProfile, clientSummary, user } = useAuth();
-  const featuredAssets = walletAssets.slice(0, 4);
+  const { clientProfile, clientSummary, user, clientWalletAssets } = useAuth();
+  const featuredAssets = clientWalletAssets.slice(0, 4);
   const accountId = clientProfile?.uuid ?? user?.uuid ?? 'Wallet ID unavailable';
 
   return (

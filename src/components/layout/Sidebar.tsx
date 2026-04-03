@@ -7,7 +7,8 @@ import {
   Settings,
   Bell,
   LayoutGrid,
-  BookUser
+  BookUser,
+  Bot
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -23,6 +24,7 @@ const navItems = [
   { name: 'Buy', href: '/app/buy', icon: CircleDollarSign },
   { name: 'Receive', href: '/app/receive', icon: Download },
   { name: 'Send', href: '/app/send', icon: Upload },
+  { name: 'Trading Bots', href: '/app/bots', icon: Bot },
   { name: 'Settings', href: '/app/settings', icon: Settings },
 ];
 

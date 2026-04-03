@@ -1,6 +1,6 @@
 import { Search, ShieldCheck, CreditCard, Landmark, ArrowRight, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { walletAssets } from '../data/wallet';
+import { useAuth } from '../context/AuthContext';
 import { formatPercent, formatUsd } from '../lib/format';
 import { useBranding } from '../context/BrandingContext';
 
@@ -8,11 +8,12 @@ const filters = ['All', 'Major', 'Stablecoin', 'Fast Settlement', 'EVM'];
 
 export const BuyCrypto = () => {
   const { branding } = useBranding();
+  const { clientWalletAssets } = useAuth();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
-  const [selectedAssetId, setSelectedAssetId] = useState(walletAssets[0]!.id);
+  const [selectedAssetId, setSelectedAssetId] = useState(clientWalletAssets[0]?.id ?? '');
 
-  const filteredAssets = walletAssets.filter((asset) => {
+  const filteredAssets = clientWalletAssets.filter((asset) => {
     const matchesQuery =
       asset.name.toLowerCase().includes(query.toLowerCase()) ||
       asset.symbol.toLowerCase().includes(query.toLowerCase());
@@ -24,7 +25,17 @@ export const BuyCrypto = () => {
   const selectedAsset =
     filteredAssets.find((asset) => asset.id === selectedAssetId) ??
     filteredAssets[0] ??
-    walletAssets[0]!;
+    clientWalletAssets[0];
+
+  if (!selectedAsset) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="rounded-[2rem] border border-gray-800 bg-dark-800 p-8 text-center text-gray-500">
+          Loading assets...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowDownLeft, ArrowUpRight, LockKeyhole, Plus, ShieldCheck } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { depositActivity, withdrawalActivity } from '../data/wallet';
+import { useAuth } from '../context/AuthContext';
 import { apiRequest } from '../lib/api';
 import { formatNumber, formatPercent, formatUsd } from '../lib/format';
 import {
@@ -17,7 +17,8 @@ const unlockKey = (assetId: string) => `qfs-asset-unlock:${assetId}`;
 export const AssetDetailPage = () => {
   const navigate = useNavigate();
   const { symbol, network } = useParams();
-  const asset = symbol && network ? findWalletAssetByRoute(symbol, network) : undefined;
+  const { clientWalletAssets, clientDepositActivity, clientWithdrawalActivity } = useAuth();
+  const asset = symbol && network ? findWalletAssetByRoute(symbol, network, clientWalletAssets) : undefined;
   const [passcode, setPasscode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -29,10 +30,10 @@ export const AssetDetailPage = () => {
     }
 
     return [
-      ...depositActivity.filter((entry) => entry.assetId === asset.id).map((entry) => ({ ...entry, kind: 'Receive' as const })),
-      ...withdrawalActivity.filter((entry) => entry.assetId === asset.id).map((entry) => ({ ...entry, kind: 'Send' as const })),
+      ...clientDepositActivity.filter((entry) => entry.assetId === asset.id).map((entry) => ({ ...entry, kind: 'Receive' as const })),
+      ...clientWithdrawalActivity.filter((entry) => entry.assetId === asset.id).map((entry) => ({ ...entry, kind: 'Send' as const })),
     ].sort((left, right) => right.time.localeCompare(left.time));
-  }, [asset]);
+  }, [asset, clientDepositActivity, clientWithdrawalActivity]);
 
   if (!asset) {
     return <Navigate to="/app" replace />;

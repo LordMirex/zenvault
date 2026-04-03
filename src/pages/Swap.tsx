@@ -3,36 +3,37 @@ import { ArrowUpDown, Settings, Info, ChevronDown, CheckCircle2 } from 'lucide-r
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { walletAssets } from '../data/wallet';
+import { useAuth } from '../context/AuthContext';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export const Swap = () => {
-  const tokens = walletAssets.slice(0, 4).map((asset) => ({
+  const { clientWalletAssets } = useAuth();
+  const tokens = clientWalletAssets.slice(0, 4).map((asset) => ({
     symbol: asset.symbol,
     name: asset.name,
     balance: asset.balance.toString(),
     price: asset.price,
     icon: asset.icon,
   }));
-  const [fromToken, setFromToken] = useState(tokens[0]!);
-  const [toToken, setToToken] = useState(tokens[2]!);
+  const [fromToken, setFromToken] = useState(tokens[0] ?? null);
+  const [toToken, setToToken] = useState(tokens[2] ?? tokens[1] ?? null);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [isSwapping, setIsSwapping] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    if (tokens.length >= 3) {
-      setFromToken((current) => tokens.find((item) => item.symbol === current.symbol) ?? tokens[0]!);
-      setToToken((current) => tokens.find((item) => item.symbol === current.symbol) ?? tokens[2]!);
+    if (tokens.length >= 2) {
+      setFromToken((current) => (current ? (tokens.find((item) => item.symbol === current.symbol) ?? tokens[0]!) : tokens[0]!));
+      setToToken((current) => (current ? (tokens.find((item) => item.symbol === current.symbol) ?? tokens[1]!) : (tokens[2] ?? tokens[1]!)));
     }
-  }, [tokens]);
+  }, [clientWalletAssets]);
 
   useEffect(() => {
-    if (fromAmount && !Number.isNaN(Number.parseFloat(fromAmount))) {
+    if (fromToken && toToken && fromAmount && !Number.isNaN(Number.parseFloat(fromAmount))) {
       const output = (Number.parseFloat(fromAmount) * fromToken.price) / toToken.price;
       setToAmount(output.toFixed(6));
     } else {
@@ -41,7 +42,7 @@ export const Swap = () => {
   }, [fromAmount, fromToken, toToken]);
 
   const handleSwapOrder = () => {
-    if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
+    if (!fromAmount || Number.parseFloat(fromAmount) <= 0 || !fromToken || !toToken) {
       return;
     }
 
@@ -55,11 +56,20 @@ export const Swap = () => {
   };
 
   const switchTokens = () => {
-    const temp = fromToken;
     setFromToken(toToken);
-    setToToken(temp);
+    setToToken(fromToken);
     setFromAmount('');
   };
+
+  if (!fromToken || !toToken) {
+    return (
+      <div className="mx-auto max-w-xl space-y-6 animate-in fade-in duration-500">
+        <div className="rounded-[2.5rem] border border-gray-800 bg-dark-800 p-8 text-center text-gray-500">
+          Loading swap assets...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-xl space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

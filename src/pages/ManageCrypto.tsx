@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import { Bolt, Search, ShieldCheck } from 'lucide-react';
-import { walletAssets } from '../data/wallet';
 import { useAuth } from '../context/AuthContext';
 
 export const ManageCrypto = () => {
-  const { toggleClientAsset } = useAuth();
+  const { toggleClientAsset, clientWalletAssets } = useAuth();
   const [query, setQuery] = useState('');
   const [enabledAssets, setEnabledAssets] = useState<Record<string, boolean>>(() =>
-    walletAssets.reduce<Record<string, boolean>>((result, asset) => {
+    clientWalletAssets.reduce<Record<string, boolean>>((result, asset) => {
       result[asset.id] = asset.enabledByDefault;
       return result;
     }, {}),
   );
 
-  const filteredAssets = walletAssets.filter((asset) => {
+  const filteredAssets = clientWalletAssets.filter((asset) => {
     const search = query.toLowerCase();
 
     return (
@@ -56,7 +55,7 @@ export const ManageCrypto = () => {
             </div>
             <div className="rounded-3xl border border-gray-800 bg-dark-900/80 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Paused</p>
-              <p className="mt-2 text-2xl font-black text-white">{walletAssets.length - activeCount}</p>
+              <p className="mt-2 text-2xl font-black text-white">{clientWalletAssets.length - activeCount}</p>
             </div>
             <div className="rounded-3xl border border-gray-800 bg-dark-900/80 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Policy</p>

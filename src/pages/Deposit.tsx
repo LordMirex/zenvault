@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Copy, QrCode, Search, Share2, ShieldCheck } from 'lucide-react';
-import { depositActivity, walletAssets } from '../data/wallet';
+import { useAuth } from '../context/AuthContext';
 import { formatNumber, truncateMiddle } from '../lib/format';
 import { useBranding } from '../context/BrandingContext';
 
@@ -14,12 +14,13 @@ const statusClasses: Record<'Completed' | 'Pending' | 'Review', string> = {
 
 export const Deposit = () => {
   const { branding } = useBranding();
+  const { clientWalletAssets, clientDepositActivity } = useAuth();
   const [query, setQuery] = useState('');
   const [method, setMethod] = useState<DepositMethod>('external');
-  const [selectedAssetId, setSelectedAssetId] = useState(walletAssets[0]!.id);
+  const [selectedAssetId, setSelectedAssetId] = useState(clientWalletAssets[0]?.id ?? '');
   const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
-  const filteredAssets = walletAssets.filter((asset) => {
+  const filteredAssets = clientWalletAssets.filter((asset) => {
     const search = query.toLowerCase();
 
     return (
@@ -32,12 +33,14 @@ export const Deposit = () => {
   const selectedAsset =
     filteredAssets.find((asset) => asset.id === selectedAssetId) ??
     filteredAssets[0] ??
-    walletAssets[0]!;
+    clientWalletAssets[0];
 
-  const activity = depositActivity.map((item) => ({
-    ...item,
-    asset: walletAssets.find((asset) => asset.id === item.assetId) ?? walletAssets[0]!,
-  }));
+  const activity = clientDepositActivity
+    .map((item) => ({
+      ...item,
+      asset: clientWalletAssets.find((asset) => asset.id === item.assetId),
+    }))
+    .filter((item) => item.asset !== undefined);
 
   const copyValue = async (label: string, value: string) => {
     await navigator.clipboard.writeText(value);
@@ -46,6 +49,16 @@ export const Deposit = () => {
       setCopiedValue((current) => (current === label ? null : current));
     }, 1800);
   };
+
+  if (!selectedAsset) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="rounded-[2rem] border border-gray-800 bg-dark-800 p-8 text-center text-gray-500">
+          Loading assets...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
