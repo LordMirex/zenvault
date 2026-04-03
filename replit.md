@@ -44,7 +44,6 @@ If you need to sync data from a MySQL dump: `npm run db:import path/to/dump.sql`
 - `JWT_SECRET` — Required, min 32 chars
 - `CLIENT_ORIGIN` — CORS origin for production (e.g. `https://zenvault.one`)
 - `NODE_ENV` — Set to `production` on VPS
-- `SQLITE_DB_PATH` — Optional, custom path to SQLite file
 - `API_PORT` — Express port (default 4000)
 - `ACCESS_TOKEN_TTL` — JWT expiry (default 12h)
 - `PENDING_TOKEN_TTL` — Pending token expiry (default 10m)

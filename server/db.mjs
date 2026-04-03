@@ -6,9 +6,7 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const DB_PATH = process.env.SQLITE_DB_PATH
-  ? resolve(process.env.SQLITE_DB_PATH)
-  : resolve(__dirname, 'data', 'qfs_wallet.db');
+const DB_PATH = resolve(__dirname, 'data', 'qfs_wallet.db');
 
 let db;
 
