@@ -6,3 +6,9 @@ id = "9a1AH5V2Trre46GxlC9x0"
 uri = "file://production-deploy.zip"
 type = "unspecified"
 title = "production-deploy.zip — Ready for VPS upload"
+
+[[outputs]]
+id = "O6rstfeZ-xsfrw_tCLcbG"
+uri = "file://deploy.zip"
+type = "unspecified"
+title = "deploy.zip — Clean VPS upload"
