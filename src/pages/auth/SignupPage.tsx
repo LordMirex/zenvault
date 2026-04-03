@@ -52,7 +52,7 @@ export const SignupPage = () => {
 
           <div className="mt-6 max-w-2xl lg:mt-4">
             <div className="mb-5">
-            <BrandLogo size="xl" variant="full" textClassName="text-2xl font-black tracking-tight text-slate-900" />
+            <BrandLogo size="xl" variant="icon" stretch />
             </div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--vb-orange)]">Signup</p>
             <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">Open your account in minutes</h1>
@@ -172,7 +172,7 @@ export const SignupPage = () => {
 
         <aside className="hidden bg-emerald-500 p-10 text-slate-950 lg:flex lg:h-full lg:flex-col lg:justify-between lg:overflow-hidden">
           <div>
-            <BrandLogo size="xl" variant="full" textClassName="text-3xl font-black tracking-tight text-slate-950" />
+            <BrandLogo size="xl" variant="icon" stretch />
             <h2 className="mt-6 text-5xl font-black tracking-tight">A clearer start for first-time buyers and repeat clients</h2>
             <p className="mt-5 max-w-lg text-base leading-8 text-emerald-950/80">
               The signup flow is built to reduce hesitation, explain what comes next, and move clients into a secure dashboard without friction.

@@ -44,7 +44,7 @@ export const LoginPage = () => {
       <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[2.25rem] border border-slate-200 bg-white shadow-2xl lg:h-full lg:grid-cols-[0.95fr_1.05fr]">
         <aside className="hidden bg-slate-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div className="max-w-full">
-            <BrandLogo size="xl" variant="full" invertFallback textClassName="text-3xl font-black tracking-tight text-white" />
+            <BrandLogo size="xl" variant="icon" stretch invertFallback />
             <h1 className="mt-6 text-5xl font-black tracking-tight">{branding.authHeadline}</h1>
             <p className="mt-5 max-w-lg text-base leading-8 text-slate-300">
               {branding.authDescription}
@@ -72,7 +72,7 @@ export const LoginPage = () => {
 
             <div className="mt-8">
               <div className="mb-5 lg:hidden">
-                <BrandLogo size="xl" variant="full" textClassName="text-2xl font-black tracking-tight text-slate-900" />
+                <BrandLogo size="xl" variant="icon" stretch />
               </div>
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--vb-orange)]">Login</p>
               <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950">Welcome back</h2>

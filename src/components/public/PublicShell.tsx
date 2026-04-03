@@ -114,7 +114,7 @@ export const PublicShell = () => {
       <footer className="border-t border-black/10 bg-[var(--vb-ink)] text-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:px-6">
           <div className="space-y-5">
-            <BrandLogo size="lg" variant="full" invertFallback textClassName="text-2xl font-black text-white" />
+            <BrandLogo size="lg" variant="icon" stretch invertFallback />
             <p className="max-w-md text-sm leading-7 text-white/70">
               {branding.footerSummary}
             </p>
