@@ -115,7 +115,7 @@ const routeTitles = [
   { matcher: (pathname: string) => pathname === '/terms-of-service', title: 'Terms of Service', public: true },
   { matcher: (pathname: string) => pathname === '/login', title: 'Login', public: false },
   { matcher: (pathname: string) => pathname === '/signup', title: 'Create Account', public: false },
-  { matcher: (pathname: string) => pathname === '/passcode', title: 'Secure Verification', public: false },
+
   { matcher: (pathname: string) => pathname === '/app' || pathname === '/dashboard', title: 'Dashboard', public: false },
   { matcher: (pathname: string) => pathname.startsWith('/app/'), title: 'Wallet', public: false },
   { matcher: (pathname: string) => pathname.startsWith('/admin'), title: 'Admin', public: false },
