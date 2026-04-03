@@ -70,7 +70,7 @@ export const AdminKycPage = () => {
             Preview, decisions, uploads, and approval messaging can connect directly to backend compliance workflows later.
           </div>
           <div className="flex items-end">
-            <AdminButton variant="secondary" className="w-full md:w-auto">
+            <AdminButton variant="secondary" className="w-full md:w-auto" onClick={() => void refreshBootstrap()}>
               Refresh Queue
             </AdminButton>
           </div>

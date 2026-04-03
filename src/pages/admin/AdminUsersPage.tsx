@@ -59,9 +59,14 @@ export const AdminUsersPage = () => {
           </div>
 
           <div className="flex items-end">
-            <AdminButton variant="secondary" className="w-full">
-              {filteredUsers.length} visible
-            </AdminButton>
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setKycFilter('all'); }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              title="Clear all filters"
+            >
+              {filteredUsers.length} visible — Clear filters
+            </button>
           </div>
         </div>
       </AdminCard>

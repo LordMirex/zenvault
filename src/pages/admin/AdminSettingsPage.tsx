@@ -52,6 +52,9 @@ export const AdminSettingsPage = () => {
     mailUsername: '',
     mailPassword: '',
     mailEncryption: '',
+    notifyOnUserRegistration: true,
+    notifyOnKycSubmission: true,
+    notifyOnKycApproval: true,
   });
 
   const [railForm, setRailForm] = useState({
@@ -97,6 +100,9 @@ export const AdminSettingsPage = () => {
         mailUsername: String(adminSettings.email.mailUsername ?? ''),
         mailPassword: '',
         mailEncryption: String(adminSettings.email.mailEncryption ?? ''),
+        notifyOnUserRegistration: Boolean(adminSettings.email.notifyOnUserRegistration ?? true),
+        notifyOnKycSubmission: Boolean(adminSettings.email.notifyOnKycSubmission ?? true),
+        notifyOnKycApproval: Boolean(adminSettings.email.notifyOnKycApproval ?? true),
       });
     }
   }, [adminSettings]);
@@ -128,9 +134,9 @@ export const AdminSettingsPage = () => {
       mailPassword: emailForm.mailPassword,
       mailEncryption: emailForm.mailEncryption,
       templates: adminEmailTemplates,
-      notifyOnUserRegistration: Boolean(adminSettings?.email?.notifyOnUserRegistration ?? true),
-      notifyOnKycSubmission: Boolean(adminSettings?.email?.notifyOnKycSubmission ?? true),
-      notifyOnKycApproval: Boolean(adminSettings?.email?.notifyOnKycApproval ?? true),
+      notifyOnUserRegistration: emailForm.notifyOnUserRegistration,
+      notifyOnKycSubmission: emailForm.notifyOnKycSubmission,
+      notifyOnKycApproval: emailForm.notifyOnKycApproval,
     });
     setEmailForm((current) => ({ ...current, mailPassword: '' }));
     setMessage('Email settings saved.');
@@ -444,6 +450,30 @@ export const AdminSettingsPage = () => {
               <AdminTextInput label="Mail Encryption" value={emailForm.mailEncryption} onChange={(event) => setEmailForm((current) => ({ ...current, mailEncryption: event.target.value }))} />
               <AdminTextInput label="Sender Name" value={emailForm.fromName} onChange={(event) => setEmailForm((current) => ({ ...current, fromName: event.target.value }))} />
               <AdminTextInput label="Sender Email" value={emailForm.fromAddress} onChange={(event) => setEmailForm((current) => ({ ...current, fromAddress: event.target.value }))} />
+              <div className="md:col-span-2">
+                <p className="mb-3 text-sm font-semibold text-slate-700">Admin Notification Triggers</p>
+                <div className="space-y-3">
+                  {[
+                    { key: 'notifyOnUserRegistration' as const, label: 'New user registration' },
+                    { key: 'notifyOnKycSubmission' as const, label: 'KYC document submitted' },
+                    { key: 'notifyOnKycApproval' as const, label: 'KYC case approved' },
+                  ].map((item) => (
+                    <label key={item.key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={emailForm[item.key]}
+                          onChange={(event) => setEmailForm((current) => ({ ...current, [item.key]: event.target.checked }))}
+                        />
+                        <div className={`h-5 w-9 rounded-full transition-colors ${emailForm[item.key] ? 'bg-violet-600' : 'bg-slate-300'}`} />
+                        <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${emailForm[item.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </div>
+                      <span className="text-sm font-medium text-slate-700">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div className="md:col-span-2">
                 <AdminButton onClick={saveEmail}>Save Email Settings</AdminButton>
               </div>

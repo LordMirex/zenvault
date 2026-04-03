@@ -87,11 +87,11 @@ export const AdminUserRecordsPage = () => {
     }
   };
 
-  const updateAssetForm = (assetId: string, field: 'status' | 'amount', value: string) => {
+  const updateAssetForm = (assetId: string, field: 'status' | 'amount' | 'address', value: string) => {
     setAssetForms((current) => ({
       ...current,
       [assetId]: {
-        ...(current[assetId] ?? { status: 'Enabled', amount: '' }),
+        ...(current[assetId] ?? { status: 'Enabled', address: '', amount: '' }),
         [field]: value,
       },
     }));
@@ -104,6 +104,7 @@ export const AdminUserRecordsPage = () => {
         method: 'PUT',
         body: JSON.stringify({
           status: form?.status,
+          ...(form?.address ? { address: form.address } : {}),
         }),
       });
       setFeedback('Wallet record updated.');
@@ -327,9 +328,22 @@ export const AdminUserRecordsPage = () => {
                     <option>Watch</option>
                     <option>Paused</option>
                   </AdminSelect>
+                  <div>
+                    <AdminTextInput
+                      label="Deposit Address"
+                      value={form.address}
+                      onChange={(event) => updateAssetForm(holding.id, 'address', event.target.value)}
+                      placeholder={holding.address || 'Enter wallet address for this user'}
+                    />
+                    {holding.address && (
+                      <p className="mt-1.5 truncate font-mono text-xs text-slate-400" title={holding.address}>
+                        Current: {holding.address}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex justify-end">
                     <AdminButton variant="secondary" onClick={() => void handleAssetSave(holding.id)} disabled={activeKey === `asset-save-${holding.id}`}>
-                      Save Wallet
+                      {activeKey === `asset-save-${holding.id}` ? 'Saving...' : 'Save Wallet'}
                     </AdminButton>
                   </div>
                 </div>
