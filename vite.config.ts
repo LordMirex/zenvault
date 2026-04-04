@@ -7,6 +7,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5000,
     allowedHosts: true,
+    watch: {
+      ignored: ['**/.local/**', '**/node_modules/**'],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:4000',
