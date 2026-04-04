@@ -149,8 +149,17 @@ app.use('/api', (_req, res, next) => {
 // Serve uploaded files (logos, favicons) as static assets
 app.use('/uploads', express.static(publicUploadsDir));
 
-// Serve the compiled React frontend directly configured for robust VPS deployments
-app.use(express.static(join(__dirname, '../dist')));
+// Serve the compiled React frontend — robust path resolution for VPS
+const distCandidates = [
+  join(__dirname, '../dist'),
+  join(process.cwd(), 'dist'),
+];
+const distDir = distCandidates.find(p => existsSync(join(p, 'index.html'))) || distCandidates[0];
+console.log('[boot] __dirname     :', __dirname);
+console.log('[boot] process.cwd() :', process.cwd());
+console.log('[boot] dist resolved :', distDir);
+console.log('[boot] dist exists   :', existsSync(join(distDir, 'index.html')));
+app.use(express.static(distDir, { maxAge: '1d', etag: true }));
 
 // Multer configuration for logo/favicon uploads
 const uploadStorage = multer.diskStorage({
@@ -2655,8 +2664,7 @@ app.use('/api', (_req, res) => {
 
 // Fallback to index.html for React Router compatibility (production only)
 app.get('{*path}', (_req, res) => {
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  res.sendFile(join(__dirname, '../dist/index.html'));
+  res.sendFile(join(distDir, 'index.html'));
 });
 
 app.listen(config.apiPort, () => {
