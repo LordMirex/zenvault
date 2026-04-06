@@ -377,6 +377,13 @@ const serveStoredFile = async (id, res) => {
   return res.end(row.data);
 };
 
+// GET /api/files/:id — public file serving (logos, favicons, any DB-stored asset)
+app.get('/api/files/:id', async (req, res) => {
+  const id = String(req.params.id ?? '').trim();
+  if (!id) return res.status(400).json({ message: 'File ID is required.' });
+  return serveStoredFile(id, res);
+});
+
 // ─── KYC document helpers ─────────────────────────────────────────────────────
 
 const buildStoredKycDocuments = (files, uploadedAt) =>
@@ -2237,7 +2244,7 @@ app.put('/api/admin/settings/:section', requireAuth, requireRole('admin'), async
   return res.json({ ok: true });
 });
 
-// POST /api/admin/upload/logo — upload a logo image file
+// POST /api/admin/upload/logo — upload a logo image file (stored in PostgreSQL)
 app.post('/api/admin/upload/logo', requireAuth, requireRole('admin'), (req, res) => {
   logoUpload.single('logo')(req, res, async (err) => {
     if (err) {
@@ -2251,9 +2258,10 @@ app.post('/api/admin/upload/logo', requireAuth, requireRole('admin'), (req, res)
       return res.status(400).json({ message: 'No file was uploaded.' });
     }
 
-    const url = `/uploads/${req.file.filename}`;
+    const id = createPrefixedId('logo');
+    await storeFile(id, req.file.buffer, req.file.mimetype, sanitizeFileName(req.file.originalname, 'logo'));
+    const url = `/api/files/${id}`;
 
-    // Auto-update general settings with the new logo URL
     const current = await getSetting('general', {});
     await upsertSetting('general', { ...current, logoUrl: url });
 
@@ -2261,7 +2269,7 @@ app.post('/api/admin/upload/logo', requireAuth, requireRole('admin'), (req, res)
   });
 });
 
-// POST /api/admin/upload/favicon — upload a favicon image file
+// POST /api/admin/upload/favicon — upload a favicon image file (stored in PostgreSQL)
 app.post('/api/admin/upload/favicon', requireAuth, requireRole('admin'), (req, res) => {
   faviconUpload.single('favicon')(req, res, async (err) => {
     if (err) {
@@ -2275,9 +2283,10 @@ app.post('/api/admin/upload/favicon', requireAuth, requireRole('admin'), (req, r
       return res.status(400).json({ message: 'No file was uploaded.' });
     }
 
-    const url = `/uploads/${req.file.filename}`;
+    const id = createPrefixedId('favicon');
+    await storeFile(id, req.file.buffer, req.file.mimetype, sanitizeFileName(req.file.originalname, 'favicon'));
+    const url = `/api/files/${id}`;
 
-    // Auto-update general settings with the new favicon URL
     const current = await getSetting('general', {});
     await upsertSetting('general', { ...current, faviconUrl: url });
 
