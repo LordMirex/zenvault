@@ -45,6 +45,10 @@ export type WalletCardRecord = {
   requestedAt?: string;
   holderName?: string;
   applicationFeeUsd?: number;
+  expiry?: string;
+  cvv?: string;
+  billingAddress?: string;
+  zipCode?: string;
 };
 
 export type WalletActivity = {

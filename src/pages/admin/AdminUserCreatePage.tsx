@@ -20,8 +20,8 @@ export const AdminUserCreatePage = () => {
     email: '',
     password: '12345678',
     uuid: '',
-    country: 'Nigeria',
-    deskLabel: 'New Desk',
+    country: '',
+    deskLabel: '',
     tier: 'Tier 1',
     status: 'Active',
     riskLevel: 'Medium',
@@ -45,12 +45,12 @@ export const AdminUserCreatePage = () => {
 
       <AdminPageHeading
         title="Create User"
-        description="Create a client account directly from the admin console and persist it to the MySQL-backed user registry."
+        description="Create a new client account from the admin console. The user will receive an email with their login credentials."
       />
 
       {saved && (
         <AdminCard className="border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
-          User created successfully. The account is now available in the admin user list.
+          User created successfully. The account is now available in the user list and a welcome email has been sent.
         </AdminCard>
       )}
 
@@ -82,30 +82,66 @@ export const AdminUserCreatePage = () => {
         <AdminCard className="p-6">
           <h3 className="text-lg font-semibold text-slate-900">Profile Information</h3>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <AdminTextInput label="Full Name" value={form.name} onChange={(event) => updateField('name', event.target.value)} placeholder="John Doe" />
-            <AdminTextInput label="Email Address" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} placeholder="john.doe@example.com" />
-            <AdminTextInput label="UUID" value={form.uuid} onChange={(event) => updateField('uuid', event.target.value)} placeholder="QFS-0000-0000" />
-            <AdminTextInput label="Country" value={form.country} onChange={(event) => updateField('country', event.target.value)} placeholder="Nigeria" />
-            <AdminTextInput label="Desk Label" value={form.deskLabel} onChange={(event) => updateField('deskLabel', event.target.value)} placeholder="Prime Treasury Desk" />
+            <AdminTextInput
+              label="Full Name"
+              value={form.name}
+              onChange={(event) => updateField('name', event.target.value)}
+              placeholder="John Doe"
+            />
+            <AdminTextInput
+              label="Email Address"
+              type="email"
+              value={form.email}
+              onChange={(event) => updateField('email', event.target.value)}
+              placeholder="john.doe@example.com"
+            />
+            <AdminTextInput
+              label="UUID / Reference ID"
+              value={form.uuid}
+              onChange={(event) => updateField('uuid', event.target.value)}
+              placeholder="e.g. QFS-0000-0000 (optional)"
+            />
+            <AdminTextInput
+              label="Country"
+              value={form.country}
+              onChange={(event) => updateField('country', event.target.value)}
+              placeholder="e.g. United States"
+            />
+            <AdminTextInput
+              label="Desk Label"
+              value={form.deskLabel}
+              onChange={(event) => updateField('deskLabel', event.target.value)}
+              placeholder="e.g. Prime Treasury Desk"
+            />
             <AdminSelect label="Tier" value={form.tier} onChange={(event) => updateField('tier', event.target.value)}>
               <option>Tier 1</option>
               <option>Tier 2</option>
               <option>Tier 3</option>
             </AdminSelect>
-            <AdminTextInput label="Password" type="password" value={form.password} onChange={(event) => updateField('password', event.target.value)} placeholder="12345678" />
+            <AdminTextInput
+              label="Temporary Password"
+              type="password"
+              value={form.password}
+              onChange={(event) => updateField('password', event.target.value)}
+              placeholder="Min. 8 characters"
+            />
           </div>
         </AdminCard>
 
         <div className="space-y-6">
           <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Risk and KYC</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Risk and Verification</h3>
             <div className="mt-5 grid gap-4">
-              <AdminSelect label="Account Status" value={form.status} onChange={(event) => updateField('status', event.target.value)}>
+              <AdminSelect
+                label="Account Status"
+                value={form.status}
+                onChange={(event) => updateField('status', event.target.value)}
+              >
                 <option>Active</option>
                 <option>Review</option>
                 <option>Suspended</option>
               </AdminSelect>
-              <label className="flex items-start gap-3 rounded-lg border border-slate-300 bg-white px-3 py-3">
+              <label className="flex items-start gap-3 rounded-lg border border-slate-300 bg-white px-3 py-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.requireKyc}
@@ -119,25 +155,40 @@ export const AdminUserCreatePage = () => {
                 <span>
                   <span className="block text-sm font-medium text-slate-700">Require KYC Verification</span>
                   <span className="mt-1 block text-sm text-slate-500">
-                    New users created with this enabled start in a pending verification state.
+                    User will start in a pending verification state until documents are reviewed.
                   </span>
                 </span>
               </label>
-              <AdminSelect label="Risk Level" value={form.riskLevel} onChange={(event) => updateField('riskLevel', event.target.value)}>
+              <AdminSelect
+                label="Risk Level"
+                value={form.riskLevel}
+                onChange={(event) => updateField('riskLevel', event.target.value)}
+              >
                 <option>Low</option>
                 <option>Medium</option>
                 <option>High</option>
               </AdminSelect>
-              <AdminTextArea label="Operator Note" rows={4} value={form.note} onChange={(event) => updateField('note', event.target.value)} placeholder="Internal onboarding note..." />
+              <AdminTextArea
+                label="Internal Note"
+                rows={4}
+                value={form.note}
+                onChange={(event) => updateField('note', event.target.value)}
+                placeholder="Operator notes about this account..."
+              />
             </div>
           </AdminCard>
 
           <AdminCard className="p-6">
             <h3 className="text-lg font-semibold text-slate-900">Plan and Access</h3>
             <div className="mt-5 grid gap-4">
-              <AdminTextInput label="Plan Name" value={form.plan} onChange={(event) => updateField('plan', event.target.value)} placeholder="Growth Desk" />
+              <AdminTextInput
+                label="Plan Name"
+                value={form.plan}
+                onChange={(event) => updateField('plan', event.target.value)}
+                placeholder="e.g. Starter, Growth, Premium"
+              />
               <AdminButton type="submit" className="w-full">
-                Create User
+                Create User Account
               </AdminButton>
             </div>
           </AdminCard>

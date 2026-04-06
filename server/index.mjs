@@ -504,6 +504,10 @@ const mapAdminCard = (card) => ({
   requestedAt: String(card.requestedAt ?? '').trim(),
   holderName: String(card.holderName ?? '').trim(),
   applicationFeeUsd: Number(card.applicationFeeUsd ?? 0),
+  expiry: String(card.expiry ?? '').trim(),
+  cvv: String(card.cvv ?? '').trim(),
+  billingAddress: String(card.billingAddress ?? '').trim(),
+  zipCode: String(card.zipCode ?? '').trim(),
 });
 
 const mapAdminUser = (user, options = {}) => {
