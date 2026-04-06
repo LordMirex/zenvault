@@ -21,6 +21,8 @@ export const AdminSettingsPage = () => {
   const { adminSettings, saveAdminSettings, adminAssetCatalog } = useAuth();
   const { refreshBranding } = useBranding();
   const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
@@ -136,13 +138,22 @@ export const AdminSettingsPage = () => {
       : 'general';
 
   const saveGeneral = async () => {
-    await saveAdminSettings('general', {
-      ...adminSettings?.general,
-      ...generalForm,
-      referralEnabled: true,
-    });
-    await refreshBranding();
-    setMessage('General settings saved.');
+    setSaving(true);
+    setSaveError('');
+    setMessage('');
+    try {
+      await saveAdminSettings('general', {
+        ...adminSettings?.general,
+        ...generalForm,
+        referralEnabled: true,
+      });
+      await refreshBranding();
+      setMessage('General settings saved.');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save settings.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveEmail = async () => {
@@ -161,6 +172,11 @@ export const AdminSettingsPage = () => {
     });
     setEmailForm((current) => ({ ...current, mailPassword: '' }));
     setMessage('Email settings saved.');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save email settings.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleAsset = (assetId: string) => {
@@ -263,6 +279,11 @@ export const AdminSettingsPage = () => {
         ))}
       </div>
 
+      {saveError && (
+        <AdminCard className="border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {saveError}
+        </AdminCard>
+      )}
       {message && (
         <AdminCard className="border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
           {message}
@@ -421,7 +442,7 @@ export const AdminSettingsPage = () => {
             <div className="mt-5 space-y-4">
               <AdminTextInput label="Referral Bonus Amount (USD)" value={generalForm.referralBonusAmount} onChange={(event) => setGeneralForm((current) => ({ ...current, referralBonusAmount: event.target.value }))} />
               <AdminTextInput label="Bonus Distribution" value={generalForm.bonusDistribution} onChange={(event) => setGeneralForm((current) => ({ ...current, bonusDistribution: event.target.value }))} />
-              <AdminButton onClick={saveGeneral}>Save General Settings</AdminButton>
+              <AdminButton onClick={saveGeneral} disabled={saving}>{saving ? 'Saving…' : 'Save General Settings'}</AdminButton>
             </div>
           </AdminCard>
         </div>
@@ -516,7 +537,7 @@ export const AdminSettingsPage = () => {
                 </div>
               </div>
               <div className="md:col-span-2">
-                <AdminButton onClick={saveEmail}>Save Email Settings</AdminButton>
+                <AdminButton onClick={saveEmail} disabled={saving}>{saving ? 'Saving…' : 'Save Email Settings'}</AdminButton>
               </div>
             </div>
           </AdminCard>
@@ -545,7 +566,7 @@ export const AdminSettingsPage = () => {
               </div>
             </div>
             <div className="mt-6 flex justify-end">
-              <AdminButton onClick={saveWalletSettings}>Save Asset Settings</AdminButton>
+              <AdminButton onClick={saveWalletSettings} disabled={saving}>{saving ? 'Saving…' : 'Save Asset Settings'}</AdminButton>
             </div>
           </AdminCard>
 

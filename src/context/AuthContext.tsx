@@ -282,8 +282,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setStatus('anonymous');
   };
 
-  const loadBootstrap = async (currentUser: SessionUser) => {
-    setBootstrapReady(false);
+  const loadBootstrap = async (currentUser: SessionUser, { silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) setBootstrapReady(false);
 
     if (currentUser.role === 'user') {
       const payload = await apiRequest<ClientBootstrap>('/api/client/bootstrap');
@@ -350,7 +350,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       return;
     }
 
-    await loadBootstrap(user);
+    await loadBootstrap(user, { silent: true });
   };
 
   useEffect(() => {
@@ -584,7 +584,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
-    await refreshBootstrap();
+    setAdminSettings((current) =>
+      current ? { ...current, [section]: { ...(current[section] ?? {}), ...payload } } : current,
+    );
   };
 
   const value = useMemo<AuthContextValue>(
