@@ -856,6 +856,31 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 
   const { sessionId } = await createAuthenticatedSession(user, req);
 
+  const emailSettings = await getSetting('email', {});
+  if (emailSettings.notifyOnLogin !== false) {
+    const brandName = await getBrandName();
+    const loginTime = createTimestampLabel();
+    await sendSystemEmailSafely({
+      logContext: `login notification to ${email}`,
+      to: email,
+      subject: `New sign-in to your ${brandName} account`,
+      title: 'Sign-in detected',
+      preheader: `Your ${brandName} account was accessed on ${loginTime}.`,
+      intro: 'Someone just signed in to your account. If this was you, no action is needed.',
+      recipientName: user.name,
+      paragraphs: [
+        'If you did not sign in just now, your password may have been compromised. Change your password immediately from your security settings and contact support.',
+      ],
+      highlights: [
+        `Account: ${email}`,
+        `Time: ${loginTime}`,
+      ],
+      ctaLabel: 'Go to my account',
+      ctaUrl: await toClientUrl('/app'),
+      signatureRole: 'Security Team',
+    });
+  }
+
   return res.json({
     accessToken: createAccessToken(user, sessionId),
     user: mapSessionUser(user),
@@ -912,17 +937,22 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
     await sendSystemEmailSafely({
       logContext: `welcome email to ${email}`,
       to: email,
-      subject: `Welcome to ${brandName}`,
-      title: 'Your account is ready',
-      preheader: `Your ${brandName} account has been created successfully.`,
-      intro: `Your ${brandName} account is live and ready for sign in.`,
+      subject: `Welcome to ${brandName} — your account is ready`,
+      title: `Welcome to ${brandName}`,
+      preheader: `Your ${brandName} account is set up and ready to use.`,
+      intro: 'Your account has been created. Sign in now to complete your setup and start using your wallet.',
       recipientName: fullName,
       paragraphs: [
-        'Your wallet profile has been created successfully. You can sign in from the client portal and complete any remaining verification steps from your dashboard.',
-        'If you did not request this account, reply to this email immediately so the operations desk can investigate.',
+        'Use your email and the password you chose during registration to sign in. Once logged in, complete identity verification (KYC) to unlock all wallet features.',
+        'Your default security passcode is 000000 — please update it from your security settings right after your first login.',
+        'If you did not create this account, contact our support team immediately.',
       ],
-      highlights: [`Login email: ${email}`, 'Default passcode: 000000', 'Account status: Active', 'KYC status: Pending review'],
-      ctaLabel: 'Open the client portal',
+      highlights: [
+        `Email: ${email}`,
+        'Default passcode: 000000 (update this on first login)',
+        'KYC status: Pending — complete verification to unlock full access',
+      ],
+      ctaLabel: 'Sign in to your account',
       ctaUrl: await toClientUrl('/login'),
       signatureRole: 'Client Operations',
     });
@@ -1052,23 +1082,24 @@ app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) 
       await sendSystemEmailSafely({
         logContext: `kyc submission email to ${req.user.email}`,
         to: req.user.email,
-        subject: `${brandName} received your KYC documents`,
+        subject: `We received your verification documents`,
         title: 'Documents received',
-        preheader: 'Your verification documents are now in the review queue.',
-        intro: 'We received your document upload and forwarded it to the compliance review queue.',
+        preheader: 'Your verification documents have been submitted and are under review.',
+        intro: 'Thank you for submitting your verification documents. Our compliance team will review them shortly.',
         recipientName: req.user.name,
         paragraphs: [
-          'Your submission is now attached to your account and will remain visible from the KYC page while the review is open.',
-          'If the review team needs clearer files or more supporting evidence, the KYC page and your notifications feed will reflect that.',
+          'Your documents are now securely stored and attached to your account. You can view the submission status at any time from the KYC section of your dashboard.',
+          'If our team needs additional documents or higher-quality images, we will notify you through your dashboard notifications and via email.',
+          'Most reviews are completed within 1–3 business days.',
         ],
         highlights: [
-          `Documents: ${documentType}`,
-          `Submitted: ${submittedAt}`,
-          'Current status: Pending',
+          `Documents submitted: ${documentType}`,
+          `Submitted at: ${submittedAt}`,
+          'Review status: Pending',
         ],
-        ctaLabel: 'Open KYC center',
+        ctaLabel: 'Check verification status',
         ctaUrl: await toClientUrl('/app/kyc'),
-        signatureRole: 'Compliance Desk',
+        signatureRole: 'Compliance Team',
       });
     }
 
@@ -1304,25 +1335,27 @@ app.post('/api/client/cards/apply', requireAuth, requireRole('user'), async (req
   await sendSystemEmailSafely({
     logContext: `card request email to ${req.user.email}`,
     to: req.user.email,
-    subject: `${brand} card request received`,
+    subject: `Your ${brand} card request has been received`,
     title: 'Card request received',
-    preheader: 'Your card application is now pending operations review.',
-    intro: 'We received your card request and queued it for operator review.',
+    preheader: 'Your card application is in the queue and will be reviewed shortly.',
+    intro: 'We have received your card request. Our team will review and process it as soon as possible.',
     recipientName: req.user.name,
     paragraphs: [
-      'The request will remain pending until an administrator reviews it and issues the card record.',
+      'Your application is now in the review queue. Once approved, your card details will appear in the Cards section of your dashboard.',
       applicationFeeUsd > 0 && fundingAsset
-        ? `${formatAmountLabel(feeAssetAmount)} ${fundingAsset.symbol} was applied as the card application fee.`
+        ? `An application fee of ${formatAmountLabel(feeAssetAmount)} ${fundingAsset.symbol} has been deducted from your wallet balance.`
         : 'No application fee was charged for this request.',
+      'You will receive another email as soon as your card has been issued.',
     ],
     highlights: [
-      `Requested card: ${brand}`,
+      `Card type: ${brand}`,
       `Requested at: ${requestedAt}`,
       `Application fee: $${applicationFeeUsd.toFixed(2)}`,
+      'Status: Pending review',
     ],
-    ctaLabel: 'Open cards',
+    ctaLabel: 'View my cards',
     ctaUrl: await toClientUrl('/app/cards'),
-    signatureRole: 'Card Services Desk',
+    signatureRole: 'Card Services',
   });
 
   await appendAdminTimelineEntry(
@@ -1496,25 +1529,25 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
   await sendSystemEmailSafely({
     logContext: `withdrawal email to ${req.user.email}`,
     to: req.user.email,
-    subject: 'Withdrawal request received',
-    title: 'Your withdrawal is now under review',
-    preheader: `${formatAmountLabel(amount)} ${asset.symbol} was added to the transfer queue.`,
-    intro: 'We received your withdrawal request and queued it for review.',
+    subject: `Withdrawal request for ${formatAmountLabel(amount)} ${asset.symbol} received`,
+    title: 'Withdrawal request received',
+    preheader: `Your withdrawal of ${formatAmountLabel(amount)} ${asset.symbol} is now pending review.`,
+    intro: 'We have received your withdrawal request. It is currently being reviewed by our team before processing.',
     recipientName: req.user.name,
     paragraphs: [
-      'The transfer has been recorded and will remain in pending status until the operations team completes the required checks.',
-      'You can monitor the request from your wallet notifications and recent activity feed.',
+      'Your funds are reserved and the transfer is queued for processing. You will be notified once the withdrawal has been completed or if any additional action is required.',
+      'If you did not initiate this withdrawal, contact support immediately.',
     ],
     highlights: [
       `Amount: ${formatAmountLabel(amount)} ${asset.symbol}`,
       `Destination: ${recipient}`,
-      `Transfer method: ${method === 'external' ? 'External Wallet' : 'Internal Transfer'}`,
+      `Method: ${method === 'external' ? 'External Wallet' : 'Internal Transfer'}`,
       `Network fee: ${formatAmountLabel(feeAmount)} ${asset.symbol}`,
-      'Current status: Pending',
+      'Status: Pending review',
     ],
-    ctaLabel: 'Review wallet activity',
+    ctaLabel: 'Track this withdrawal',
     ctaUrl: await toClientUrl('/app/withdraw'),
-    signatureRole: 'Risk and Transfers Desk',
+    signatureRole: 'Transfers Team',
   });
 
   // Notify admin of new pending withdrawal
@@ -1523,26 +1556,26 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
     await sendSystemEmailSafely({
       logContext: `admin withdrawal alert to ${adminUser.email}`,
       to: adminUser.email,
-      subject: `Action required: withdrawal pending — ${req.user.name}`,
-      title: 'New withdrawal request pending your review',
-      preheader: `${req.user.name} submitted a ${formatAmountLabel(amount)} ${asset.symbol} withdrawal.`,
-      intro: 'A user has submitted a withdrawal request. It is currently pending and requires your approval before it is processed.',
+      subject: `Action required: ${req.user.name} submitted a withdrawal`,
+      title: 'Withdrawal pending your approval',
+      preheader: `${req.user.name} requested a withdrawal of ${formatAmountLabel(amount)} ${asset.symbol}.`,
+      intro: `A client has submitted a withdrawal request that requires your review and approval before it can be processed.`,
       recipientName: adminUser.name || 'Admin',
       paragraphs: [
-        'Log in to the admin dashboard and navigate to Transactions to approve or decline this request.',
+        'Please review the request details below and approve or decline it from the Transactions section of the admin dashboard.',
       ],
       highlights: [
-        `User: ${req.user.name} (${req.user.email})`,
+        `Client: ${req.user.name} (${req.user.email})`,
         `Amount: ${formatAmountLabel(amount)} ${asset.symbol}`,
         `Destination: ${recipient}`,
         `Method: ${method === 'external' ? 'External Wallet' : 'Internal Transfer'}`,
         `Network fee: ${formatAmountLabel(feeAmount)} ${asset.symbol}`,
         `Transaction ID: ${transactionId}`,
-        'Status: Pending',
+        'Status: Awaiting approval',
       ],
-      ctaLabel: 'Review in admin dashboard',
+      ctaLabel: 'Review withdrawal',
       ctaUrl: await toClientUrl('/admin/transactions'),
-      signatureRole: 'Automated Alert System',
+      signatureRole: 'System Alert',
     });
   }
 
@@ -1634,25 +1667,25 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
     await sendSystemEmailSafely({
       logContext: `admin-created account email to ${email}`,
       to: email,
-      subject: `Your ${brandName} account has been created`,
-      title: `You have been added to ${brandName}`,
-      preheader: 'An administrator created your account and shared your sign-in details.',
-      intro: `A ${brandName} administrator created a client account for you.`,
+      subject: `Your ${brandName} account is ready`,
+      title: `Your ${brandName} account has been created`,
+      preheader: `Your ${brandName} account is set up. Use the credentials below to sign in.`,
+      intro: `An administrator has set up a ${brandName} account for you. Your login details are included below.`,
       recipientName: name,
       paragraphs: [
-        'Use the temporary credentials below to sign in. For security, change your password and passcode after your first login.',
-        'If you were not expecting this account, reply to this email before using the credentials.',
+        'Sign in using the credentials below. For your security, please change your password and update your 6-digit passcode immediately after your first login.',
+        'If you were not expecting this account, do not use these credentials and contact our support team right away.',
       ],
       highlights: [
-        `Login email: ${email}`,
+        `Email: ${email}`,
         `Temporary password: ${password}`,
-        'Default passcode: 000000',
-        `Plan: ${plan}`,
+        'Default passcode: 000000 (change this after signing in)',
+        `Account plan: ${plan}`,
       ],
-      ctaLabel: 'Sign in now',
+      ctaLabel: 'Sign in to your account',
       ctaUrl: await toClientUrl('/login'),
       signatureName: req.user.name,
-      signatureRole: 'Operations Desk',
+      signatureRole: 'Operations Team',
     });
   }
 
@@ -1699,23 +1732,24 @@ app.put('/api/admin/users/:userId/password', requireAuth, requireRole('admin'), 
     logContext: `password reset email to ${existing.email}`,
     to: existing.email,
     subject: 'Your password has been reset',
-    title: 'Temporary password generated',
-    preheader: 'A new temporary password was created for your account.',
-    intro: 'An administrator reset your account password and signed out previous sessions.',
+    title: 'Password reset',
+    preheader: 'A temporary password has been set for your account. Sign in and update it right away.',
+    intro: 'An administrator has reset your account password. A new temporary password has been generated for you.',
     recipientName: existing.name,
     paragraphs: [
-      'Use the temporary password below to sign back in and change it immediately from your security settings.',
-      'If you did not expect this reset, contact support before using the new credentials.',
+      'Use the temporary password below to sign in. Once logged in, go to your security settings and set a strong new password right away.',
+      'For your security, all existing sessions have been signed out. If you did not request this reset, contact support immediately — do not use the credentials below.',
     ],
     highlights: [
+      `Email: ${existing.email}`,
       `Temporary password: ${password}`,
-      ...(resetPasscode ? ['Passcode reset to: 000000'] : []),
-      'All previous sessions were signed out',
+      ...(resetPasscode ? ['Passcode reset to: 000000 (update this after signing in)'] : []),
+      'All previous sessions have been signed out',
     ],
-    ctaLabel: 'Open login',
+    ctaLabel: 'Sign in now',
     ctaUrl: await toClientUrl('/login'),
     signatureName: req.user.name,
-    signatureRole: 'Operations Desk',
+    signatureRole: 'Security Team',
   });
 
   return res.json({ ok: true, temporaryPassword: password });
@@ -1871,25 +1905,25 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
     await sendSystemEmailSafely({
       logContext: `admin wallet update email to ${user.email}`,
       to: user.email,
-      subject: action === 'add' ? `${current.symbol} credited to your wallet` : `${current.symbol} removed from your wallet`,
-      title: action === 'add' ? 'Wallet credit completed' : 'Wallet debit completed',
-      preheader: `${formatAmountLabel(amount)} ${current.symbol} was ${action === 'add' ? 'credited' : 'debited'} by the admin team.`,
+      subject: action === 'add' ? `${formatAmountLabel(amount)} ${current.symbol} has been added to your wallet` : `${formatAmountLabel(amount)} ${current.symbol} has been removed from your wallet`,
+      title: action === 'add' ? `${current.symbol} credited` : `${current.symbol} debited`,
+      preheader: `${formatAmountLabel(amount)} ${current.symbol} ${action === 'add' ? 'was added to' : 'was removed from'} your wallet.`,
       intro:
         action === 'add'
-          ? 'An administrator credited your wallet and the transaction is now complete.'
-          : 'An administrator debited your wallet and the transaction is now complete.',
+          ? `${formatAmountLabel(amount)} ${current.symbol} has been credited to your wallet by our operations team.`
+          : `${formatAmountLabel(amount)} ${current.symbol} has been debited from your wallet by our operations team.`,
       recipientName: user.name,
       paragraphs: [
-        'The updated wallet balance is reflected in your account immediately.',
-        'If you need the transaction reviewed, contact support and reference the wallet activity timestamp shown in your dashboard.',
+        'Your wallet balance has been updated and the change is reflected in your account right now.',
+        'If you have any questions about this transaction, contact support and reference the transaction timestamp below.',
       ],
       highlights: [
         `Asset: ${current.symbol}`,
         `Amount: ${formatAmountLabel(amount)} ${current.symbol}`,
-        `Updated balance: ${formatAmountLabel(updatedAsset.balance)} ${current.symbol}`,
+        `New balance: ${formatAmountLabel(updatedAsset.balance)} ${current.symbol}`,
         `Processed at: ${updatedAt}`,
       ],
-      ctaLabel: 'Open wallet',
+      ctaLabel: 'View my wallet',
       ctaUrl: await toClientUrl('/app'),
       signatureName: req.user.name,
       signatureRole: 'Wallet Operations',
@@ -1978,25 +2012,25 @@ app.post('/api/admin/users/:userId/cards', requireAuth, requireRole('admin'), as
   await sendSystemEmailSafely({
     logContext: `card issued email to ${user.email}`,
     to: user.email,
-    subject: `${brand} card issued`,
-    title: 'Your card has been issued',
-    preheader: `${brand} card ending in ${last4} is now active in your account records.`,
-    intro: 'Your card request has been processed and the card record is now available.',
+    subject: `Your ${brand} card ending in ${last4} has been issued`,
+    title: 'Your card is ready',
+    preheader: `Your ${brand} card ending in ${last4} is now active and available in your account.`,
+    intro: 'Great news! Your card has been issued and is now active. You can find your card details in the Cards section of your dashboard.',
     recipientName: user.name,
     paragraphs: [
-      'Card details are now attached to your account and visible from the wallet workspace.',
-      'If funding was applied during issuance, the spend limit already reflects the approved amount.',
+      'Your card details — including the card number, expiry, and CVV — are securely stored and accessible from your wallet dashboard.',
+      `Your current spend limit is $${initialBalance.toFixed(2)}. If you need a higher limit, contact support.`,
     ],
     highlights: [
-      `Card brand: ${brand}`,
-      `Card ending: ${last4}`,
+      `Card type: ${brand}`,
+      `Card ending in: ${last4}`,
       `Issued at: ${createdAt}`,
       `Spend limit: $${initialBalance.toFixed(2)}`,
     ],
-    ctaLabel: 'Open cards',
+    ctaLabel: 'View my card',
     ctaUrl: await toClientUrl('/app/cards'),
     signatureName: req.user.name,
-    signatureRole: 'Card Services Desk',
+    signatureRole: 'Card Services',
   });
 
   return res.status(201).json({ ok: true, cardId });
@@ -2207,14 +2241,13 @@ app.post('/api/admin/users/:userId/notify', requireAuth, requireRole('admin'), a
     intro: messageText,
     recipientName: user.name,
     paragraphs: [
-      'This is an official communication from your wallet operations team.',
-      'If you have any questions regarding this transaction, please contact support.',
+      'This is an official message from your account operations team. If you have questions about this notification, please contact our support team.',
     ],
     highlights: [
-      ...(asset && amount ? ['Asset: ' + asset, 'Amount: ' + amount + ' ' + asset] : []),
-      'Processed at: ' + updatedAt,
+      ...(asset && amount ? [`Asset: ${asset}`, `Amount: ${amount} ${asset}`] : []),
+      `Date: ${updatedAt}`,
     ],
-    ctaLabel: 'Open wallet',
+    ctaLabel: 'View my wallet',
     ctaUrl: await toClientUrl('/app'),
     signatureName: req.user.name,
     signatureRole: 'Wallet Operations',
@@ -2471,24 +2504,24 @@ app.put('/api/admin/kyc/:caseId', requireAuth, requireRole('admin'), async (req,
       await sendSystemEmailSafely({
         logContext: `kyc approval email to ${targetUser.email}`,
         to: targetUser.email,
-        subject: `Your ${brandName} verification is approved`,
+        subject: `Your ${brandName} identity verification has been approved`,
         title: 'Verification approved',
-        preheader: 'Your KYC review is complete and the case is now approved.',
-        intro: 'The compliance team approved your verification case.',
+        preheader: 'Your identity verification is complete. Your account is now fully verified.',
+        intro: 'Congratulations! Your identity verification has been reviewed and approved by our compliance team.',
         recipientName: targetUser.name,
         paragraphs: [
-          'Your account now reflects an approved verification state in the client dashboard.',
-          'If legal identity details or source-of-funds documents change later, submit a fresh document set before your next high-limit transfer window.',
+          'Your account is now fully verified. You can access all wallet features including higher transfer limits.',
+          'If your personal details or documents change in the future, please resubmit your verification documents to keep your account in good standing.',
         ],
         highlights: [
-          `Case ID: ${caseId}`,
-          `Approved: ${createTimestampLabel()}`,
-          'Current status: Approved',
+          'Verification status: Approved',
+          `Approved at: ${createTimestampLabel()}`,
+          'Account access: Full',
         ],
-        ctaLabel: 'Open KYC center',
+        ctaLabel: 'Go to my dashboard',
         ctaUrl: await toClientUrl('/app/kyc'),
         signatureName: req.user.name,
-        signatureRole: 'Compliance Desk',
+        signatureRole: 'Compliance Team',
       });
     }
   }
