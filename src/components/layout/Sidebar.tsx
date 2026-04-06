@@ -9,7 +9,8 @@ import {
   LayoutGrid,
   BookUser,
   Bot,
-  CreditCard
+  CreditCard,
+  Users
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -34,6 +35,7 @@ const cryptoBaseItems = [
   { name: 'Wallet Addresses', href: '/app/crypto-address', icon: BookUser },
   { name: 'Cards', href: '/app/cards', icon: CreditCard },
   { name: 'Notifications', href: '/app/notifications', icon: Bell },
+  { name: 'Referral', href: '/app/referral', icon: Users },
 ];
 
 export const Sidebar = () => {

@@ -10,7 +10,6 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { useState } from 'react';
-import { recentSessions } from '../data/wallet';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -22,7 +21,7 @@ type VisibilityMap = {
 };
 
 export const ProfileSecurity = () => {
-  const { updateClientSecurity } = useAuth();
+  const { updateClientSecurity, clientRecentSessions } = useAuth();
   const { isLightTheme } = useTheme();
   const [form, setForm] = useState({
     currentPassword: '',
@@ -48,8 +47,8 @@ export const ProfileSecurity = () => {
     { label: 'Special character', passed: /[^A-Za-z0-9]/.test(form.newPassword) },
   ];
   const completedChecks = passwordChecks.filter((item) => item.passed).length;
-  const trustedSessions = recentSessions.filter((session) => session.status !== 'Revoked').length;
-  const currentSession = recentSessions.find((session) => session.status === 'Current session') ?? recentSessions[0] ?? null;
+  const trustedSessions = clientRecentSessions.filter((session) => session.status !== 'Revoked').length;
+  const currentSession = clientRecentSessions.find((session) => session.status === 'Current session') ?? clientRecentSessions[0] ?? null;
 
   const heroClasses = isLightTheme
     ? 'border-[#e6dac4] bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.26),transparent_33%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.18),transparent_34%),linear-gradient(135deg,#fff9ec_0%,#f8fbff_58%,#eef2ff_100%)] shadow-[0_34px_90px_rgba(15,23,42,0.08)]'
@@ -494,7 +493,7 @@ export const ProfileSecurity = () => {
             </div>
 
             <div className="mt-4 space-y-3">
-              {recentSessions.map((session) => (
+              {clientRecentSessions.map((session) => (
                 <div key={session.id} className={`rounded-[1.5rem] border p-4 ${insetClasses}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex gap-3">

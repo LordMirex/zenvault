@@ -1,17 +1,32 @@
 import { Copy, Gift, Share2, TrendingUp, Users } from 'lucide-react';
 import { useState } from 'react';
-import { recentReferrals, referralMilestones } from '../data/wallet';
-
-const referralLink = 'https://qfs-wallet.example/ref/QFS-529384';
+import { useAuth } from '../context/AuthContext';
 
 export const Referral = () => {
+  const { clientProfile, clientRecentReferrals, clientReferralMilestones } = useAuth();
   const [copied, setCopied] = useState(false);
 
+  const referralCode = clientProfile?.uuid ?? '';
+  const referralLink = referralCode
+    ? `${window.location.origin}/signup?ref=${referralCode}`
+    : `${window.location.origin}/signup`;
+
   const copyReferralLink = async () => {
-    await navigator.clipboard.writeText(referralLink);
+    try {
+      await navigator.clipboard.writeText(referralLink);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = referralLink;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   };
+
+  const totalReferrals = clientRecentReferrals.length;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -32,15 +47,22 @@ export const Referral = () => {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-3xl border border-gray-800 bg-dark-900/80 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Total Referrals</p>
-              <p className="mt-2 text-2xl font-black text-primary">1</p>
+              <p className="mt-2 text-2xl font-black text-primary">{totalReferrals}</p>
             </div>
             <div className="rounded-3xl border border-gray-800 bg-dark-900/80 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">This Month</p>
-              <p className="mt-2 text-2xl font-black text-white">0</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Conversion Rate</p>
+              <p className="mt-2 text-2xl font-black text-white">
+                {totalReferrals > 0 ? '100%' : '—'}
+              </p>
             </div>
             <div className="rounded-3xl border border-gray-800 bg-dark-900/80 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Paid Rewards</p>
-              <p className="mt-2 text-2xl font-black text-success">250 USDT</p>
+              <p className="mt-2 text-2xl font-black text-success">
+                {clientRecentReferrals.reduce((sum, r) => {
+                  const n = parseFloat(r.reward.replace(/[^0-9.]/g, ''));
+                  return sum + (Number.isFinite(n) ? n : 0);
+                }, 0).toFixed(0)} USDT
+              </p>
             </div>
           </div>
         </div>
@@ -55,11 +77,11 @@ export const Referral = () => {
             </div>
 
             <div className="mt-4 rounded-[1.75rem] border border-gray-800 bg-dark-800/70 p-5">
-              <p className="font-mono text-sm leading-relaxed text-white">{referralLink}</p>
+              <p className="break-all font-mono text-sm leading-relaxed text-white">{referralLink}</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={copyReferralLink}
+                  onClick={() => void copyReferralLink()}
                   className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black uppercase tracking-[0.16em] text-dark-900 transition-colors hover:bg-yellow-400"
                 >
                   <Copy size={16} />
@@ -67,7 +89,7 @@ export const Referral = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={copyReferralLink}
+                  onClick={() => void copyReferralLink()}
                   className="flex items-center gap-2 rounded-2xl border border-gray-800 bg-dark-900 px-4 py-3 text-sm font-black uppercase tracking-[0.16em] text-gray-300 transition-colors hover:text-white"
                 >
                   <Share2 size={16} />
@@ -85,22 +107,26 @@ export const Referral = () => {
             </div>
 
             <div className="mt-4 space-y-3">
-              {recentReferrals.map((referral) => (
-                <div key={referral.id} className="rounded-[1.5rem] border border-gray-800 bg-dark-800/70 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-bold text-white">{referral.name}</p>
-                      <p className="mt-1 text-sm text-gray-500">{referral.joinedAt}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-success">
-                        {referral.status}
-                      </span>
-                      <p className="mt-2 text-sm font-bold text-primary">{referral.reward}</p>
+              {clientRecentReferrals.length === 0 ? (
+                <p className="py-6 text-center text-sm text-gray-500">No referrals yet. Share your link to get started.</p>
+              ) : (
+                clientRecentReferrals.map((referral) => (
+                  <div key={referral.id} className="rounded-[1.5rem] border border-gray-800 bg-dark-800/70 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-bold text-white">{referral.name}</p>
+                        <p className="mt-1 text-sm text-gray-500">{referral.joinedAt}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-success">
+                          {referral.status}
+                        </span>
+                        <p className="mt-2 text-sm font-bold text-primary">{referral.reward}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
         </div>
@@ -113,17 +139,21 @@ export const Referral = () => {
             </div>
 
             <div className="mt-4 space-y-3">
-              {referralMilestones.map((milestone) => (
-                <div key={milestone.label} className="rounded-[1.5rem] border border-gray-800 bg-dark-800/70 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-bold text-white">{milestone.label}</p>
-                      <p className="mt-1 text-sm text-gray-500">{milestone.requirement}</p>
+              {clientReferralMilestones.length === 0 ? (
+                <p className="py-6 text-center text-sm text-gray-500">No milestones configured.</p>
+              ) : (
+                clientReferralMilestones.map((milestone) => (
+                  <div key={milestone.label} className="rounded-[1.5rem] border border-gray-800 bg-dark-800/70 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-bold text-white">{milestone.label}</p>
+                        <p className="mt-1 text-sm text-gray-500">{milestone.requirement}</p>
+                      </div>
+                      <span className="text-sm font-black text-primary">{milestone.reward}</span>
                     </div>
-                    <span className="text-sm font-black text-primary">{milestone.reward}</span>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 
@@ -134,18 +164,24 @@ export const Referral = () => {
               </div>
               <div>
                 <p className="text-sm font-bold text-white">Referral Performance</p>
-                <p className="text-sm text-gray-500">Your invite conversion is above the current desk average.</p>
+                <p className="text-sm text-gray-500">
+                  {totalReferrals > 0
+                    ? 'Your invite conversion is above the current desk average.'
+                    : 'Share your referral link to start tracking performance.'}
+                </p>
               </div>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-3xl border border-gray-800 bg-dark-800/70 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Conversion Rate</p>
-                <p className="mt-2 text-2xl font-black text-white">100%</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Total Referrals</p>
+                <p className="mt-2 text-2xl font-black text-white">{totalReferrals}</p>
               </div>
               <div className="rounded-3xl border border-gray-800 bg-dark-800/70 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Next Reward</p>
-                <p className="mt-2 text-2xl font-black text-primary">4 Invites</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Next Milestone</p>
+                <p className="mt-2 text-2xl font-black text-primary">
+                  {clientReferralMilestones.length > 0 ? clientReferralMilestones[0].label : '—'}
+                </p>
               </div>
             </div>
           </section>
