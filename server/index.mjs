@@ -380,15 +380,19 @@ const serveStoredFile = async (id, res) => {
 // ─── KYC document helpers ─────────────────────────────────────────────────────
 
 const buildStoredKycDocuments = (files, uploadedAt) =>
-  files.map((file) => ({
-    id: createPrefixedId('kyc-doc'),
-    fieldName: file.fieldname,
-    label: kycDocumentLabels[file.fieldname] ?? sanitizeFileName(file.fieldname, 'Supporting Document'),
-    originalName: sanitizeFileName(file.originalname, 'document'),
-    mimeType: file.mimetype,
-    sizeBytes: Number(file.size ?? 0),
-    uploadedAt,
-  }));
+  files.map((file) => {
+    const id = createPrefixedId('kyc-doc');
+    return {
+      id,
+      storedName: id,
+      fieldName: file.fieldname,
+      label: kycDocumentLabels[file.fieldname] ?? sanitizeFileName(file.fieldname, 'Supporting Document'),
+      originalName: sanitizeFileName(file.originalname, 'document'),
+      mimeType: file.mimetype,
+      sizeBytes: Number(file.size ?? 0),
+      uploadedAt,
+    };
+  });
 
 const saveKycFilesToDb = async (files, documents) => {
   for (let i = 0; i < files.length; i++) {
@@ -1320,29 +1324,11 @@ app.get('/api/kyc/cases/:caseId/documents/:documentId', requireAuth, async (req,
   }
 
   const document = readKycDocuments(kycCase).find((item) => item.id === documentId);
-  if (!document || !document.storedName) {
+  if (!document) {
     return res.status(404).json({ message: 'KYC document not found.' });
   }
 
-  const filePath = join(secureKycUploadsDir, document.storedName);
-  if (!existsSync(filePath)) {
-    return res.status(404).json({ message: 'KYC document file is unavailable.' });
-  }
-
-  if (document.mimeType) {
-    res.setHeader('Content-Type', document.mimeType);
-  }
-
-  if (document.sizeBytes > 0) {
-    res.setHeader('Content-Length', String(document.sizeBytes));
-  }
-
-  res.setHeader(
-    'Content-Disposition',
-    `inline; filename="${sanitizeFileName(document.originalName, 'document')}"`,
-  );
-
-  return createReadStream(filePath).pipe(res);
+  return serveStoredFile(document.id, res);
 });
 
 app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req, res) => {

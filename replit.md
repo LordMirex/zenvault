@@ -104,19 +104,27 @@ Render's free tier spins down after 15 minutes of inactivity. Set up a free cron
 - **Settings**: General branding, email (SMTP), wallet configuration
 - **Live Price Feed**: CoinGecko prices updated every 60 seconds
 
+## File Storage
+
+All user-uploaded files (KYC documents, logos, favicons, profile images) are stored as binary data (`BYTEA`) in the `file_uploads` PostgreSQL table — never on disk. Files survive every restart and redeploy. Multer uses `memoryStorage()` so uploads never touch the filesystem.
+
 ## File Structure
 
 ```
 server/
-  index.mjs       — Express app (all API routes)
-  db.mjs          — PostgreSQL pool + named-param query helpers
-  schema.mjs      — Table creation + seeding on startup
-  auth.mjs        — JWT + bcrypt helpers
-  config.mjs      — Environment config
-  mailer.mjs      — Branded email builder + SMTP client
-  price-feed.mjs  — CoinGecko price polling
-  data/seed.mjs   — Seed data (users, transactions, settings)
-src/              — React frontend
+  index.mjs         — Express app (all API routes)
+  db.mjs            — PostgreSQL pool + named-param query helpers
+  schema.mjs        — Table creation + seeding on startup
+  auth.mjs          — JWT + bcrypt helpers
+  config.mjs        — Environment config
+  mailer.mjs        — Branded email builder + SMTP client
+  price-feed.mjs    — CoinGecko price polling
+  assets.mjs        — Wallet asset and holdings helpers
+  wallets.mjs       — Wallet configuration
+  settings.mjs      — General settings helpers
+  session-utils.mjs — Session management
+  data/seed.mjs     — Seed data (users, transactions, settings)
+src/                — React frontend (TypeScript + Vite)
 scripts/
-  prestart.cjs    — Auto-build check before server starts
+  prestart.cjs      — Auto-build check before server starts
 ```
