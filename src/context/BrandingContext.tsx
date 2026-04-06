@@ -34,8 +34,8 @@ export type BrandingSettings = {
 const defaultBranding: BrandingSettings = {
   siteName: 'My Wallet',
   siteUrl: typeof window === 'undefined' ? '' : window.location.origin,
-  logoUrl: '',
-  faviconUrl: '',
+  logoUrl: '/logo.png',
+  faviconUrl: '/favicon.png',
   publicTopbarLabel: 'Welcome',
   publicTopbarText:
     'Secure digital asset management with guided support and transparent pricing.',
