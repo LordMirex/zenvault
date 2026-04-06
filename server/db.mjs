@@ -1,5 +1,4 @@
 import Database from 'better-sqlite3';
-import { copyFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -7,27 +6,13 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const BUNDLE_DB_PATH = resolve(__dirname, 'data', 'qfs_wallet.db');
-const VERCEL_TMP_PATH = '/tmp/qfs_wallet.db';
-
-const resolveDbPath = () => {
-  if (process.env.VERCEL) {
-    if (!existsSync(VERCEL_TMP_PATH)) {
-      copyFileSync(BUNDLE_DB_PATH, VERCEL_TMP_PATH);
-    }
-    return VERCEL_TMP_PATH;
-  }
-  if (process.env.SQLITE_DB_PATH) {
-    return process.env.SQLITE_DB_PATH;
-  }
-  return BUNDLE_DB_PATH;
-};
+const DB_PATH = process.env.SQLITE_DB_PATH || resolve(__dirname, 'data', 'qfs_wallet.db');
 
 let db;
 
 export const getDb = () => {
   if (!db) {
-    db = new Database(resolveDbPath());
+    db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
   }

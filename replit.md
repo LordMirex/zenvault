@@ -27,83 +27,68 @@ If you need to sync data from a MySQL dump: `npm run db:import path/to/dump.sql`
 
 - `npm run dev` — Runs Vite (port 5000) and Express API (port 4000) concurrently
 - `npm run build` — TypeScript compile + Vite build
-- `npm run start:prod` — **Production**: builds frontend then starts server on port 4000
+- `npm start` — Starts the Express server (serves API + built frontend)
 - `npm run db:setup` — Wipes and recreates tables with seed data (destructive!)
 - `npm run db:import <dump.sql>` — Sync data from a MySQL dump into SQLite (safe upsert)
 
-## Deploying on Render (Recommended — Free Tier)
+## Deploying on Render (Free Tier)
 
-Render runs a real server (not serverless), so SQLite works fully with data persisting for the lifetime of the running instance.
-
-### Steps:
-1. Push the repo to GitHub
-2. Go to [render.com](https://render.com) → New → Web Service
-3. Connect your GitHub repo — Render will auto-detect `render.yaml`
-4. Set **one** environment variable manually in the Render dashboard:
-   - `JWT_SECRET` — any random string of 40+ characters (e.g. generate with `openssl rand -hex 32`)
-   - *(Optional)* `CLIENT_ORIGIN` — your custom domain if you have one (e.g. `https://zenvault.one`)
-5. Click **Deploy** — Render builds and starts automatically
-
-Render auto-detects `PORT`, `NODE_ENV=production`, and `RENDER_EXTERNAL_URL` (used for CORS). No further config needed.
-
-> **Note on free tier**: Render's free tier spins the service down after 15 minutes of inactivity. The first request after sleep takes ~30 seconds to wake up. SQLite data persists while the service is running but resets to the bundled database on redeploy or restart.
-
-## Deploying on Vercel (Frontend + API)
-
-Vercel is serverless — the API works but SQLite data does **not persist** between function invocations. Suitable only if you only need read access to the bundled DB.
+Render runs a real persistent server — SQLite works fully, all data persists while the service is live.
 
 ### Steps:
-1. Push to GitHub
-2. Import the repo at [vercel.com](https://vercel.com)
-3. Set environment variables in Vercel dashboard:
-   - `JWT_SECRET` — same as above
-   - `NODE_ENV=production`
-4. Deploy — `vercel.json` handles all routing automatically
+1. Push repo to GitHub
+2. Go to [render.com](https://render.com) → **New → Web Service**
+3. Connect your GitHub repo — Render auto-detects `render.yaml`
+4. In the Render dashboard, set this one environment variable:
+   - `JWT_SECRET` — any random string of 40+ characters
+5. Click **Deploy**
+
+Everything else (`PORT`, `NODE_ENV=production`, CORS for `.onrender.com`) is handled automatically.
+
+> **Free tier note**: Service sleeps after 15 min of inactivity (30s wake-up on first request). SQLite data persists while running but resets to the bundled DB on redeploy.
 
 ## VPS Deployment (AAPanel / NodePanel)
 
 1. Clone/pull the repo — database is already included
 2. Set environment variables: `JWT_SECRET` (min 32 chars), `CLIENT_ORIGIN` (e.g. `https://zenvault.one`), `NODE_ENV=production`
-3. Run `npm install`
-4. **Run opt**: `start:prod` | **Port**: `4000`
-5. Save and boot
+3. Run `npm install && npm run build`
+4. **Start command**: `npm start` | **Port**: `4000`
 
 ## Environment Variables
 
-- `JWT_SECRET` — Required, min 32 chars
-- `CLIENT_ORIGIN` — CORS origin for production (e.g. `https://zenvault.one`). Auto-detected on Render/Vercel.
-- `NODE_ENV` — Set to `production` on VPS
-- `PORT` — Used by Render automatically
-- `API_PORT` — Express port override (default 4000)
-- `ACCESS_TOKEN_TTL` — JWT expiry (default 12h)
-- `PENDING_TOKEN_TTL` — Pending token expiry (default 10m)
+| Variable | Required | Description |
+|---|---|---|
+| `JWT_SECRET` | Always | Min 32 chars, random string |
+| `NODE_ENV` | Production | Set to `production` |
+| `CLIENT_ORIGIN` | VPS only | Your domain, e.g. `https://zenvault.one`. Auto-detected on Render. |
+| `PORT` | Render only | Set automatically by Render |
+| `API_PORT` | Optional | Express port override (default 4000) |
+| `ACCESS_TOKEN_TTL` | Optional | JWT expiry (default `12h`) |
+| `PENDING_TOKEN_TTL` | Optional | Pending token expiry (default `10m`) |
 
-## Managed Platform Detection
+## Platform Detection
 
-The server auto-detects its environment and adjusts accordingly:
-- `VERCEL=1` → serverless mode, SQLite copied to `/tmp`, `.vercel.app` origins allowed
-- `RENDER=1` → `PORT` env used, `.onrender.com` origins allowed, `CLIENT_ORIGIN` optional
-- `REPLIT_DEV_DOMAIN` → dev mode allows `.replit.dev` origins
+- `RENDER=1` (set by Render automatically) → uses `PORT`, allows `.onrender.com` CORS, `CLIENT_ORIGIN` optional
+- `REPLIT_DEV_DOMAIN` → dev mode, allows `.replit.dev` CORS
 
 ## Admin Features
 
-- **User Detail Edit**: Admin can edit user profile fields (name, email, country, tier, status, KYC status, risk level, plan, desk label, note) via PUT /api/admin/users/:userId
-- **Dashboard Alerts**: Admin can add and dismiss alerts from the dashboard (POST/DELETE /api/admin/alerts)
-- **Crypto Records Live Prices**: Admin crypto records page polls /api/prices every 30s and shows live price + 24h change per asset
-- **Wallet Address**: Admin can set per-user deposit addresses via the crypto records page; address saved to user's holdings_json
-- **Broadcast / Email**: Admin header has a Megaphone quick-access button linking to the Broadcasts page (POST /api/admin/broadcasts)
-- **Send Transaction Alert**: Admin crypto records page has a "Send Transaction Alert" form — sends in-app notification + branded email to the user and optionally creates a transaction record (POST /api/admin/users/:userId/notify)
-- **Cards Quick-Access**: Admin user list table now has a CreditCard icon action linking directly to the user's card management page
-- **Wallet Funding**: Admin can top-up or debit any user coin holding directly from the crypto records page (PUT /api/admin/users/:userId/assets/:assetId)
+- **User Detail Edit**: PUT /api/admin/users/:userId
+- **Dashboard Alerts**: POST/DELETE /api/admin/alerts
+- **Crypto Records Live Prices**: polls /api/prices every 30s
+- **Wallet Address**: per-user deposit addresses via crypto records page
+- **Broadcast / Email**: POST /api/admin/broadcasts
+- **Send Transaction Alert**: POST /api/admin/users/:userId/notify
+- **Cards Quick-Access**: CreditCard icon on user list table
+- **Wallet Funding**: PUT /api/admin/users/:userId/assets/:assetId
 
 ## Live Price Feed
 
-Crypto prices fetched from CoinGecko every 60 seconds for 19 supported assets. Field name is `change` (not `changePercent24h`) for 24h percent change.
+Crypto prices fetched from CoinGecko every 60 seconds for 19 supported assets. Field: `asset.change` (24h percent change).
 
 ## Important Notes for Server Edits
 
-- `server/index.mjs` has Windows CRLF line endings — edits via the `edit` tool can fail. Use `write` (full rewrite) or `node -e` bash scripts for reliable modifications.
-- Price feed asset field: `asset.change` (not `asset.changePercent24h`)
+- `server/index.mjs` has mixed CRLF/LF line endings — use `node -e` bash scripts for reliable modifications (not the edit tool).
 
 ## Login Credentials
 

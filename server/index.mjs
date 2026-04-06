@@ -60,8 +60,6 @@ app.disable('x-powered-by');
 const allowedOrigins = new Set(
   [
     config.clientOrigin,
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null,
     process.env.RENDER_EXTERNAL_URL || null,
     ...(config.isProduction
       ? []
@@ -78,8 +76,6 @@ const allowedOrigins = new Set(
 const isReplitOrigin = (origin) =>
   !config.isProduction && typeof origin === 'string' && origin.endsWith('.replit.dev');
 
-const isVercelOrigin = (origin) =>
-  config.isVercel && typeof origin === 'string' && origin.endsWith('.vercel.app');
 
 const isRenderOrigin = (origin) =>
   config.isRender && typeof origin === 'string' && origin.endsWith('.onrender.com');
@@ -132,7 +128,7 @@ const signupLimiter = createRateLimitMiddleware({
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin) || isReplitOrigin(origin) || isVercelOrigin(origin) || isRenderOrigin(origin)) {
+      if (!origin || allowedOrigins.has(origin) || isReplitOrigin(origin) || isRenderOrigin(origin)) {
         return callback(null, true);
       }
 
@@ -2676,11 +2672,7 @@ app.get('{*path}', (_req, res) => {
   res.sendFile(join(distDir, 'index.html'));
 });
 
-// Export the Express app for serverless environments (e.g. Vercel)
-export default app;
 
-// Only start the HTTP server when running directly (not in serverless mode)
-if (!process.env.VERCEL) {
 app.listen(config.apiPort, () => {
   console.log(`API server running on http://localhost:${config.apiPort}`);
 
@@ -2696,4 +2688,3 @@ app.listen(config.apiPort, () => {
   void runPriceTask();
   setInterval(runPriceTask, 60000);
 });
-}
