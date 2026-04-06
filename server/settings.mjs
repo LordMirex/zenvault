@@ -6,8 +6,8 @@ const trimLowercase = (value) => trimString(value).toLowerCase();
 export const defaultGeneralSettings = {
   siteName: 'My Wallet',
   siteUrl: String(config.clientOrigin ?? 'http://localhost:5173').replace(/\/$/, ''),
-  logoUrl: '',
-  faviconUrl: '',
+  logoUrl: '/logo.png',
+  faviconUrl: '/favicon.png',
   companyName: '',
   publicTopbarLabel: 'Welcome',
   publicTopbarText:
