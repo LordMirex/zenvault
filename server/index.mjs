@@ -43,24 +43,22 @@ const allowedOrigins = new Set(
   [
     config.clientOrigin,
     process.env.RENDER_EXTERNAL_URL || null,
-    ...(config.isProduction
-      ? []
-      : [
-        'http://localhost:4173',
-        'http://127.0.0.1:4173',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null,
-      ]),
+    'http://localhost:4173',
+    'http://127.0.0.1:4173',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
+    process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null,
+    process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : null,
   ].filter(Boolean),
 );
 
 const isReplitOrigin = (origin) =>
-  !config.isProduction && typeof origin === 'string' && origin.endsWith('.replit.dev');
-
+  typeof origin === 'string' && (origin.endsWith('.replit.dev') || origin.endsWith('.replit.app'));
 
 const isRenderOrigin = (origin) =>
-  config.isRender && typeof origin === 'string' && origin.endsWith('.onrender.com');
+  typeof origin === 'string' && origin.endsWith('.onrender.com');
 
 const rateLimitState = new Map();
 
