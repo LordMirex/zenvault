@@ -1,12 +1,12 @@
-# QFS Wallet Full Stack
+# QFS Wallet — Full Stack Platform
 
-A full-stack crypto wallet and OTC trading platform built with React + Vite (frontend) and Express (backend), using SQLite for the database.
+A full-stack crypto wallet and OTC trading platform built with React + Vite (frontend) and Express (backend), using **PostgreSQL** for the database.
 
 ## Architecture
 
-- **Frontend**: React 18 + TypeScript + Vite, running on port 5000
-- **Backend**: Express 5 API, running on port 4000
-- **Database**: SQLite via `better-sqlite3` (file: `server/data/qfs_wallet.db`)
+- **Frontend**: React 18 + TypeScript + Vite, port 5000 (dev)
+- **Backend**: Express 5 API, port 4000 (dev) / `PORT` env var (production)
+- **Database**: PostgreSQL via `pg` — auto-initialised on first boot, seeded automatically
 - **Auth**: JWT-based with bcryptjs hashing, two-step (password + passcode)
 
 ## Key Routes
@@ -15,86 +15,108 @@ A full-stack crypto wallet and OTC trading platform built with React + Vite (fro
 - `/login`, `/signup`, `/passcode` — Auth flows
 - `/app` — User wallet and trading portal
 - `/admin` — Operations dashboard
+- `/ping` — Keepalive endpoint (returns `pong`, used by cron job)
 
 ## Database
 
-SQLite file at `server/data/qfs_wallet.db` — committed to the repo so it travels with the code. No setup steps needed on a fresh clone.
+PostgreSQL is used in all environments. On first boot the server:
+1. Creates all tables (users, transactions, kyc_cases, settings)
+2. Seeds the admin user and demo users if the DB is empty
+3. No manual setup steps needed
 
-If you ever need to wipe and reseed from scratch: `npm run db:setup` (destructive).
-If you need to sync data from a MySQL dump: `npm run db:import path/to/dump.sql`
+**Connection**: Set `DATABASE_URL` environment variable.
 
 ## Scripts
 
 - `npm run dev` — Runs Vite (port 5000) and Express API (port 4000) concurrently
 - `npm run build` — TypeScript compile + Vite build
-- `npm start` — Starts the Express server (serves API + built frontend)
-- `npm run db:setup` — Wipes and recreates tables with seed data (destructive!)
-- `npm run db:import <dump.sql>` — Sync data from a MySQL dump into SQLite (safe upsert)
+- `npm start` — Starts the Express server (auto-builds if `dist/` missing, then serves API + frontend)
 
-## Deploying on Render (Free Tier)
+## Deploying on Render (Free Tier) — Step by Step
 
-Render runs a real persistent server — SQLite works fully, all data persists while the service is live.
+### 1. Create a PostgreSQL database on Render
+- Go to [render.com](https://render.com) → **New → PostgreSQL**
+- Name: `zenvault-db`, Plan: **Free** → Create
+- Copy the **Internal Database URL** (used in step 3)
 
-### Steps:
-1. Push repo to GitHub
-2. Go to [render.com](https://render.com) → **New → Web Service**
-3. Connect your GitHub repo — Render auto-detects `render.yaml`
-4. In the Render dashboard, set this one environment variable:
-   - `JWT_SECRET` — any random string of 40+ characters
-5. Click **Deploy**
+### 2. Create a Web Service
+- Go to **New → Web Service** → Connect your GitHub repo
+- Render will detect `render.yaml` automatically
 
-Everything else (`PORT`, `NODE_ENV=production`, CORS for `.onrender.com`) is handled automatically.
+### 3. Set Environment Variables in the Render Dashboard
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Internal Database URL from step 1 |
+| `JWT_SECRET` | Any random 40+ character string (generate at randomkeygen.com) |
+| `NODE_ENV` | `production` |
 
-> **Free tier note**: Service sleeps after 15 min of inactivity (30s wake-up on first request). SQLite data persists while running but resets to the bundled DB on redeploy.
+> **Note**: If you use `render.yaml` to create the service fresh, `DATABASE_URL` is wired automatically from the linked database. Manual services need the env var set by hand.
 
-## VPS Deployment (AAPanel / NodePanel)
+### 4. Deploy
+Click **Manual Deploy → Deploy latest commit**. Render will:
+1. Run `npm install && npm run build`
+2. Start with `npm start` → prestart auto-builds if dist is missing
+3. Connect to PostgreSQL, initialise schema, seed data
+4. Go live ✅
 
-1. Upload the `deploy.zip` (includes pre-built `dist/`) or clone/pull the repo
-2. Set environment variables: `JWT_SECRET` (min 32 chars), `CLIENT_ORIGIN` (e.g. `https://zenvault.one`), `NODE_ENV=production`
-3. Run `npm install`
-4. **Start command**: `npm run start:prod` | **Port**: `4000`
+## Keeping the Site Alive (Cron Job)
 
-> `npm run start:prod` automatically builds the frontend then starts the server.
-> If you use `npm start` directly, you MUST run `npm run build` first — otherwise the site shows a blank white page.
-> The easiest option: always use `npm run start:prod` on the VPS.
+Render's free tier spins down after 15 minutes of inactivity. Set up a free cron job to ping the server:
+
+1. Go to [cron-job.org](https://cron-job.org) → Create free account
+2. **New cronjob**:
+   - URL: `https://your-service.onrender.com/ping`
+   - Schedule: Every **14 minutes**
+   - Enable → Save
+3. Done — your server never sleeps
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `JWT_SECRET` | Always | Min 32 chars, random string |
+| `DATABASE_URL` | **Always** | PostgreSQL connection string |
+| `JWT_SECRET` | **Always** | Min 32 chars, strong random string |
 | `NODE_ENV` | Production | Set to `production` |
-| `CLIENT_ORIGIN` | VPS only | Your domain, e.g. `https://zenvault.one`. Auto-detected on Render. |
-| `PORT` | Render only | Set automatically by Render |
-| `API_PORT` | Optional | Express port override (default 4000) |
+| `PORT` | Render auto | Set automatically by Render |
 | `ACCESS_TOKEN_TTL` | Optional | JWT expiry (default `12h`) |
 | `PENDING_TOKEN_TTL` | Optional | Pending token expiry (default `10m`) |
 
 ## Platform Detection
 
-- `RENDER=1` (set by Render automatically) → uses `PORT`, allows `.onrender.com` CORS, `CLIENT_ORIGIN` optional
+- `RENDER=1` (set by Render automatically) → uses `PORT`, allows `.onrender.com` CORS
 - `REPLIT_DEV_DOMAIN` → dev mode, allows `.replit.dev` CORS
+
+## Login Credentials (Seed Data)
+
+| Account | Email | Password | Passcode |
+|---|---|---|---|
+| Admin | `support@developerplug.com` | `12345678` | `123456` |
+| Power User | `ofofonobs@gmail.com` | `12345678` | `123456` |
+| Review User | `c0d3g0d.01@gmail.com` | `12345678` | `123456` |
+| Growth User | `ava.martins@qfstrading.com` | `12345678` | `123456` |
 
 ## Admin Features
 
-- **User Detail Edit**: PUT /api/admin/users/:userId
-- **Dashboard Alerts**: POST/DELETE /api/admin/alerts
-- **Crypto Records Live Prices**: polls /api/prices every 30s
-- **Wallet Address**: per-user deposit addresses via crypto records page
-- **Broadcast / Email**: POST /api/admin/broadcasts
-- **Send Transaction Alert**: POST /api/admin/users/:userId/notify
-- **Cards Quick-Access**: CreditCard icon on user list table
-- **Wallet Funding**: PUT /api/admin/users/:userId/assets/:assetId
+- **User Management**: View, edit, fund wallets, manage KYC
+- **Transaction Approval**: Approve / decline pending withdrawals
+- **Admin Email Notifications**: Receives email when users submit withdrawals
+- **Broadcast Email**: Send emails to all users or targeted users
+- **Settings**: General branding, email (SMTP), wallet configuration
+- **Live Price Feed**: CoinGecko prices updated every 60 seconds
 
-## Live Price Feed
+## File Structure
 
-Crypto prices fetched from CoinGecko every 60 seconds for 19 supported assets. Field: `asset.change` (24h percent change).
-
-## Important Notes for Server Edits
-
-- `server/index.mjs` has mixed CRLF/LF line endings — use `node -e` bash scripts for reliable modifications (not the edit tool).
-
-## Login Credentials
-
-- User: `ofofonobs@gmail.com` / `12345678` / passcode `123456`
-- Admin: `support@developerplug.com` / `12345678` / passcode `123456`
+```
+server/
+  index.mjs       — Express app (all API routes)
+  db.mjs          — PostgreSQL pool + named-param query helpers
+  schema.mjs      — Table creation + seeding on startup
+  auth.mjs        — JWT + bcrypt helpers
+  config.mjs      — Environment config
+  mailer.mjs      — Branded email builder + SMTP client
+  price-feed.mjs  — CoinGecko price polling
+  data/seed.mjs   — Seed data (users, transactions, settings)
+src/              — React frontend
+scripts/
+  prestart.cjs    — Auto-build check before server starts
+```

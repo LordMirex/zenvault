@@ -6,7 +6,8 @@ import { createReadStream, existsSync, mkdirSync, unlinkSync } from 'fs';
 import multer from 'multer';
 import { compareSecret, createAccessToken, hashSecret, verifyToken } from './auth.mjs';
 import { config } from './config.mjs';
-import { closeDb, getDb, query, queryOne } from './db.mjs';
+import { closeDb, query, queryOne } from './db.mjs';
+import { initSchema } from './schema.mjs';
 import {
   buildBrandedEmail,
   createMailClient,
@@ -44,16 +45,8 @@ const ensureDirectory = (targetPath) => {
   }
 };
 
-const ensureColumn = (tableName, columnName, definition) => {
-  const columns = getDb().prepare(`PRAGMA table_info(${tableName})`).all();
-  if (!columns.some((column) => column.name === columnName)) {
-    getDb().prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
-  }
-};
-
 ensureDirectory(publicUploadsDir);
 ensureDirectory(secureKycUploadsDir);
-ensureColumn('kyc_cases', 'documents_json', "TEXT NOT NULL DEFAULT '[]'");
 
 const app = express();
 app.disable('x-powered-by');
@@ -2696,6 +2689,9 @@ app.use((error, _req, res, next) => {
   return res.status(status).json({ message: error.message || 'Request failed.' });
 });
 
+// Keepalive ping — used by external cron to prevent Render free-tier spin-down
+app.get('/ping', (_req, res) => res.status(200).send('pong'));
+
 app.use('/api', (_req, res) => {
   return res.status(404).json({ message: 'API endpoint not found.' });
 });
@@ -2705,29 +2701,12 @@ app.get('{*path}', (_req, res) => {
   res.sendFile(join(distDir, 'index.html'));
 });
 
-
-app.listen(config.apiPort, () => {
-  console.log(`API server running on http://localhost:${config.apiPort}`);
-
-  // Initialize and start background price feed task
-  const runPriceTask = async () => {
-    try {
-      await priceFeed.update();
-    } catch (error) {
-      console.error('Price Task failed', error);
-    }
-  };
-
-  void runPriceTask();
-  setInterval(runPriceTask, 60000);
-});
-
-// Graceful shutdown — checkpoint WAL and flush DB to disk before exit
-const shutdown = (signal) => {
-  console.log(`[shutdown] Received ${signal}. Closing database...`);
+// Graceful shutdown
+const shutdown = async (signal) => {
+  console.log(`[shutdown] Received ${signal}. Closing database pool...`);
   try {
-    closeDb();
-    console.log('[shutdown] Database closed cleanly.');
+    await closeDb();
+    console.log('[shutdown] Database pool closed cleanly.');
   } catch (error) {
     console.error('[shutdown] Error closing database:', error);
   }
@@ -2736,3 +2715,28 @@ const shutdown = (signal) => {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Async startup — initialise schema before accepting requests
+const startServer = async () => {
+  await initSchema();
+
+  app.listen(config.apiPort, () => {
+    console.log(`API server running on http://localhost:${config.apiPort}`);
+
+    const runPriceTask = async () => {
+      try {
+        await priceFeed.update();
+      } catch (error) {
+        console.error('Price Task failed', error);
+      }
+    };
+
+    void runPriceTask();
+    setInterval(runPriceTask, 60000);
+  });
+};
+
+startServer().catch((err) => {
+  console.error('[startup] Fatal error:', err);
+  process.exit(1);
+});

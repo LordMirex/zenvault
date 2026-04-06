@@ -1,48 +1,61 @@
-import Database from 'better-sqlite3';
-import { resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import pg from 'pg';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const { Pool } = pg;
 
-const DB_PATH = process.env.SQLITE_DB_PATH || resolve(__dirname, 'data', 'qfs_wallet.db');
+let pool;
 
-let db;
-
-export const getDb = () => {
-  if (!db) {
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
+export const getPool = () => {
+  if (!pool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('DATABASE_URL is not set. Add it to your environment variables.');
+    }
+    pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+    pool.on('error', (err) => {
+      console.error('[db] Unexpected pool error:', err.message);
+    });
   }
-  return db;
+  return pool;
 };
 
-function convertNamedParams(sql) {
-  return sql.replace(/:([a-zA-Z_]\w*)/g, '@$1');
-}
+// Convert :named params to $1, $2... positional params for PostgreSQL
+const convertNamedParams = (sql, params = {}) => {
+  const values = [];
+  const seen = {};
+  let counter = 0;
+
+  const text = sql.replace(/:([a-zA-Z_]\w*)/g, (_, name) => {
+    if (!(name in seen)) {
+      seen[name] = ++counter;
+      values.push(params[name] ?? null);
+    }
+    return `$${seen[name]}`;
+  });
+
+  return { text, values };
+};
 
 export const query = async (sql, params = {}) => {
-  const text = convertNamedParams(sql);
-  const stmt = getDb().prepare(text);
-  const upper = text.trimStart().toUpperCase();
-  if (upper.startsWith('SELECT') || upper.startsWith('WITH')) {
-    return stmt.all(params);
-  }
-  stmt.run(params);
-  return [];
+  const { text, values } = convertNamedParams(sql, params);
+  const result = await getPool().query(text, values);
+  return result.rows;
 };
 
 export const queryOne = async (sql, params = {}) => {
-  const text = convertNamedParams(sql);
-  const stmt = getDb().prepare(text);
-  return stmt.get(params) ?? null;
+  const { text, values } = convertNamedParams(sql, params);
+  const result = await getPool().query(text, values);
+  return result.rows[0] ?? null;
 };
 
-export const closeDb = () => {
-  if (db) {
-    db.close();
-    db = undefined;
+export const closeDb = async () => {
+  if (pool) {
+    await pool.end();
+    pool = null;
   }
 };

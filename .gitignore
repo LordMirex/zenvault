@@ -3,7 +3,8 @@ _archive
 attached_assets
 dist
 .env
-# SQLite WAL temp files (auto-generated, not needed in repo)
+# SQLite files — no longer used (migrated to PostgreSQL)
+*.db
 *.db-wal
 *.db-shm
 # Zip/archive files - never commit these
