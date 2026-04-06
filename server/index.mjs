@@ -902,6 +902,10 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
     return res.status(400).json({ message: 'Full name, email, and password are required.' });
   }
 
+  if (password.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+  }
+
   const existing = await queryOne('SELECT id FROM users WHERE email = :email', { email });
   if (existing) {
     return res.status(409).json({ message: 'An account with that email already exists.' });
@@ -918,7 +922,7 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, :phone, :city, :uuid, 'Nigeria', 'New Account', 'Tier 1', 'Active', 'Pending', 'Medium',
+      :id, 'user', :name, :email, :phone, :city, :uuid, '', 'New Account', 'Tier 1', 'Active', 'Pending', 'Medium',
       0, 0, 0, 0, 1, 'Starter', 'Just created', 'New signup awaiting funding.',
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
@@ -1614,8 +1618,8 @@ app.get('/api/admin/bootstrap', requireAuth, requireRole('admin'), async (_req, 
 app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) => {
   const name = String(req.body.name ?? '').trim();
   const email = String(req.body.email ?? '').trim().toLowerCase();
-  const password = String(req.body.password ?? '12345678');
-  const country = String(req.body.country ?? 'Nigeria');
+  const password = String(req.body.password ?? createTemporaryPassword());
+  const country = String(req.body.country ?? '');
   const tier = String(req.body.tier ?? 'Tier 1');
   const status = String(req.body.status ?? 'Active');
   const kycStatus = String(req.body.kycStatus ?? 'Pending');
@@ -1624,6 +1628,10 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
 
   if (!name || !email) {
     return res.status(400).json({ message: 'Name and email are required.' });
+  }
+
+  if (password && password.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters.' });
   }
 
   const existing = await queryOne('SELECT id FROM users WHERE email = :email', { email });
@@ -1652,7 +1660,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       email,
       uuid,
       country,
-      deskLabel: String(req.body.deskLabel ?? 'New Desk'),
+      deskLabel: String(req.body.deskLabel ?? ''),
       tier,
       status,
       kycStatus,

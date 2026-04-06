@@ -14,11 +14,12 @@ import {
 export const AdminUserCreatePage = () => {
   const { createAdminUser } = useAuth();
   const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     name: '',
     email: '',
-    password: '12345678',
+    password: '',
     uuid: '',
     country: '',
     deskLabel: '',
@@ -36,6 +37,18 @@ export const AdminUserCreatePage = () => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  const resetForm = () => {
+    setForm((current) => ({
+      ...current,
+      name: '',
+      email: '',
+      password: '',
+      uuid: '',
+      note: '',
+      requireKyc: true,
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <Link to="/admin/users" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900">
@@ -50,32 +63,47 @@ export const AdminUserCreatePage = () => {
 
       {saved && (
         <AdminCard className="border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
-          User created successfully. The account is now available in the user list and a welcome email has been sent.
+          User created successfully. The account is now available in the user list and a welcome email has been sent to the address provided.
         </AdminCard>
       )}
 
-      {error && <AdminCard className="border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700">{error}</AdminCard>}
+      {error && (
+        <AdminCard className="border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700">
+          {error}
+        </AdminCard>
+      )}
 
       <form
         className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]"
         onSubmit={async (event) => {
           event.preventDefault();
+          setError('');
+
+          if (!form.name.trim()) {
+            setError('Full name is required.');
+            return;
+          }
+          if (!form.email.trim()) {
+            setError('Email address is required.');
+            return;
+          }
+          if (form.password && form.password.length < 8) {
+            setError('Password must be at least 8 characters.');
+            return;
+          }
+
+          setSubmitting(true);
           try {
             await createAdminUser({
               ...form,
               kycStatus: form.requireKyc ? 'Pending' : 'Approved',
             });
             setSaved(true);
-            setForm((current) => ({
-              ...current,
-              name: '',
-              email: '',
-              uuid: '',
-              note: '',
-              requireKyc: true,
-            }));
+            resetForm();
           } catch (caughtError) {
-            setError(caughtError instanceof Error ? caughtError.message : 'Unable to create user.');
+            setError(caughtError instanceof Error ? caughtError.message : 'Unable to create user. Please try again.');
+          } finally {
+            setSubmitting(false);
           }
         }}
       >
@@ -83,13 +111,13 @@ export const AdminUserCreatePage = () => {
           <h3 className="text-lg font-semibold text-slate-900">Profile Information</h3>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <AdminTextInput
-              label="Full Name"
+              label="Full Name *"
               value={form.name}
               onChange={(event) => updateField('name', event.target.value)}
               placeholder="John Doe"
             />
             <AdminTextInput
-              label="Email Address"
+              label="Email Address *"
               type="email"
               value={form.email}
               onChange={(event) => updateField('email', event.target.value)}
@@ -123,7 +151,7 @@ export const AdminUserCreatePage = () => {
               type="password"
               value={form.password}
               onChange={(event) => updateField('password', event.target.value)}
-              placeholder="Min. 8 characters"
+              placeholder="Leave blank to auto-generate (min. 8 chars)"
             />
           </div>
         </AdminCard>
@@ -187,8 +215,8 @@ export const AdminUserCreatePage = () => {
                 onChange={(event) => updateField('plan', event.target.value)}
                 placeholder="e.g. Starter, Growth, Premium"
               />
-              <AdminButton type="submit" className="w-full">
-                Create User Account
+              <AdminButton type="submit" disabled={submitting} className="w-full">
+                {submitting ? 'Creating account...' : 'Create User Account'}
               </AdminButton>
             </div>
           </AdminCard>

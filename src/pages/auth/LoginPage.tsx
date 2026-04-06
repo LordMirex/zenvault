@@ -26,14 +26,23 @@ export const LoginPage = () => {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitting(true);
     setError('');
 
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password.');
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      const result = await login(email, password);
+      const result = await login(email.trim(), password);
       navigate(result.user.role === 'admin' ? '/admin/dashboard' : '/dashboard', { replace: true });
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Unable to sign in.');
+      setError(caughtError instanceof Error ? caughtError.message : 'Unable to sign in. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -79,7 +88,7 @@ export const LoginPage = () => {
               <p className="mt-3 text-sm leading-7 text-slate-600">Enter your account credentials to continue to secure verification.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
               <Field label="Email address">
                 <input
                   value={email}
@@ -89,6 +98,9 @@ export const LoginPage = () => {
                   }}
                   type="email"
                   placeholder="you@example.com"
+                  autoComplete="email"
+                  autoFocus
+                  required
                   className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
                 />
               </Field>
@@ -103,11 +115,14 @@ export const LoginPage = () => {
                     }}
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter password"
+                    autoComplete="current-password"
+                    required
                     className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 pr-12 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
+                    tabIndex={-1}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-800"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -115,7 +130,11 @@ export const LoginPage = () => {
                 </div>
               </Field>
 
-              {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
+              {error && (
+                <p className="rounded-[1.2rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
+                  {error}
+                </p>
+              )}
 
               <button
                 type="submit"
