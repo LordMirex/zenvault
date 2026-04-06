@@ -157,21 +157,25 @@ export const AdminSettingsPage = () => {
   };
 
   const saveEmail = async () => {
-    await saveAdminSettings('email', {
-      fromName: emailForm.fromName,
-      fromAddress: emailForm.fromAddress,
-      mailDriver: emailForm.mailDriver,
-      mailHost: emailForm.mailHost,
-      mailPort: emailForm.mailPort,
-      mailUsername: emailForm.mailUsername,
-      mailPassword: emailForm.mailPassword,
-      mailEncryption: emailForm.mailEncryption,
-      notifyOnUserRegistration: emailForm.notifyOnUserRegistration,
-      notifyOnKycSubmission: emailForm.notifyOnKycSubmission,
-      notifyOnKycApproval: emailForm.notifyOnKycApproval,
-    });
-    setEmailForm((current) => ({ ...current, mailPassword: '' }));
-    setMessage('Email settings saved.');
+    setSaving(true);
+    setSaveError('');
+    setMessage('');
+    try {
+      await saveAdminSettings('email', {
+        fromName: emailForm.fromName,
+        fromAddress: emailForm.fromAddress,
+        mailDriver: emailForm.mailDriver,
+        mailHost: emailForm.mailHost,
+        mailPort: emailForm.mailPort,
+        mailUsername: emailForm.mailUsername,
+        mailPassword: emailForm.mailPassword,
+        mailEncryption: emailForm.mailEncryption,
+        notifyOnUserRegistration: emailForm.notifyOnUserRegistration,
+        notifyOnKycSubmission: emailForm.notifyOnKycSubmission,
+        notifyOnKycApproval: emailForm.notifyOnKycApproval,
+      });
+      setEmailForm((current) => ({ ...current, mailPassword: '' }));
+      setMessage('Email settings saved successfully.');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save email settings.');
     } finally {
@@ -193,7 +197,11 @@ export const AdminSettingsPage = () => {
   };
 
   const saveWalletSettings = async () => {
-    await saveAdminSettings('wallets', {
+    setSaving(true);
+    setSaveError('');
+    setMessage('');
+    try {
+      await saveAdminSettings('wallets', {
       activeAssetIds: walletForm.activeAssetIds,
       cardApplicationFeeUsd: Number(walletForm.cardApplicationFeeUsd || 0),
       assetConfigs: Object.fromEntries(
@@ -202,7 +210,12 @@ export const AdminSettingsPage = () => {
           .filter(([, config]) => Boolean((config as { depositAddress: string }).depositAddress)),
       ),
     });
-    setMessage('Asset settings saved.');
+      setMessage('Wallet settings saved successfully.');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save wallet settings.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateAssetDepositAddress = (assetId: string, depositAddress: string) => {

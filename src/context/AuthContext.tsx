@@ -282,8 +282,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setStatus('anonymous');
   };
 
-  const loadBootstrap = async (currentUser: SessionUser, { silent = false }: { silent?: boolean } = {}) => {
-    if (!silent) setBootstrapReady(false);
+  const loadBootstrap = async (currentUser: SessionUser, { silent: _silent = false }: { silent?: boolean } = {}) => {
 
     if (currentUser.role === 'user') {
       const payload = await apiRequest<ClientBootstrap>('/api/client/bootstrap');
