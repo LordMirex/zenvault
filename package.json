@@ -5,6 +5,7 @@
   "type": "module",
   "main": "server/index.mjs",
   "scripts": {
+    "prestart": "node scripts/prestart.cjs",
     "start": "node ./server/index.mjs",
     "start:prod": "npm run build && node ./server/index.mjs",
     "dev": "concurrently --kill-others \"npm run client:dev\" \"npm run api:dev\"",

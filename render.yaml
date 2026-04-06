@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: qfs-wallet
+    name: zenvault
     runtime: node
     buildCommand: npm install && npm run build
     startCommand: npm start

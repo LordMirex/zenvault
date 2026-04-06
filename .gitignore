@@ -6,3 +6,7 @@ dist
 # SQLite WAL temp files (auto-generated, not needed in repo)
 *.db-wal
 *.db-shm
+# Zip/archive files - never commit these
+*.zip
+*.tar.gz
+*.tar
