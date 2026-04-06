@@ -2,7 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, extname, join } from 'path';
-import { createReadStream, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { existsSync } from 'fs';
 import multer from 'multer';
 import { compareSecret, createAccessToken, hashSecret, verifyToken } from './auth.mjs';
 import { config } from './config.mjs';
@@ -36,17 +36,6 @@ import { priceFeed } from './price-feed.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const publicUploadsDir = join(__dirname, 'uploads');
-const secureKycUploadsDir = join(__dirname, 'data', 'kyc-documents');
-
-const ensureDirectory = (targetPath) => {
-  if (!existsSync(targetPath)) {
-    mkdirSync(targetPath, { recursive: true });
-  }
-};
-
-ensureDirectory(publicUploadsDir);
-ensureDirectory(secureKycUploadsDir);
 
 const app = express();
 app.disable('x-powered-by');
@@ -144,9 +133,6 @@ app.use('/api', (_req, res, next) => {
   return next();
 });
 
-// Serve uploaded files (logos, favicons) as static assets
-app.use('/uploads', express.static(publicUploadsDir));
-
 // Serve the compiled React frontend — robust path resolution for VPS
 const distCandidates = [
   join(__dirname, '../dist'),
@@ -164,24 +150,9 @@ if (!distIndexExists) {
 }
 app.use(express.static(distDir, { maxAge: '1d', etag: true }));
 
-// Multer configuration for logo/favicon uploads
-const uploadStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, publicUploadsDir),
-  filename: (_req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-    const ext = extname(file.originalname).toLowerCase() || '.png';
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  },
-});
-
-const kycUploadStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, secureKycUploadsDir),
-  filename: (_req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-    const ext = extname(file.originalname).toLowerCase() || '.pdf';
-    cb(null, `kyc-${file.fieldname}-${uniqueSuffix}${ext}`);
-  },
-});
+// Multer configuration — memory storage (files saved to PostgreSQL, not disk)
+const uploadStorage = multer.memoryStorage();
+const kycUploadStorage = multer.memoryStorage();
 
 const uploadFilter = (_req, file, cb) => {
   const allowed = ['.png', '.jpg', '.jpeg', '.svg', '.webp', '.ico', '.gif'];
@@ -373,28 +344,66 @@ const buildKycChecklist = ({ documents = [], status = 'Pending', reviewNote = ''
 const buildKycDocumentType = (documents) =>
   documents.map((document) => document.label).join(' + ') || 'Document submission';
 
+// ─── File upload helpers (PostgreSQL-backed, survives Render redeploys) ───────
+
+const storeFile = async (id, buffer, mimeType, originalName) => {
+  await query(
+    `INSERT INTO file_uploads (id, original_name, mime_type, size_bytes, data)
+     VALUES (:id, :originalName, :mimeType, :sizeBytes, :data)
+     ON CONFLICT (id) DO UPDATE
+       SET original_name = EXCLUDED.original_name,
+           mime_type     = EXCLUDED.mime_type,
+           size_bytes    = EXCLUDED.size_bytes,
+           data          = EXCLUDED.data,
+           uploaded_at   = NOW()`,
+    { id, originalName: originalName ?? '', mimeType: mimeType ?? 'application/octet-stream', sizeBytes: buffer.length, data: buffer },
+  );
+};
+
+const deleteStoredFile = async (id) => {
+  if (!id) return;
+  await query('DELETE FROM file_uploads WHERE id = :id', { id });
+};
+
+const serveStoredFile = async (id, res) => {
+  const row = await queryOne('SELECT original_name, mime_type, size_bytes, data FROM file_uploads WHERE id = :id', { id });
+  if (!row || !row.data) {
+    return res.status(404).json({ message: 'File not found.' });
+  }
+  res.setHeader('Content-Type', row.mime_type || 'application/octet-stream');
+  res.setHeader('Content-Length', String(row.size_bytes || row.data.length));
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.setHeader('Content-Disposition', `inline; filename="${sanitizeFileName(row.original_name, 'file')}"`);
+  return res.end(row.data);
+};
+
+// ─── KYC document helpers ─────────────────────────────────────────────────────
+
 const buildStoredKycDocuments = (files, uploadedAt) =>
   files.map((file) => ({
     id: createPrefixedId('kyc-doc'),
     fieldName: file.fieldname,
     label: kycDocumentLabels[file.fieldname] ?? sanitizeFileName(file.fieldname, 'Supporting Document'),
     originalName: sanitizeFileName(file.originalname, 'document'),
-    storedName: file.filename,
     mimeType: file.mimetype,
     sizeBytes: Number(file.size ?? 0),
     uploadedAt,
   }));
 
-const deleteKycStoredFiles = (documents = []) => {
-  for (const document of documents) {
-    const storedName = String(document?.storedName ?? '').trim();
-    if (!storedName) {
-      continue;
+const saveKycFilesToDb = async (files, documents) => {
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const doc = documents[i];
+    if (file.buffer && doc?.id) {
+      await storeFile(doc.id, file.buffer, file.mimetype, sanitizeFileName(file.originalname, 'document'));
     }
+  }
+};
 
-    const filePath = join(secureKycUploadsDir, storedName);
-    if (existsSync(filePath)) {
-      unlinkSync(filePath);
+const deleteKycStoredFiles = async (documents = []) => {
+  for (const document of documents) {
+    if (document?.id) {
+      await deleteStoredFile(document.id);
     }
   }
 };
@@ -941,20 +950,23 @@ app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) 
     const hasProofOfAddress = documents.some((document) => document.fieldName === 'proofOfAddress');
 
     if (!hasGovernmentId || !hasProofOfAddress) {
-      deleteKycStoredFiles(documents);
+      await deleteKycStoredFiles(documents);
       return res.status(400).json({ message: 'Government ID and proof of address are both required.' });
     }
+
+    // Save files to PostgreSQL before persisting document metadata
+    await saveKycFilesToDb(uploadedFiles, documents);
 
     const documentType = buildKycDocumentType(documents);
     const noteInput = String(req.body.note ?? '').trim();
     const note = noteInput || 'Documents submitted from the client dashboard and queued for manual review.';
     const currentCase = await queryOne(
-      'SELECT rowid, * FROM kyc_cases WHERE user_id = :userId AND status != :approved ORDER BY rowid DESC LIMIT 1',
+      'SELECT * FROM kyc_cases WHERE user_id = :userId AND status != :approved LIMIT 1',
       { userId: req.user.id, approved: 'Approved' },
     );
 
     if (currentCase) {
-      deleteKycStoredFiles(readKycDocuments(currentCase));
+      await deleteKycStoredFiles(readKycDocuments(currentCase));
       await query(
         `UPDATE kyc_cases
          SET document_type = :documentType,

@@ -73,6 +73,15 @@ CREATE TABLE IF NOT EXISTS settings (
   setting_value TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS file_uploads (
+  id TEXT PRIMARY KEY,
+  original_name TEXT NOT NULL DEFAULT '',
+  mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+  size_bytes INTEGER NOT NULL DEFAULT 0,
+  data BYTEA NOT NULL,
+  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `;
 
 const seedDatabase = async (pool) => {
