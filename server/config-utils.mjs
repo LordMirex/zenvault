@@ -18,6 +18,7 @@ const parsePort = (value, fallback) => {
 export const buildConfig = (env = process.env) => {
   const nodeEnv = toTrimmedString(env.NODE_ENV, 'development') || 'development';
   const isProduction = nodeEnv === 'production';
+  const isVercel = Boolean(env.VERCEL);
   const jwtSecret = toTrimmedString(env.JWT_SECRET);
 
   if (!jwtSecret) {
@@ -30,13 +31,14 @@ export const buildConfig = (env = process.env) => {
 
   const clientOrigin = toTrimmedString(env.CLIENT_ORIGIN, isProduction ? '' : 'http://localhost:5173');
 
-  if (isProduction && !clientOrigin) {
+  if (isProduction && !clientOrigin && !isVercel) {
     throw new Error('CLIENT_ORIGIN must be set in production.');
   }
 
   return {
     nodeEnv,
     isProduction,
+    isVercel,
     apiPort: parsePort(env.API_PORT, 4000),
     sqliteDbPath: toTrimmedString(env.SQLITE_DB_PATH, '') || null,
     jwtSecret,
