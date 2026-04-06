@@ -160,10 +160,15 @@ const distCandidates = [
   join(process.cwd(), 'dist'),
 ];
 const distDir = distCandidates.find(p => existsSync(join(p, 'index.html'))) || distCandidates[0];
+const distIndexExists = existsSync(join(distDir, 'index.html'));
 console.log('[boot] __dirname     :', __dirname);
 console.log('[boot] process.cwd() :', process.cwd());
 console.log('[boot] dist resolved :', distDir);
-console.log('[boot] dist exists   :', existsSync(join(distDir, 'index.html')));
+console.log('[boot] dist exists   :', distIndexExists);
+if (!distIndexExists) {
+  console.error('[boot] ERROR: dist/index.html not found. Run "npm run build" before starting the server in production.');
+  console.error('[boot] Tip: use "npm run start:prod" which builds automatically, or run "npm run build && npm start" manually.');
+}
 app.use(express.static(distDir, { maxAge: '1d', etag: true }));
 
 // Multer configuration for logo/favicon uploads

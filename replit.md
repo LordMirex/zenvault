@@ -49,10 +49,14 @@ Everything else (`PORT`, `NODE_ENV=production`, CORS for `.onrender.com`) is han
 
 ## VPS Deployment (AAPanel / NodePanel)
 
-1. Clone/pull the repo — database is already included
+1. Upload the `deploy.zip` (includes pre-built `dist/`) or clone/pull the repo
 2. Set environment variables: `JWT_SECRET` (min 32 chars), `CLIENT_ORIGIN` (e.g. `https://zenvault.one`), `NODE_ENV=production`
-3. Run `npm install && npm run build`
-4. **Start command**: `npm start` | **Port**: `4000`
+3. Run `npm install`
+4. **Start command**: `npm run start:prod` | **Port**: `4000`
+
+> `npm run start:prod` automatically builds the frontend then starts the server.
+> If you use `npm start` directly, you MUST run `npm run build` first — otherwise the site shows a blank white page.
+> The easiest option: always use `npm run start:prod` on the VPS.
 
 ## Environment Variables
 

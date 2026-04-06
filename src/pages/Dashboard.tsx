@@ -95,7 +95,7 @@ export const Dashboard = () => {
               <p className="mt-0.5 text-xs text-orange-400/80">
                 {kycStatus === 'Pending'
                   ? 'Complete KYC to unlock deposits, withdrawals and full account access.'
-                  : 'Your documents are under review. We'll notify you when complete.'}
+                  : "Your documents are under review. We'll notify you when complete."}
               </p>
             </div>
           </div>

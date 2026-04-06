@@ -10,6 +10,9 @@ import {
   ArrowUpRight,
   X,
   Clock,
+  AlertTriangle,
+  CheckCircle,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../lib/api';
@@ -47,6 +50,7 @@ export const AdminDashboard = () => {
     0,
   );
   const pendingKyc = adminKycCases?.filter((c) => c.status === 'Pending' || c.status === 'Needs review').length ?? 0;
+  const approvedKyc = adminKycCases?.filter((c) => c.status === 'Approved').length ?? 0;
   const recentTransactions = adminTransactions.slice(0, 8);
 
   const handleAddAlert = async () => {
@@ -77,6 +81,8 @@ export const AdminDashboard = () => {
     }
   };
 
+  const hasRightSidebarContent = adminMetrics.length > 0 || adminTimeline.length > 0;
+
   return (
     <div className="space-y-6">
       <AdminPageHeading
@@ -86,8 +92,8 @@ export const AdminDashboard = () => {
 
       {alertError && <AdminNotice tone="danger">{alertError}</AdminNotice>}
 
-      {/* Key metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Key metrics — 5 cards including KYC */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           icon={Users}
           iconColor="text-violet-600"
@@ -121,6 +127,16 @@ export const AdminDashboard = () => {
           label="Wallet Value"
           value={formatCompactUsd(totalCryptoValue)}
           detail="Total holdings under management"
+        />
+        <MetricCard
+          icon={pendingKyc > 0 ? AlertTriangle : CheckCircle}
+          iconColor={pendingKyc > 0 ? 'text-orange-600' : 'text-green-600'}
+          iconBg={pendingKyc > 0 ? 'bg-orange-50' : 'bg-green-50'}
+          label="KYC Pending"
+          value={String(pendingKyc)}
+          detail={`${approvedKyc} approved · ${pendingKyc} need review`}
+          linkTo="/admin/kyc"
+          urgent={pendingKyc > 0}
         />
       </div>
 
@@ -187,7 +203,8 @@ export const AdminDashboard = () => {
             <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
                 <th className="px-5 py-3 font-semibold">User</th>
-                <th className="px-5 py-3 font-semibold">Details</th>
+                <th className="px-5 py-3 font-semibold">Type · Asset</th>
+                <th className="px-5 py-3 font-semibold text-right">Amount</th>
                 <th className="px-5 py-3 font-semibold">Status</th>
                 <th className="px-5 py-3 font-semibold">Actions</th>
               </tr>
@@ -195,8 +212,12 @@ export const AdminDashboard = () => {
             <tbody className="divide-y divide-slate-100">
               {recentTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-sm text-slate-400">
-                    No transactions yet.
+                  <td colSpan={5} className="px-5 py-12 text-center">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                      <Activity className="h-5 w-5" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-500">No transactions yet</p>
+                    <p className="mt-1 text-xs text-slate-400">Transactions will appear here as users deposit and withdraw.</p>
                   </td>
                 </tr>
               )}
@@ -209,14 +230,15 @@ export const AdminDashboard = () => {
                       <p className="text-xs text-slate-400 mt-0.5">{txUser?.email}</p>
                     </td>
                     <td className="px-5 py-3">
-                      <p className="font-medium text-slate-800">
-                        {transaction.type} · {transaction.asset}
-                      </p>
-                      <p className="text-xs text-slate-500">{transaction.amount}</p>
+                      <p className="font-medium text-slate-800">{transaction.type}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{transaction.asset}</p>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <p className="font-bold text-slate-900 tabular-nums">{transaction.amount}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{transaction.createdAt}</p>
                     </td>
                     <td className="px-5 py-3">
                       <AdminBadge value={transaction.status} />
-                      <p className="mt-1 text-[11px] text-slate-400">{transaction.createdAt}</p>
                     </td>
                     <td className="px-5 py-3">
                       <AdminActionBar>
@@ -334,11 +356,45 @@ export const AdminDashboard = () => {
               </div>
             </AdminCard>
           )}
+
+          {/* Platform summary — shown when metrics/timeline are empty */}
+          {!hasRightSidebarContent && (
+            <AdminCard className="p-5">
+              <h3 className="text-sm font-semibold text-slate-900">Platform Summary</h3>
+              <div className="mt-4 space-y-3">
+                <SummaryRow label="Total users" value={String(adminUsers.length)} />
+                <SummaryRow label="Total transactions" value={String(adminTransactions.length)} />
+                <SummaryRow label="Cards issued" value={String(totalCards)} />
+                <SummaryRow label="KYC approved" value={String(approvedKyc)} />
+                <SummaryRow
+                  label="KYC pending review"
+                  value={String(pendingKyc)}
+                  urgent={pendingKyc > 0}
+                />
+                <SummaryRow label="Total wallet value" value={formatCompactUsd(totalCryptoValue)} />
+              </div>
+            </AdminCard>
+          )}
         </div>
       </div>
     </div>
   );
 };
+
+const SummaryRow = ({
+  label,
+  value,
+  urgent,
+}: {
+  label: string;
+  value: string;
+  urgent?: boolean;
+}) => (
+  <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-4 py-2.5">
+    <p className="text-xs font-medium text-slate-500">{label}</p>
+    <p className={`text-sm font-black ${urgent ? 'text-orange-600' : 'text-slate-900'}`}>{value}</p>
+  </div>
+);
 
 const MetricCard = ({
   icon: Icon,
@@ -348,6 +404,7 @@ const MetricCard = ({
   value,
   detail,
   linkTo,
+  urgent,
 }: {
   icon: React.ElementType;
   iconColor: string;
@@ -356,16 +413,17 @@ const MetricCard = ({
   value: string;
   detail: string;
   linkTo?: string;
+  urgent?: boolean;
 }) => {
   const inner = (
-    <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div className={`flex items-center gap-4 rounded-xl border p-5 shadow-sm transition-shadow hover:shadow-md ${urgent ? 'border-orange-200 bg-orange-50/50' : 'border-slate-200 bg-white'}`}>
       <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
         <Icon className={`h-6 w-6 ${iconColor}`} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-        <p className="mt-1 text-2xl font-black text-slate-900 leading-none">{value}</p>
-        <p className="mt-1 text-xs text-slate-400">{detail}</p>
+        <p className={`mt-1 text-2xl font-black leading-none ${urgent ? 'text-orange-700' : 'text-slate-900'}`}>{value}</p>
+        <p className="mt-1 text-xs text-slate-400 leading-relaxed">{detail}</p>
       </div>
       {linkTo && <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300" />}
     </div>
