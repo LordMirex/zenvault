@@ -1,1 +1,7 @@
 .mariadb/data/ib_logfile0 filter=lfs diff=lfs merge=lfs -text
+# Enforce Unix line endings for all text files
+* text=auto eol=lf
+# Treat SQLite DB as binary so git doesn't corrupt it
+*.db binary
+*.db-wal binary
+*.db-shm binary

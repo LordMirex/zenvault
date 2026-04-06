@@ -6,7 +6,7 @@ import { createReadStream, existsSync, mkdirSync, unlinkSync } from 'fs';
 import multer from 'multer';
 import { compareSecret, createAccessToken, hashSecret, verifyToken } from './auth.mjs';
 import { config } from './config.mjs';
-import { getDb, query, queryOne } from './db.mjs';
+import { closeDb, getDb, query, queryOne } from './db.mjs';
 import {
   buildBrandedEmail,
   createMailClient,
@@ -1497,7 +1497,35 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
     signatureRole: 'Risk and Transfers Desk',
   });
 
-  // FIX: res.status(201).json was missing closing }); and route handler was missing closing });
+  // Notify admin of new pending withdrawal
+  const adminUser = await queryOne("SELECT email, name FROM users WHERE role = 'admin' LIMIT 1");
+  if (adminUser?.email) {
+    await sendSystemEmailSafely({
+      logContext: `admin withdrawal alert to ${adminUser.email}`,
+      to: adminUser.email,
+      subject: `Action required: withdrawal pending — ${req.user.name}`,
+      title: 'New withdrawal request pending your review',
+      preheader: `${req.user.name} submitted a ${formatAmountLabel(amount)} ${asset.symbol} withdrawal.`,
+      intro: 'A user has submitted a withdrawal request. It is currently pending and requires your approval before it is processed.',
+      recipientName: adminUser.name || 'Admin',
+      paragraphs: [
+        'Log in to the admin dashboard and navigate to Transactions to approve or decline this request.',
+      ],
+      highlights: [
+        `User: ${req.user.name} (${req.user.email})`,
+        `Amount: ${formatAmountLabel(amount)} ${asset.symbol}`,
+        `Destination: ${recipient}`,
+        `Method: ${method === 'external' ? 'External Wallet' : 'Internal Transfer'}`,
+        `Network fee: ${formatAmountLabel(feeAmount)} ${asset.symbol}`,
+        `Transaction ID: ${transactionId}`,
+        'Status: Pending',
+      ],
+      ctaLabel: 'Review in admin dashboard',
+      ctaUrl: await toClientUrl('/admin/transactions'),
+      signatureRole: 'Automated Alert System',
+    });
+  }
+
   return res.status(201).json({
     ok: true,
     transactionId,
@@ -2693,3 +2721,18 @@ app.listen(config.apiPort, () => {
   void runPriceTask();
   setInterval(runPriceTask, 60000);
 });
+
+// Graceful shutdown — checkpoint WAL and flush DB to disk before exit
+const shutdown = (signal) => {
+  console.log(`[shutdown] Received ${signal}. Closing database...`);
+  try {
+    closeDb();
+    console.log('[shutdown] Database closed cleanly.');
+  } catch (error) {
+    console.error('[shutdown] Error closing database:', error);
+  }
+  process.exit(0);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
