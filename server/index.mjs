@@ -701,7 +701,7 @@ const getBrandName = async () => {
 const getClientBootstrap = async (userId) => {
   const user = await queryOne('SELECT * FROM users WHERE id = :id', { id: userId });
   const kycCases = await query(
-    'SELECT * FROM kyc_cases WHERE user_id = :userId ORDER BY rowid DESC',
+    'SELECT * FROM kyc_cases WHERE user_id = :userId ORDER BY created_at DESC',
     { userId },
   );
   const referralMilestones = await getSetting('referralMilestones', []);
@@ -777,7 +777,7 @@ const getClientBootstrap = async (userId) => {
 const getAdminBootstrap = async () => {
   const users = await query('SELECT * FROM users WHERE role = :role ORDER BY id ASC', { role: 'user' });
   const transactions = await query('SELECT * FROM transactions ORDER BY created_at_label DESC');
-  const kycCases = await query('SELECT * FROM kyc_cases ORDER BY rowid DESC');
+  const kycCases = await query('SELECT * FROM kyc_cases ORDER BY created_at DESC');
   const marketAssets = priceFeed.getMarketAssets();
 
   const settingsGeneral = await getGeneralSettings();
@@ -897,7 +897,7 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
       city,
       uuid,
       passwordHash: await hashSecret(password),
-      passcodeHash: await hashSecret(Math.random().toString(36)),
+      passcodeHash: await hashSecret('000000'),
     },
   );
 
@@ -917,7 +917,7 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
         'Your wallet profile has been created successfully. You can sign in from the client portal and complete any remaining verification steps from your dashboard.',
         'If you did not request this account, reply to this email immediately so the operations desk can investigate.',
       ],
-      highlights: [`Login email: ${email}`, 'Account status: Active', 'KYC status: Pending review'],
+      highlights: [`Login email: ${email}`, 'Default passcode: 000000', 'Account status: Active', 'KYC status: Pending review'],
       ctaLabel: 'Open the client portal',
       ctaUrl: await toClientUrl('/login'),
       signatureRole: 'Client Operations',
@@ -1601,7 +1601,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       plan,
       note: String(req.body.note ?? 'Created from admin panel.'),
       passwordHash: await hashSecret(password),
-      passcodeHash: await hashSecret(Math.random().toString(36)),
+      passcodeHash: await hashSecret('000000'),
     },
   );
 
@@ -1618,12 +1618,13 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       intro: `A ${brandName} administrator created a client account for you.`,
       recipientName: name,
       paragraphs: [
-        'Use the temporary credentials below to sign in. For security, change your password after your first login.',
+        'Use the temporary credentials below to sign in. For security, change your password and passcode after your first login.',
         'If you were not expecting this account, reply to this email before using the credentials.',
       ],
       highlights: [
         `Login email: ${email}`,
         `Temporary password: ${password}`,
+        'Default passcode: 000000',
         `Plan: ${plan}`,
       ],
       ctaLabel: 'Sign in now',

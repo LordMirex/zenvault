@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS kyc_cases (
   risk_level TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT '',
   note TEXT,
-  documents_json TEXT NOT NULL DEFAULT '[]'
+  documents_json TEXT NOT NULL DEFAULT '[]',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -185,6 +186,13 @@ export const initSchema = async () => {
   const pool = getPool();
   console.log('[schema] Initializing database schema...');
   await pool.query(SCHEMA_SQL);
+
+  // Migrations: add columns that may be missing from pre-existing tables
+  await pool.query(`
+    ALTER TABLE kyc_cases
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  `);
+
   console.log('[schema] Schema ready.');
   await seedDatabase(pool);
 };

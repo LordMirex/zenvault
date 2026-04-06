@@ -156,6 +156,7 @@ export const BrandingProvider = ({ children }: PropsWithChildren) => {
   }, [adminSettings]);
 
   useEffect(() => {
+    if (!branding.faviconUrl) return;
     const favicon = ensureFaviconLink();
     favicon.type = branding.faviconUrl.endsWith('.svg') ? 'image/svg+xml' : 'image/png';
     favicon.href = branding.faviconUrl;
