@@ -803,6 +803,7 @@ const getAdminBootstrap = async () => {
     adminKycCases: kycCases.map((item) => mapKycCase(item)),
     adminTransactions: transactions.map((transaction) => ({ id: String(transaction.id), userId: String(transaction.user_id), type: transaction.type, asset: transaction.asset, amount: transaction.amount, channel: transaction.channel, destination: transaction.destination, status: transaction.status, createdAt: transaction.created_at_label, fromAsset: transaction.from_asset, toAsset: transaction.to_asset, whichCrypto: transaction.which_crypto, networkFee: transaction.network_fee, rate: transaction.rate })),
     adminAssetCatalog,
+    adminEmailTemplates: [],
     adminAlerts: dashboardMeta.alerts ?? [],
     adminTimeline: dashboardMeta.timeline ?? [],
     adminSettings: { general: settingsGeneral, email: sanitizedEmailSettings, wallets: settingsWallets },
@@ -874,7 +875,7 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
     return res.status(409).json({ message: 'An account with that email already exists.' });
   }
 
-  const nextIdRow = await queryOne('SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM users');
+  const nextIdRow = await queryOne("SELECT nextval('users_id_seq') AS nextId");
   const nextId = Number(nextIdRow?.nextId ?? 100);
   const uuid = `USR-${String(nextId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
 
@@ -1117,14 +1118,18 @@ app.patch('/api/client/assets/:assetId/toggle', requireAuth, requireRole('user')
   return res.json({ ok: true });
 });
 
-// FIX: was missing closing });
 app.put('/api/client/security', requireAuth, requireRole('user'), async (req, res) => {
   const currentPassword = String(req.body.currentPassword ?? '');
   const newPassword = String(req.body.newPassword ?? '');
   const passcode = String(req.body.passcode ?? '');
+  const newPasscode = String(req.body.newPasscode ?? '').replace(/\D/g, '').slice(0, 6);
 
   if (!currentPassword || !newPassword || !passcode) {
     return res.status(400).json({ message: 'Current password, new password, and passcode are required.' });
+  }
+
+  if (newPasscode && newPasscode.length !== 6) {
+    return res.status(400).json({ message: 'New passcode must be exactly 6 digits.' });
   }
 
   const currentMatches = await compareSecret(currentPassword, req.user.password_hash);
@@ -1134,14 +1139,28 @@ app.put('/api/client/security', requireAuth, requireRole('user'), async (req, re
   }
 
   const nextSessions = revokeOtherSessions(parseJson(req.user.sessions_json, []), req.auth.sessionId, `Password updated ${createTimestampLabel()}`);
-  await query(
-    'UPDATE users SET password_hash = :passwordHash, sessions_json = :sessions WHERE id = :id',
-    {
-      passwordHash: await hashSecret(newPassword),
-      sessions: JSON.stringify(nextSessions),
-      id: req.user.id,
-    },
-  );
+
+  if (newPasscode) {
+    await query(
+      'UPDATE users SET password_hash = :passwordHash, passcode_hash = :passcodeHash, sessions_json = :sessions WHERE id = :id',
+      {
+        passwordHash: await hashSecret(newPassword),
+        passcodeHash: await hashSecret(newPasscode),
+        sessions: JSON.stringify(nextSessions),
+        id: req.user.id,
+      },
+    );
+  } else {
+    await query(
+      'UPDATE users SET password_hash = :passwordHash, sessions_json = :sessions WHERE id = :id',
+      {
+        passwordHash: await hashSecret(newPassword),
+        sessions: JSON.stringify(nextSessions),
+        id: req.user.id,
+      },
+    );
+  }
+
   return res.json({ ok: true, message: 'Security details updated successfully.' });
 });
 
@@ -1572,7 +1591,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
     return res.status(409).json({ message: 'A user with that email already exists.' });
   }
 
-  const nextIdRow = await queryOne('SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM users');
+  const nextIdRow = await queryOne("SELECT nextval('users_id_seq') AS nextId");
   const nextId = Number(nextIdRow?.nextId ?? 100);
   const uuid = req.body.uuid ? String(req.body.uuid) : `USR-${String(nextId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
 
@@ -1655,19 +1674,22 @@ app.put('/api/admin/users/:userId/password', requireAuth, requireRole('admin'), 
   }
 
   const password = String(req.body.password ?? '').trim() || createTemporaryPassword();
+  const resetPasscode = req.body.resetPasscode !== false;
 
-  await query(
-    'UPDATE users SET password_hash = :passwordHash, sessions_json = :sessions WHERE id = :id',
-    {
-      id: userId,
-      passwordHash: await hashSecret(password),
-      sessions: '[]',
-    },
-  );
+  const updateFields = resetPasscode
+    ? 'UPDATE users SET password_hash = :passwordHash, passcode_hash = :passcodeHash, sessions_json = :sessions WHERE id = :id'
+    : 'UPDATE users SET password_hash = :passwordHash, sessions_json = :sessions WHERE id = :id';
+
+  await query(updateFields, {
+    id: userId,
+    passwordHash: await hashSecret(password),
+    ...(resetPasscode ? { passcodeHash: await hashSecret('000000') } : {}),
+    sessions: '[]',
+  });
 
   await appendAdminTimelineEntry(
     `${req.user.name} reset ${existing.name}'s password`,
-    `Temporary password generated for ${existing.email}.`,
+    `Temporary password generated for ${existing.email}.${resetPasscode ? ' Passcode also reset to 000000.' : ''}`,
   );
 
   await sendSystemEmailSafely({
@@ -1684,6 +1706,7 @@ app.put('/api/admin/users/:userId/password', requireAuth, requireRole('admin'), 
     ],
     highlights: [
       `Temporary password: ${password}`,
+      ...(resetPasscode ? ['Passcode reset to: 000000'] : []),
       'All previous sessions were signed out',
     ],
     ctaLabel: 'Open login',
@@ -1880,7 +1903,7 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
   return res.json({ ok: true });
 });
 
-// GET /api/admin/users/:userId — fetch a single user's full detail
+// POST /api/admin/users/:userId/cards — issue a card for a user
 app.post('/api/admin/users/:userId/cards', requireAuth, requireRole('admin'), async (req, res) => {
   const userId = Number(req.params.userId ?? 0);
   const user = await queryOne('SELECT * FROM users WHERE id = :id AND role = :role', { id: userId, role: 'user' });

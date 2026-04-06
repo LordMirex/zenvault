@@ -202,6 +202,7 @@ type AuthContextValue = {
     currentPassword: string;
     newPassword: string;
     passcode: string;
+    newPasscode?: string;
   }) => Promise<string>;
   createAdminUser: (input: Record<string, unknown>) => Promise<void>;
   sendAdminEmail: (input: {
