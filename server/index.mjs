@@ -62,6 +62,7 @@ const allowedOrigins = new Set(
     config.clientOrigin,
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
     process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null,
+    process.env.RENDER_EXTERNAL_URL || null,
     ...(config.isProduction
       ? []
       : [
@@ -79,6 +80,9 @@ const isReplitOrigin = (origin) =>
 
 const isVercelOrigin = (origin) =>
   config.isVercel && typeof origin === 'string' && origin.endsWith('.vercel.app');
+
+const isRenderOrigin = (origin) =>
+  config.isRender && typeof origin === 'string' && origin.endsWith('.onrender.com');
 
 const rateLimitState = new Map();
 
@@ -128,7 +132,7 @@ const signupLimiter = createRateLimitMiddleware({
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin) || isReplitOrigin(origin) || isVercelOrigin(origin)) {
+      if (!origin || allowedOrigins.has(origin) || isReplitOrigin(origin) || isVercelOrigin(origin) || isRenderOrigin(origin)) {
         return callback(null, true);
       }
 

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: qfs-wallet
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_TTL
+        value: 12h
+      - key: PENDING_TOKEN_TTL
+        value: 10m
