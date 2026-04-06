@@ -108,10 +108,15 @@ const signupLimiter = createRateLimitMiddleware({
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin) || isReplitOrigin(origin) || isRenderOrigin(origin)) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin) || isReplitOrigin(origin) || isRenderOrigin(origin)) {
         return callback(null, true);
       }
-
+      if (!config.isProduction) {
+        console.warn(`[cors] Allowing unlisted origin in dev: ${origin}`);
+        return callback(null, true);
+      }
+      console.warn(`[cors] Blocked origin: ${origin}`);
       return callback(new Error('Origin not allowed by CORS.'));
     },
     credentials: false,
