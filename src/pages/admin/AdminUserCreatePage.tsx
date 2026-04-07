@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { COUNTRIES } from '../../lib/countries';
 import {
   AdminButton,
   AdminCard,
+  AdminNotice,
   AdminPageHeading,
   AdminSelect,
   AdminTextArea,
@@ -20,7 +22,7 @@ export const AdminUserCreatePage = () => {
     name: '',
     email: '',
     password: '',
-    uuid: '',
+    passcode: '',
     country: '',
     deskLabel: '',
     tier: 'Tier 1',
@@ -29,9 +31,10 @@ export const AdminUserCreatePage = () => {
     note: '',
     plan: 'Starter',
     requireKyc: true,
+    sendEmail: true,
   });
 
-  const updateField = (field: keyof typeof form, value: string) => {
+  const updateField = (field: keyof typeof form, value: string | boolean) => {
     setSaved(false);
     setError('');
     setForm((current) => ({ ...current, [field]: value }));
@@ -43,9 +46,10 @@ export const AdminUserCreatePage = () => {
       name: '',
       email: '',
       password: '',
-      uuid: '',
+      passcode: '',
       note: '',
       requireKyc: true,
+      sendEmail: true,
     }));
   };
 
@@ -58,20 +62,11 @@ export const AdminUserCreatePage = () => {
 
       <AdminPageHeading
         title="Create User"
-        description="Create a new client account from the admin console. The user will receive an email with their login credentials."
+        description="Create a new client account. A wallet ID is automatically generated and assigned to the account."
       />
 
-      {saved && (
-        <AdminCard className="border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
-          User created successfully. The account is now available in the user list and a welcome email has been sent to the address provided.
-        </AdminCard>
-      )}
-
-      {error && (
-        <AdminCard className="border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700">
-          {error}
-        </AdminCard>
-      )}
+      {saved && <AdminNotice tone="success">User created successfully. The account is now active in the user list.</AdminNotice>}
+      {error && <AdminNotice tone="danger">{error}</AdminNotice>}
 
       <form
         className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]"
@@ -79,18 +74,10 @@ export const AdminUserCreatePage = () => {
           event.preventDefault();
           setError('');
 
-          if (!form.name.trim()) {
-            setError('Full name is required.');
-            return;
-          }
-          if (!form.email.trim()) {
-            setError('Email address is required.');
-            return;
-          }
-          if (form.password && form.password.length < 8) {
-            setError('Password must be at least 8 characters.');
-            return;
-          }
+          if (!form.name.trim()) { setError('Full name is required.'); return; }
+          if (!form.email.trim()) { setError('Email address is required.'); return; }
+          if (form.password && form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+          if (form.passcode && !/^\d{6}$/.test(form.passcode)) { setError('Passcode must be exactly 6 digits.'); return; }
 
           setSubmitting(true);
           try {
@@ -123,18 +110,16 @@ export const AdminUserCreatePage = () => {
               onChange={(event) => updateField('email', event.target.value)}
               placeholder="john.doe@example.com"
             />
-            <AdminTextInput
-              label="UUID / Reference ID"
-              value={form.uuid}
-              onChange={(event) => updateField('uuid', event.target.value)}
-              placeholder="e.g. QFS-0000-0000 (optional)"
-            />
-            <AdminTextInput
+            <AdminSelect
               label="Country"
               value={form.country}
               onChange={(event) => updateField('country', event.target.value)}
-              placeholder="e.g. United States"
-            />
+            >
+              <option value="">— Select country —</option>
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </AdminSelect>
             <AdminTextInput
               label="Desk Label"
               value={form.deskLabel}
@@ -153,7 +138,19 @@ export const AdminUserCreatePage = () => {
               onChange={(event) => updateField('password', event.target.value)}
               placeholder="Leave blank to auto-generate (min. 8 chars)"
             />
+            <AdminTextInput
+              label="Security Passcode (6 digits)"
+              value={form.passcode}
+              onChange={(event) => updateField('passcode', event.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Leave blank to use 000000 default"
+              inputMode="numeric"
+              maxLength={6}
+            />
           </div>
+
+          <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+            The wallet ID (e.g. USR-0042-8731) is automatically generated and assigned to this account. It will appear on the user's profile.
+          </p>
         </AdminCard>
 
         <div className="space-y-6">
@@ -169,24 +166,6 @@ export const AdminUserCreatePage = () => {
                 <option>Review</option>
                 <option>Suspended</option>
               </AdminSelect>
-              <label className="flex items-start gap-3 rounded-lg border border-slate-300 bg-white px-3 py-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.requireKyc}
-                  onChange={(event) => {
-                    setSaved(false);
-                    setError('');
-                    setForm((current) => ({ ...current, requireKyc: event.target.checked }));
-                  }}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span>
-                  <span className="block text-sm font-medium text-slate-700">Require KYC Verification</span>
-                  <span className="mt-1 block text-sm text-slate-500">
-                    User will start in a pending verification state until documents are reviewed.
-                  </span>
-                </span>
-              </label>
               <AdminSelect
                 label="Risk Level"
                 value={form.riskLevel}
@@ -196,9 +175,37 @@ export const AdminUserCreatePage = () => {
                 <option>Medium</option>
                 <option>High</option>
               </AdminSelect>
+              <label className="flex items-start gap-3 rounded-lg border border-slate-300 bg-white px-3 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.requireKyc}
+                  onChange={(event) => updateField('requireKyc', event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-slate-700">Require KYC Verification</span>
+                  <span className="mt-1 block text-sm text-slate-500">
+                    Account starts pending until documents are reviewed.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 rounded-lg border border-slate-300 bg-white px-3 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.sendEmail}
+                  onChange={(event) => updateField('sendEmail', event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-slate-700">Send Welcome Email</span>
+                  <span className="mt-1 block text-sm text-slate-500">
+                    Email the user their login credentials and passcode after account creation.
+                  </span>
+                </span>
+              </label>
               <AdminTextArea
                 label="Internal Note"
-                rows={4}
+                rows={3}
                 value={form.note}
                 onChange={(event) => updateField('note', event.target.value)}
                 placeholder="Operator notes about this account..."

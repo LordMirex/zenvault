@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { BrandLogo } from '../../components/common/BrandLogo';
+import { COUNTRIES } from '../../lib/countries';
 
 export const SignupPage = () => {
   const navigate = useNavigate();
@@ -12,7 +13,8 @@ export const SignupPage = () => {
     fullName: '',
     email: '',
     phone: '',
-    city: '',
+    country: '',
+    passcode: '',
     password: '',
   });
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +43,10 @@ export const SignupPage = () => {
     }
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (form.passcode && !/^\d{6}$/.test(form.passcode)) {
+      setError('Passcode must be exactly 6 digits.');
       return;
     }
 
@@ -81,7 +87,7 @@ export const SignupPage = () => {
                 onChange={(event) => updateField('fullName', event.target.value)}
                 placeholder="John Doe"
                 required
-                className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                className={inputCls}
               />
             </Field>
             <Field label="Email address *">
@@ -91,7 +97,7 @@ export const SignupPage = () => {
                 type="email"
                 placeholder="you@example.com"
                 required
-                className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                className={inputCls}
               />
             </Field>
             <Field label="Phone number">
@@ -99,30 +105,42 @@ export const SignupPage = () => {
                 value={form.phone}
                 onChange={(event) => updateField('phone', event.target.value)}
                 placeholder="+1 000 000 0000"
-                className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                className={inputCls}
               />
             </Field>
-            <Field label="City">
+            <Field label="Country">
+              <select
+                value={form.country}
+                onChange={(event) => updateField('country', event.target.value)}
+                className={inputCls}
+              >
+                <option value="">— Select your country —</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Password * (min. 8 characters)">
               <input
-                value={form.city}
-                onChange={(event) => updateField('city', event.target.value)}
-                placeholder="Your city"
-                className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                value={form.password}
+                onChange={(event) => updateField('password', event.target.value)}
+                type="password"
+                placeholder="Create a strong password"
+                minLength={8}
+                required
+                className={inputCls}
               />
             </Field>
-            <div className="md:col-span-2">
-              <Field label="Password * (min. 8 characters)">
-                <input
-                  value={form.password}
-                  onChange={(event) => updateField('password', event.target.value)}
-                  type="password"
-                  placeholder="Create a strong password"
-                  minLength={8}
-                  required
-                  className="w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
-                />
-              </Field>
-            </div>
+            <Field label="Security passcode (6 digits, optional)">
+              <input
+                value={form.passcode}
+                onChange={(event) => updateField('passcode', event.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Leave blank to use default 000000"
+                className={inputCls}
+              />
+            </Field>
 
             <div className="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-[#f8f6f1] p-2">
               <button
@@ -144,7 +162,7 @@ export const SignupPage = () => {
                   {[
                     'You will be redirected to sign in with your new credentials.',
                     'Complete your identity verification (KYC) to unlock full wallet access.',
-                    'Your default security passcode is 000000 — update it right after your first login.',
+                    'Your wallet ID is auto-generated and visible on your profile — share it to receive internal transfers.',
                   ].map((item) => (
                     <div key={item} className="rounded-[1.25rem] bg-white p-4 text-sm leading-7 text-slate-700">
                       {item}
@@ -191,7 +209,7 @@ export const SignupPage = () => {
           <div className="space-y-4">
             {[
               'Full name and email are all you need to get started.',
-              'Your wallet and dashboard are ready immediately after login.',
+              'Your wallet ID is auto-generated — no need to set it up manually.',
               'Complete identity verification at your own pace to unlock all features.',
             ].map((item) => (
               <div key={item} className="flex items-start gap-3 rounded-[1.5rem] border border-emerald-950/10 bg-white/60 p-4">
@@ -205,6 +223,9 @@ export const SignupPage = () => {
     </div>
   );
 };
+
+const inputCls =
+  'w-full rounded-[1.3rem] border border-slate-200 bg-[#f8f6f1] px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none';
 
 type FieldProps = {
   label: string;

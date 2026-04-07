@@ -191,7 +191,8 @@ type AuthContextValue = {
     fullName: string;
     email: string;
     phone: string;
-    city: string;
+    country: string;
+    passcode: string;
     password: string;
   }) => Promise<string>;
   logout: () => Promise<void>;
@@ -488,7 +489,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     fullName: string;
     email: string;
     phone: string;
-    city: string;
+    country: string;
+    passcode: string;
     password: string;
   }) => {
     const payload = await apiRequest<{ message: string }>('/api/auth/signup', {

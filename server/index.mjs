@@ -840,7 +840,7 @@ app.get('/api/public/settings', async (_req, res) => {
   });
 });
 
-app.post('/api/auth/login', loginLimiter, async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const email = String(req.body.email ?? '').trim().toLowerCase();
   const password = String(req.body.password ?? '');
 
@@ -891,11 +891,13 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
   });
 });
 
-app.post('/api/auth/signup', signupLimiter, async (req, res) => {
+app.post('/api/auth/signup', async (req, res) => {
   const fullName = String(req.body.fullName ?? '').trim();
   const email = String(req.body.email ?? '').trim().toLowerCase();
   const phone = String(req.body.phone ?? '').trim();
   const city = String(req.body.city ?? '').trim();
+  const country = String(req.body.country ?? '').trim();
+  const passcode = String(req.body.passcode ?? '').replace(/\D/g, '');
   const password = String(req.body.password ?? '');
 
   if (!fullName || !email || !password) {
@@ -904,6 +906,10 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
 
   if (password.length < 8) {
     return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+  }
+
+  if (passcode && !/^\d{6}$/.test(passcode)) {
+    return res.status(400).json({ message: 'Passcode must be exactly 6 digits.' });
   }
 
   const existing = await queryOne('SELECT id FROM users WHERE email = :email', { email });
@@ -922,7 +928,7 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, :phone, :city, :uuid, '', 'New Account', 'Tier 1', 'Active', 'Pending', 'Medium',
+      :id, 'user', :name, :email, :phone, :city, :uuid, :country, 'New Account', 'Tier 1', 'Active', 'Pending', 'Medium',
       0, 0, 0, 0, 1, 'Starter', 'Just created', 'New signup awaiting funding.',
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
@@ -932,9 +938,10 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
       email,
       phone,
       city,
+      country,
       uuid,
       passwordHash: await hashSecret(password),
-      passcodeHash: await hashSecret('000000'),
+      passcodeHash: await hashSecret(passcode || '000000'),
     },
   );
 
@@ -1757,6 +1764,8 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
   const kycStatus = String(req.body.kycStatus ?? 'Pending');
   const riskLevel = String(req.body.riskLevel ?? 'Medium');
   const plan = String(req.body.plan ?? 'Starter');
+  const passcode = String(req.body.passcode ?? '').replace(/\D/g, '');
+  const sendEmail = req.body.sendEmail !== false;
 
   if (!name || !email) {
     return res.status(400).json({ message: 'Name and email are required.' });
@@ -1800,13 +1809,11 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       plan,
       note: String(req.body.note ?? 'Created from admin panel.'),
       passwordHash: await hashSecret(password),
-      passcodeHash: await hashSecret('000000'),
+      passcodeHash: await hashSecret(passcode || '000000'),
     },
   );
 
-  const emailSettings = await getSetting('email', {});
-
-  if (emailSettings.notifyOnUserRegistration !== false) {
+  if (sendEmail) {
     const brandName = await getBrandName();
     await sendSystemEmailSafely({
       logContext: `admin-created account email to ${email}`,
@@ -1823,7 +1830,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       highlights: [
         `Email: ${email}`,
         `Temporary password: ${password}`,
-        'Default passcode: 000000 (change this after signing in)',
+        `Default passcode: ${passcode || '000000'} (change this after signing in)`,
         `Account plan: ${plan}`,
       ],
       ctaLabel: 'Sign in to your account',
