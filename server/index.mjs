@@ -891,7 +891,7 @@ app.post('/api/auth/signup', async (req, res) => {
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, :phone, :city, :uuid, :country, 'New Account', 'Tier 1', 'Active', 'Pending', 'Medium',
+      :id, 'user', :name, :email, :phone, :city, :uuid, :country, 'New Account', 'Tier 1', 'Active', 'None', 'Low',
       0, 0, 0, 0, 1, 'Starter', 'Just created', 'New signup awaiting funding.',
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
@@ -1724,8 +1724,8 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
   const country = String(req.body.country ?? '');
   const tier = String(req.body.tier ?? 'Tier 1');
   const status = String(req.body.status ?? 'Active');
-  const kycStatus = String(req.body.kycStatus ?? 'Pending');
-  const riskLevel = String(req.body.riskLevel ?? 'Medium');
+  const kycStatus = String(req.body.kycStatus ?? 'None');
+  const riskLevel = String(req.body.riskLevel ?? 'Low');
   const plan = String(req.body.plan ?? 'Starter');
   const passcode = String(req.body.passcode ?? '').replace(/\D/g, '');
   const sendEmail = req.body.sendEmail !== false;
