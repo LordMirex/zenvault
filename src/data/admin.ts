@@ -36,14 +36,12 @@ export type AdminUser = {
   email: string;
   uuid: string;
   country: string;
-  deskLabel: string;
   tier: string;
   status: AdminUserStatus;
   kycStatus: AdminKycStatus;
   riskLevel: AdminRiskLevel;
   portfolioUsd: number;
   availableUsd: number;
-  plan: string;
   lastSeen: string;
   note: string;
   openCards: number;

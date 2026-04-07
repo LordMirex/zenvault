@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS users (
   city TEXT NOT NULL DEFAULT '',
   uuid TEXT NOT NULL DEFAULT '',
   country TEXT NOT NULL DEFAULT '',
-  desk_label TEXT NOT NULL DEFAULT '',
   tier TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT '',
   kyc_status TEXT NOT NULL DEFAULT '',
@@ -21,8 +20,6 @@ CREATE TABLE IF NOT EXISTS users (
   available_usd NUMERIC(20,2) NOT NULL DEFAULT 0,
   portfolio_change_usd NUMERIC(20,2) NOT NULL DEFAULT 0,
   portfolio_change_pct NUMERIC(10,4) NOT NULL DEFAULT 0,
-  wallet_connected INTEGER NOT NULL DEFAULT 1,
-  plan_name TEXT NOT NULL DEFAULT '',
   last_seen TEXT NOT NULL DEFAULT '',
   note TEXT,
   password_hash TEXT NOT NULL,
@@ -95,27 +92,26 @@ const seedDatabase = async (pool) => {
       const passcodeHash = await hashSecret(user.passcode);
       await pool.query(
         `INSERT INTO users (
-          id, role, name, email, phone, city, uuid, country, desk_label, tier,
+          id, role, name, email, phone, city, uuid, country, tier,
           status, kyc_status, risk_level, portfolio_usd, available_usd,
-          portfolio_change_usd, portfolio_change_pct, wallet_connected, plan_name,
+          portfolio_change_usd, portfolio_change_pct,
           last_seen, note, password_hash, passcode_hash,
           holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
           notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-          $11,$12,$13,$14,$15,
-          $16,$17,$18,$19,
-          $20,$21,$22,$23,
-          $24,$25,$26,$27,
-          $28,$29,$30,$31,$32
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,
+          $10,$11,$12,$13,$14,
+          $15,$16,
+          $17,$18,$19,$20,
+          $21,$22,$23,$24,
+          $25,$26,$27,$28,$29
         ) ON CONFLICT (id) DO NOTHING`,
         [
           user.id, user.role, user.name, user.email, user.phone ?? '', user.city ?? '',
-          user.uuid ?? '', user.country ?? '', user.deskLabel ?? '', user.tier ?? '',
+          user.uuid ?? '', user.country ?? '', user.tier ?? '',
           user.status ?? '', user.kycStatus ?? '', user.riskLevel ?? '',
           user.portfolioUsd ?? 0, user.availableUsd ?? 0,
           user.portfolioChangeUsd ?? 0, user.portfolioChangePct ?? 0,
-          user.walletConnected ? 1 : 0, user.plan ?? '',
           user.lastSeen ?? '', user.note ?? null, passwordHash, passcodeHash,
           JSON.stringify(user.holdings ?? []),
           JSON.stringify(user.cards ?? []),

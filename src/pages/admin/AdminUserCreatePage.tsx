@@ -24,12 +24,10 @@ export const AdminUserCreatePage = () => {
     password: '',
     passcode: '',
     country: '',
-    deskLabel: '',
     tier: 'Tier 1',
     status: 'Active',
     riskLevel: 'Medium',
     note: '',
-    plan: 'Starter',
     requireKyc: true,
     sendEmail: true,
   });
@@ -120,12 +118,7 @@ export const AdminUserCreatePage = () => {
                 <option key={c} value={c}>{c}</option>
               ))}
             </AdminSelect>
-            <AdminTextInput
-              label="Desk Label"
-              value={form.deskLabel}
-              onChange={(event) => updateField('deskLabel', event.target.value)}
-              placeholder="e.g. Prime Treasury Desk"
-            />
+
             <AdminSelect label="Tier" value={form.tier} onChange={(event) => updateField('tier', event.target.value)}>
               <option>Tier 1</option>
               <option>Tier 2</option>
@@ -213,20 +206,9 @@ export const AdminUserCreatePage = () => {
             </div>
           </AdminCard>
 
-          <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Plan and Access</h3>
-            <div className="mt-5 grid gap-4">
-              <AdminTextInput
-                label="Plan Name"
-                value={form.plan}
-                onChange={(event) => updateField('plan', event.target.value)}
-                placeholder="e.g. Starter, Growth, Premium"
-              />
-              <AdminButton type="submit" disabled={submitting} className="w-full">
-                {submitting ? 'Creating account...' : 'Create User Account'}
-              </AdminButton>
-            </div>
-          </AdminCard>
+          <AdminButton type="submit" disabled={submitting} className="w-full mt-2">
+            {submitting ? 'Creating account...' : 'Create User Account'}
+          </AdminButton>
         </div>
       </form>
     </div>

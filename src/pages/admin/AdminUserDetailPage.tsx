@@ -58,12 +58,10 @@ export const AdminUserDetailPage = () => {
       name: user.name,
       email: user.email,
       country: user.country,
-      deskLabel: user.deskLabel,
       tier: user.tier,
       status: user.status,
       kycStatus: user.kycStatus,
       riskLevel: user.riskLevel,
-      plan: user.plan,
       note: user.note,
     });
     setFeedback('');
@@ -133,8 +131,8 @@ export const AdminUserDetailPage = () => {
       <div className="grid gap-4 md:grid-cols-4">
         <InfoTile label="Portfolio" value={formatCompactUsd(user.portfolioUsd)} />
         <InfoTile label="Available" value={formatCompactUsd(user.availableUsd)} />
-        <InfoTile label="Plan" value={user.plan} />
         <InfoTile label="Risk" value={user.riskLevel} />
+        <InfoTile label="Tier" value={user.tier} />
       </div>
 
       {editForm ? (
@@ -144,7 +142,6 @@ export const AdminUserDetailPage = () => {
             <AdminTextInput label="Full Name" value={editForm.name} onChange={(e) => updateField('name', e.target.value)} />
             <AdminTextInput label="Email" type="email" value={editForm.email} onChange={(e) => updateField('email', e.target.value)} />
             <AdminTextInput label="Country" value={editForm.country} onChange={(e) => updateField('country', e.target.value)} />
-            <AdminTextInput label="Desk Label" value={editForm.deskLabel} onChange={(e) => updateField('deskLabel', e.target.value)} />
             <AdminSelect label="Tier" value={editForm.tier} onChange={(e) => updateField('tier', e.target.value)}>
               <option>Tier 1</option>
               <option>Tier 2</option>
@@ -167,7 +164,6 @@ export const AdminUserDetailPage = () => {
               <option>Medium</option>
               <option>High</option>
             </AdminSelect>
-            <AdminTextInput label="Plan" value={editForm.plan} onChange={(e) => updateField('plan', e.target.value)} />
             <div className="md:col-span-2">
               <AdminTextArea label="Internal Note" rows={4} value={editForm.note} onChange={(e) => updateField('note', e.target.value)} />
             </div>
@@ -186,7 +182,6 @@ export const AdminUserDetailPage = () => {
           <AdminCard className="p-6">
             <h3 className="text-lg font-semibold text-slate-900">Account State</h3>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <InfoTile label="Desk" value={user.deskLabel} />
               <InfoTile label="Tier" value={user.tier} />
               <InfoTile label="Country" value={user.country} />
               <InfoTile label="Last Seen" value={user.lastSeen} />

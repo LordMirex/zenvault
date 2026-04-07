@@ -51,7 +51,7 @@ type ClientBootstrap = {
     city: string;
     uuid: string;
     country: string;
-    plan: string;
+
     tier: string;
     kycStatus: string;
   };
@@ -60,7 +60,6 @@ type ClientBootstrap = {
     availableUsd: number;
     changeUsd: number;
     changePct: number;
-    walletConnected: boolean;
   };
   walletAssets: WalletAsset[];
   marketAssets: MarketAsset[];

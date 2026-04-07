@@ -97,7 +97,7 @@ export const Settings = () => {
         {
           name: 'Manage Assets',
           icon: WalletCards,
-          value: clientSummary?.walletConnected ? 'Choose dashboard portfolio assets' : 'Wallet connection pending',
+          value: 'Choose dashboard portfolio assets',
           tone: isLightTheme ? 'bg-violet-100 text-violet-700' : 'bg-violet-500/12 text-violet-300',
           href: '/app/crypto-manage',
         },
@@ -166,13 +166,6 @@ export const Settings = () => {
                 <Shield size={16} />
                 Settings
               </span>
-              <span
-                className={`inline-flex items-center rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] ${
-                  isLightTheme ? 'border-slate-200/80 bg-white/60 text-slate-600' : 'border-white/10 bg-white/[0.04] text-slate-300'
-                }`}
-              >
-                {clientProfile?.plan ?? 'Workspace'} plan
-              </span>
             </div>
 
             <div className="space-y-4">
@@ -211,8 +204,7 @@ export const Settings = () => {
                 </div>
                 <div className="grid gap-3">
                   {[ 
-                    { label: 'Wallet connection', value: clientSummary?.walletConnected ? 'Connected' : 'Pending' },
-                    { label: 'Card desk', value: clientCardRequests.length > 0 ? 'Request pending review' : 'Ready for applications' },
+                      { label: 'Card desk', value: clientCardRequests.length > 0 ? 'Request pending review' : 'Ready for applications' },
                   ].map((item) => (
                     <div key={item.label} className={`rounded-[1.4rem] border p-4 ${insetClasses}`}>
                       <p className={`text-[11px] font-bold uppercase tracking-[0.2em] ${labelClasses}`}>{item.label}</p>

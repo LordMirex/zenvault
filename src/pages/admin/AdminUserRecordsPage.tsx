@@ -214,7 +214,7 @@ export const AdminUserRecordsPage = () => {
 
       <AdminPageHeading
         title={`${user.name} ${isCardsPage ? 'Cards' : 'Wallet Funding'}`}
-        description={`${user.email} - ${user.country} - ${user.deskLabel}`}
+        description={`${user.email} - ${user.country}`}
       />
 
       {feedback && <AdminNotice tone="success">{feedback}</AdminNotice>}

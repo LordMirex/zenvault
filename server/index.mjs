@@ -482,14 +482,12 @@ const mapAdminUser = (user, options = {}) => {
     email: user.email,
     uuid: user.uuid,
     country: user.country,
-    deskLabel: user.desk_label,
     tier: user.tier,
     status: user.status,
     kycStatus: user.kyc_status,
     riskLevel: user.risk_level,
     portfolioUsd: Number(user.portfolio_usd),
     availableUsd: Number(user.available_usd),
-    plan: user.plan_name,
     lastSeen: user.last_seen,
     note: user.note,
     openCards: cards.filter((card) => !card.requestOnly).length,
@@ -716,7 +714,6 @@ const getClientBootstrap = async (userId) => {
       city: user.city,
       uuid: user.uuid,
       country: user.country,
-      plan: user.plan_name,
       tier: user.tier,
       kycStatus: user.kyc_status,
     },
@@ -725,7 +722,6 @@ const getClientBootstrap = async (userId) => {
       availableUsd: totalWalletUsd,
       changeUsd,
       changePct,
-      walletConnected: Boolean(user.wallet_connected),
     },
     walletAssets: effectiveAssets,
     marketAssets: buildAdminAssetCatalog(marketAssets, settingsWallets),
@@ -886,13 +882,13 @@ app.post('/api/auth/signup', async (req, res) => {
 
   await query(
     `INSERT INTO users (
-      id, role, name, email, phone, city, uuid, country, desk_label, tier, status, kyc_status, risk_level,
-      portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, wallet_connected, plan_name, last_seen, note,
+      id, role, name, email, phone, uuid, country, tier, status, kyc_status, risk_level,
+      portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen, note,
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, :phone, :city, :uuid, :country, 'New Account', 'Tier 1', 'Active', 'None', 'Low',
-      0, 0, 0, 0, 1, 'Starter', 'Just created', 'New signup awaiting funding.',
+      :id, 'user', :name, :email, :phone, :uuid, :country, 'Tier 1', 'Active', 'None', 'Low',
+      0, 0, 0, 0, 'Just created', 'New signup awaiting funding.',
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
     {
@@ -900,7 +896,6 @@ app.post('/api/auth/signup', async (req, res) => {
       name: fullName,
       email,
       phone,
-      city,
       country,
       uuid,
       passwordHash: await hashSecret(password),
@@ -1726,7 +1721,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
   const status = String(req.body.status ?? 'Active');
   const kycStatus = String(req.body.kycStatus ?? 'None');
   const riskLevel = String(req.body.riskLevel ?? 'Low');
-  const plan = String(req.body.plan ?? 'Starter');
   const passcode = String(req.body.passcode ?? '').replace(/\D/g, '');
   const sendEmail = req.body.sendEmail !== false;
 
@@ -1749,13 +1743,13 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
 
   await query(
     `INSERT INTO users (
-      id, role, name, email, phone, city, uuid, country, desk_label, tier, status, kyc_status, risk_level,
-      portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, wallet_connected, plan_name, last_seen, note,
+      id, role, name, email, phone, uuid, country, tier, status, kyc_status, risk_level,
+      portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen, note,
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, '', '', :uuid, :country, :deskLabel, :tier, :status, :kycStatus, :riskLevel,
-      0, 0, 0, 0, 1, :plan, 'Just created', :note,
+      :id, 'user', :name, :email, '', :uuid, :country, :tier, :status, :kycStatus, :riskLevel,
+      0, 0, 0, 0, 'Just created', :note,
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
     {
@@ -1764,12 +1758,10 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       email,
       uuid,
       country,
-      deskLabel: String(req.body.deskLabel ?? ''),
       tier,
       status,
       kycStatus,
       riskLevel,
-      plan,
       note: String(req.body.note ?? 'Created from admin panel.'),
       passwordHash: await hashSecret(password),
       passcodeHash: await hashSecret(passcode || '000000'),
@@ -2852,12 +2844,10 @@ app.put('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
     phone: 'phone',
     city: 'city',
     country: 'country',
-    deskLabel: 'desk_label',
     tier: 'tier',
     status: 'status',
     kycStatus: 'kyc_status',
     riskLevel: 'risk_level',
-    plan: 'plan_name',
     note: 'note',
   };
 
