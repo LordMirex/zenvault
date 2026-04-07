@@ -60,50 +60,6 @@ const isReplitOrigin = (origin) =>
 const isRenderOrigin = (origin) =>
   typeof origin === 'string' && origin.endsWith('.onrender.com');
 
-const rateLimitState = new Map();
-
-const createRateLimitMiddleware = ({ windowMs, max, message, keyBuilder }) => (req, res, next) => {
-  const now = Date.now();
-  const key = `${req.path}:${keyBuilder(req)}`;
-  const current = rateLimitState.get(key);
-
-  if (rateLimitState.size > 1000) {
-    for (const [entryKey, entryValue] of rateLimitState.entries()) {
-      if (entryValue.expiresAt <= now) {
-        rateLimitState.delete(entryKey);
-      }
-    }
-  }
-
-  if (!current || current.expiresAt <= now) {
-    rateLimitState.set(key, { count: 1, expiresAt: now + windowMs });
-    return next();
-  }
-
-  if (current.count >= max) {
-    const retryAfterSeconds = Math.max(1, Math.ceil((current.expiresAt - now) / 1000));
-    res.setHeader('Retry-After', String(retryAfterSeconds));
-    return res.status(429).json({ message });
-  }
-
-  current.count += 1;
-  rateLimitState.set(key, current);
-  return next();
-};
-
-const loginLimiter = createRateLimitMiddleware({
-  windowMs: 10 * 60 * 1000,
-  max: 5,
-  message: 'Too many login attempts. Please wait 10 minutes and try again.',
-  keyBuilder: (req) => `${req.ip}:${String(req.body.email ?? '').trim().toLowerCase() || 'unknown-email'}`,
-});
-
-const signupLimiter = createRateLimitMiddleware({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  message: 'Too many signup attempts. Please wait one hour and try again.',
-  keyBuilder: (req) => `${req.ip}:${String(req.body.email ?? '').trim().toLowerCase() || 'unknown-email'}`,
-});
 
 app.use(
   cors({
