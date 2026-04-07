@@ -50,10 +50,21 @@ Copy `.env.example` to `.env` and fill in your values.
 | `JWT_SECRET` | Random 40+ character string |
 | `NODE_ENV` | `production` |
 
-### 4. Deploy
+### 4. Confirm build & start commands
+
+> `render.yaml` sets these automatically, but verify in the Render dashboard under **Settings**:
+
+| Setting | Value |
+|---|---|
+| **Build Command** | `npm install --include=dev && npm run build` |
+| **Start Command** | `node ./server/index.mjs` |
+
+> `--include=dev` is required because `NODE_ENV=production` would otherwise skip TypeScript, Vite, and type packages needed to compile the frontend.
+
+### 5. Deploy
 Click **Manual Deploy → Deploy latest commit**.
 
-Render will: install → build → start → connect to PostgreSQL → seed data → go live ✅
+Render will: install all dependencies → build frontend → start server → connect to PostgreSQL → seed data → go live ✅
 
 ---
 
@@ -104,6 +115,8 @@ Render's free tier spins down after 15 minutes of inactivity. Use a free cron jo
 | Command | Description |
 |---|---|
 | `npm run dev` | Run Vite + Express API concurrently (dev) |
-| `npm run build` | TypeScript compile + Vite build |
-| `npm start` | Start Express server (auto-builds if `dist/` missing) |
-| `npm run start:prod` | Full build then start |
+| `npm run build` | TypeScript compile + Vite build (produces `dist/`) |
+| `npm start` | Start Express server — requires `dist/` to exist |
+| `npm run start:prod` | Full build then start (safe for a manual VPS restart) |
+
+> On **Render**, the build command handles `npm install --include=dev && npm run build`, and the start command is `node ./server/index.mjs`. Do not use `npm run start:prod` as the Render start command — it would rebuild on every cold start and time out.
