@@ -77,7 +77,7 @@ export const AdminPageHeading = ({
 }) => (
   <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
     <div>
-      <h2 className="text-3xl font-black text-slate-900">{title}</h2>
+      <h2 className="text-2xl font-black text-slate-900 md:text-3xl">{title}</h2>
       {description && <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500">{description}</p>}
     </div>
     {actions}

@@ -93,7 +93,7 @@ export const AdminDashboard = () => {
       {alertError && <AdminNotice tone="danger">{alertError}</AdminNotice>}
 
       {/* Key metrics — 5 cards including KYC */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         <MetricCard
           icon={Users}
           iconColor="text-violet-600"
@@ -141,7 +141,7 @@ export const AdminDashboard = () => {
       </div>
 
       {/* Quick actions row */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 grid-cols-1 min-[480px]:grid-cols-3">
         <Link
           to="/admin/broadcasts"
           className="flex items-center gap-4 rounded-xl border border-violet-100 bg-violet-50 p-4 transition-colors hover:bg-violet-100 group"
@@ -416,18 +416,18 @@ const MetricCard = ({
   urgent?: boolean;
 }) => {
   const inner = (
-    <div className={`flex items-center gap-4 rounded-xl border p-5 shadow-sm transition-shadow hover:shadow-md ${urgent ? 'border-orange-200 bg-orange-50/50' : 'border-slate-200 bg-white'}`}>
-      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-        <Icon className={`h-6 w-6 ${iconColor}`} />
+    <div className={`rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md h-full ${urgent ? 'border-orange-200 bg-orange-50/50' : 'border-slate-200 bg-white'}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon className={`h-5 w-5 ${iconColor}`} />
+        </div>
+        {linkTo && <ArrowUpRight className="h-4 w-4 text-slate-300" />}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-        <p className={`mt-1 text-2xl font-black leading-none ${urgent ? 'text-orange-700' : 'text-slate-900'}`}>{value}</p>
-        <p className="mt-1 text-xs text-slate-400 leading-relaxed">{detail}</p>
-      </div>
-      {linkTo && <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300" />}
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 truncate">{label}</p>
+      <p className={`mt-1 text-2xl font-black leading-none ${urgent ? 'text-orange-700' : 'text-slate-900'}`}>{value}</p>
+      <p className="mt-1.5 text-[11px] text-slate-400 leading-relaxed truncate">{detail}</p>
     </div>
   );
 
-  return linkTo ? <Link to={linkTo}>{inner}</Link> : <div>{inner}</div>;
+  return linkTo ? <Link to={linkTo} className="block">{inner}</Link> : <div>{inner}</div>;
 };
