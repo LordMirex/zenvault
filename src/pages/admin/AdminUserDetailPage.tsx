@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Coins, CreditCard, KeyRound } from 'lucide-react';
+import { ChevronLeft, Coins, CreditCard, KeyRound, LogIn } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../lib/api';
 import { formatCompactUsd } from '../../lib/format';
@@ -26,12 +26,28 @@ export const AdminUserDetailPage = () => {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
+  const [loginAsBusy, setLoginAsBusy] = useState(false);
+  const [loginAsError, setLoginAsError] = useState('');
 
   if (!user) {
     return <Navigate to="/admin/users" replace />;
   }
 
   const userTransactions = adminTransactions.filter((transaction) => transaction.userId === user.id).slice(0, 5);
+
+  const handleLoginAs = async () => {
+    setLoginAsBusy(true);
+    setLoginAsError('');
+    try {
+      const { token } = await apiRequest<{ token: string }>(`/api/admin/impersonate/${user.id}`, { method: 'POST' });
+      const url = `/impersonate?token=${encodeURIComponent(token)}`;
+      window.open(url, `impersonate-${user.id}-${Date.now()}`, 'noopener,noreferrer');
+    } catch (err) {
+      setLoginAsError(err instanceof Error ? err.message : 'Failed to open session.');
+    } finally {
+      setLoginAsBusy(false);
+    }
+  };
 
   const startEdit = () => {
     setEditForm({
@@ -101,12 +117,14 @@ export const AdminUserDetailPage = () => {
             <AdminIconAction icon={KeyRound} label={`Reset ${user.name} password`} tone="amber" to={`/admin/users/${user.id}/password`} />
             <AdminIconAction icon={Coins} label={`Open ${user.name} crypto records`} tone="blue" to={`/admin/users/${user.id}/crypto`} />
             <AdminIconAction icon={CreditCard} label={`Open ${user.name} card records`} tone="emerald" to={`/admin/users/${user.id}/cards`} />
+            <AdminIconAction icon={LogIn} label={`Login as ${user.name}`} tone="slate" onClick={() => void handleLoginAs()} disabled={loginAsBusy} />
           </AdminActionBar>
         }
       />
 
       {feedback && <AdminNotice tone="success">{feedback}</AdminNotice>}
       {error && <AdminNotice tone="danger">{error}</AdminNotice>}
+      {loginAsError && <AdminNotice tone="danger">{loginAsError}</AdminNotice>}
 
       <div className="grid gap-4 md:grid-cols-4">
         <InfoTile label="Portfolio" value={formatCompactUsd(user.portfolioUsd)} />

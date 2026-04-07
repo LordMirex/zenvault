@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, KeyRound, Coins, CreditCard } from 'lucide-react';
+import { Eye, KeyRound, Coins, CreditCard, LogIn } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { apiRequest } from '../../lib/api';
 import { formatCompactUsd } from '../../lib/format';
 import {
   AdminActionBar,
@@ -9,6 +10,7 @@ import {
   AdminButton,
   AdminCard,
   AdminIconAction,
+  AdminNotice,
   AdminPageHeading,
   AdminSelect,
   AdminTableWrap,
@@ -19,6 +21,22 @@ export const AdminUsersPage = () => {
   const { adminUsers } = useAuth();
   const [search, setSearch] = useState('');
   const [kycFilter, setKycFilter] = useState('all');
+  const [loginAsError, setLoginAsError] = useState('');
+  const [loginAsBusy, setLoginAsBusy] = useState<string | null>(null);
+
+  const handleLoginAs = async (userId: string, name: string) => {
+    setLoginAsBusy(userId);
+    setLoginAsError('');
+    try {
+      const { token } = await apiRequest<{ token: string }>(`/api/admin/impersonate/${userId}`, { method: 'POST' });
+      const url = `/impersonate?token=${encodeURIComponent(token)}`;
+      window.open(url, `impersonate-${userId}-${Date.now()}`, 'noopener,noreferrer');
+    } catch (err) {
+      setLoginAsError(err instanceof Error ? err.message : `Failed to open session for ${name}.`);
+    } finally {
+      setLoginAsBusy(null);
+    }
+  };
 
   const filteredUsers = adminUsers.filter((user) => {
     const matchesSearch =
@@ -39,6 +57,8 @@ export const AdminUsersPage = () => {
           </Link>
         }
       />
+
+      {loginAsError && <AdminNotice tone="danger">{loginAsError}</AdminNotice>}
 
       <AdminCard className="p-5">
         <div className="grid gap-4 md:grid-cols-4">
@@ -105,6 +125,13 @@ export const AdminUsersPage = () => {
                     <AdminIconAction icon={KeyRound} label={`Reset ${user.name} password`} tone="amber" to={`/admin/users/${user.id}/password`} />
                     <AdminIconAction icon={Coins} label={`Fund ${user.name} crypto wallet`} tone="blue" to={`/admin/users/${user.id}/crypto`} />
                     <AdminIconAction icon={CreditCard} label={`Manage ${user.name} cards`} tone="emerald" to={`/admin/users/${user.id}/cards`} />
+                    <AdminIconAction
+                      icon={LogIn}
+                      label={`Login as ${user.name}`}
+                      tone="slate"
+                      onClick={() => void handleLoginAs(user.id, user.name)}
+                      disabled={loginAsBusy === user.id}
+                    />
                   </AdminActionBar>
                 </td>
               </tr>

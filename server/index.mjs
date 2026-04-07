@@ -2321,6 +2321,31 @@ app.get('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
   return res.json(mapAdminUser(user, { walletSettings: settingsWallets, marketAssets }));
 });
 
+// POST /api/admin/impersonate/:userId — open a supervised session as a user (admin only)
+app.post('/api/admin/impersonate/:userId', requireAuth, requireRole('admin'), async (req, res) => {
+  const userId = Number(req.params.userId ?? 0);
+
+  try {
+    const targetUser = await queryOne('SELECT * FROM users WHERE id = :id', { id: userId });
+
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    if (targetUser.role === 'admin') {
+      return res.status(400).json({ message: 'Cannot impersonate another admin account.' });
+    }
+
+    const { sessionId } = await createAuthenticatedSession(targetUser, req);
+    const token = createAccessToken(targetUser, sessionId);
+
+    return res.json({ token, userId: String(targetUser.id), name: targetUser.name });
+  } catch (err) {
+    console.error('[impersonate] error:', err);
+    return res.status(500).json({ message: 'Failed to create impersonation session.' });
+  }
+});
+
 // POST /api/admin/users/:userId/notify -- send a custom transaction alert to a user
 app.post('/api/admin/users/:userId/notify', requireAuth, requireRole('admin'), async (req, res) => {
   const userId = Number(req.params.userId ?? 0);

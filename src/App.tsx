@@ -44,6 +44,7 @@ const PublicLegalPage = lazyNamed(() => import('./pages/public/PublicLegalPage')
 const PublicContactPage = lazyNamed(() => import('./pages/public/PublicContactPage'), 'PublicContactPage');
 const LoginPage = lazyNamed(() => import('./pages/auth/LoginPage'), 'LoginPage');
 const SignupPage = lazyNamed(() => import('./pages/auth/SignupPage'), 'SignupPage');
+const ImpersonatePage = lazyNamed(() => import('./pages/auth/ImpersonatePage'), 'ImpersonatePage');
 const Bots = lazyNamed(() => import('./pages/Bots'), 'Bots');
 const Referral = lazyNamed(() => import('./pages/Referral'), 'Referral');
 const AdminDashboard = lazyNamed(() => import('./pages/admin/AdminDashboard'), 'AdminDashboard');
@@ -142,6 +143,8 @@ function App() {
               <Route path="terms-of-service" element={<PublicLegalPage slug="terms-of-service" />} />
               <Route path="contact" element={<PublicContactPage />} />
             </Route>
+
+            <Route path="/impersonate" element={<ImpersonatePage />} />
 
             <Route element={<GuestOnly />}>
               <Route path="/login" element={<LoginPage />} />

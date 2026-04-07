@@ -1,6 +1,11 @@
 const ACCESS_TOKEN_KEY = 'qfs_access_token';
 const PENDING_TOKEN_KEY = 'qfs_pending_token';
 const AUTH_NOTICE_KEY = 'qfs_auth_notice';
+
+// sessionStorage keys — written only in impersonation tabs, isolated per tab
+const IMPERSONATION_FLAG_KEY = 'qfs_impersonation_mode';
+const IMPERSONATION_TOKEN_KEY = 'qfs_impersonation_token';
+
 export const AUTH_EXPIRED_EVENT = 'qfs:auth-expired';
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
@@ -8,7 +13,16 @@ type RequestOptions = RequestInit & {
   token?: string | null;
 };
 
-export const getAccessToken = () => window.localStorage.getItem(ACCESS_TOKEN_KEY);
+const isImpersonationTab = () =>
+  window.sessionStorage.getItem(IMPERSONATION_FLAG_KEY) === '1';
+
+export const getAccessToken = () => {
+  if (isImpersonationTab()) {
+    return window.sessionStorage.getItem(IMPERSONATION_TOKEN_KEY);
+  }
+  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+};
+
 export const setAccessToken = (token: string) => window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
 export const clearAccessToken = () => window.localStorage.removeItem(ACCESS_TOKEN_KEY);
 
@@ -16,9 +30,19 @@ export const getPendingToken = () => window.localStorage.getItem(PENDING_TOKEN_K
 export const setPendingToken = (token: string) => window.localStorage.setItem(PENDING_TOKEN_KEY, token);
 export const clearPendingToken = () => window.localStorage.removeItem(PENDING_TOKEN_KEY);
 
+export const setImpersonationToken = (token: string) => {
+  window.sessionStorage.setItem(IMPERSONATION_FLAG_KEY, '1');
+  window.sessionStorage.setItem(IMPERSONATION_TOKEN_KEY, token);
+};
+
 export const clearStoredAuth = () => {
-  clearAccessToken();
-  clearPendingToken();
+  if (isImpersonationTab()) {
+    window.sessionStorage.removeItem(IMPERSONATION_TOKEN_KEY);
+    window.sessionStorage.removeItem(IMPERSONATION_FLAG_KEY);
+  } else {
+    clearAccessToken();
+    clearPendingToken();
+  }
 };
 
 export const consumeAuthNotice = () => {
