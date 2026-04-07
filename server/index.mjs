@@ -39,9 +39,16 @@ const __dirname = dirname(__filename);
 
 const app = express();
 app.disable('x-powered-by');
+const parseOriginList = (value) =>
+  String(value ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
 const allowedOrigins = new Set(
   [
-    config.clientOrigin,
+    ...parseOriginList(process.env.CLIENT_ORIGIN),
+    ...parseOriginList(process.env.ALLOWED_ORIGINS),
     process.env.RENDER_EXTERNAL_URL || null,
     'http://localhost:4173',
     'http://127.0.0.1:4173',
