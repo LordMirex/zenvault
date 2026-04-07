@@ -198,15 +198,8 @@ const pickAllowedValue = (input, allowed, fallback) => {
   return allowed.find((value) => value.toLowerCase() === normalized) ?? fallback;
 };
 
-const createFallbackPayId = (user, symbol) => {
-  const base = String(user?.email ?? user?.uuid ?? user?.name ?? 'wallet')
-    .trim()
-    .toLowerCase()
-    .split('@')[0]
-    .replace(/[^a-z0-9]+/g, '.')
-    .replace(/^\.|\.$/g, '');
-
-  return `${base || 'wallet'}+${String(symbol ?? '').trim().toLowerCase()}@qfs`;
+const createFallbackPayId = (user, _symbol) => {
+  return String(user?.uuid ?? '').trim();
 };
 
 export const getWalletLookupKey = (asset) =>

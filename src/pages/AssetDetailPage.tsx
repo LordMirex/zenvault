@@ -137,7 +137,7 @@ export const AssetDetailPage = () => {
             <InfoTile label="Spot Price" value={formatUsd(asset.price)} />
             <InfoTile label="24H Change" value={formatPercent(asset.change)} />
             <InfoTile label="Wallet Address" value={asset.address} />
-            <InfoTile label="PayID Alias" value={asset.payId} />
+            <InfoTile label="Wallet Address" value={asset.payId} />
             <InfoTile label="Quick Path" value={getWalletAssetPath(asset)} />
           </div>
         </div>

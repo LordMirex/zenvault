@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import { randomBytes } from 'crypto';
 import { fileURLToPath } from 'url';
 import { dirname, extname, join } from 'path';
 import { existsSync } from 'fs';
@@ -878,7 +879,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
   const nextIdRow = await queryOne("SELECT nextval('users_id_seq') AS next_id");
   const nextId = Number(nextIdRow?.next_id ?? 100);
-  const uuid = `USR-${String(nextId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
+  const uuid = `0x${randomBytes(20).toString('hex')}`;
 
   await query(
     `INSERT INTO users (
@@ -1390,6 +1391,19 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
     return res.status(400).json({ message: 'Incorrect passcode.' });
   }
 
+  if (method === 'payid') {
+    const recipientUser = await queryOne(
+      "SELECT id FROM users WHERE uuid = :uuid AND role = 'user'",
+      { uuid: recipient },
+    );
+    if (!recipientUser) {
+      return res.status(404).json({ message: 'No account found with that wallet address. Please check and try again.' });
+    }
+    if (String(recipientUser.id) === String(req.user.id)) {
+      return res.status(400).json({ message: 'You cannot transfer funds to your own wallet address.' });
+    }
+  }
+
   const holdings = parseJson(req.user.holdings_json, []);
   const marketAssets = priceFeed.getMarketAssets();
   const walletSettings = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
@@ -1739,7 +1753,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
 
   const nextIdRow = await queryOne("SELECT nextval('users_id_seq') AS next_id");
   const nextId = Number(nextIdRow?.next_id ?? 100);
-  const uuid = req.body.uuid ? String(req.body.uuid) : `USR-${String(nextId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
+  const uuid = req.body.uuid ? String(req.body.uuid) : `0x${randomBytes(20).toString('hex')}`;
 
   await query(
     `INSERT INTO users (

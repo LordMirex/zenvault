@@ -72,7 +72,7 @@ export const Deposit = () => {
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">Deposit Assets</p>
             <div>
               <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">
-                Fund {branding.siteName} from external chains or internal PayID
+                Fund {branding.siteName} from external chains or internal wallet address
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-gray-400 md:text-base">
                 Pick an asset, confirm the rail, and share the destination details with your counterparty.
@@ -83,7 +83,7 @@ export const Deposit = () => {
           <div className="flex flex-wrap gap-3">
               {[
                 { id: 'external', label: 'External Wallet', detail: 'On-chain address' },
-                { id: 'payid', label: `${branding.siteName} PayID`, detail: 'Internal instant transfer' },
+                { id: 'payid', label: `${branding.siteName} Wallet Address`, detail: 'Internal instant transfer' },
               ].map((item) => (
               <button
                 key={item.id}
@@ -159,7 +159,7 @@ export const Deposit = () => {
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">
-                  {method === 'external' ? 'Deposit Address' : 'Internal PayID'}
+                  {method === 'external' ? 'Deposit Address' : 'Internal Wallet Address'}
                 </p>
                 <h3 className="mt-1 text-2xl font-black text-white">
                   {selectedAsset.name} ({selectedAsset.symbol})
@@ -171,7 +171,7 @@ export const Deposit = () => {
             <div className="mt-6 rounded-[1.75rem] border border-gray-800 bg-dark-800/70 p-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
-                  {method === 'external' ? 'Wallet Address' : 'Receive PayID'}
+                  {method === 'external' ? 'Wallet Address' : 'Receive Address'}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -197,7 +197,7 @@ export const Deposit = () => {
                     {qrImageUrl ? (
                       <img
                         src={qrImageUrl}
-                        alt={`QR code for ${selectedAsset.symbol} ${method === 'external' ? 'address' : 'PayID'}`}
+                        alt={`QR code for ${selectedAsset.symbol} ${method === 'external' ? 'address' : 'wallet address'}`}
                         loading="lazy"
                         className="mx-auto h-40 w-40 rounded-[1.25rem] object-contain"
                       />
@@ -219,7 +219,7 @@ export const Deposit = () => {
                     <p className="mt-2 text-xs text-gray-500">
                       {method === 'external'
                         ? truncateMiddle(selectedAsset.address)
-                        : `Only ${branding.siteName} PayID senders can settle instantly to this alias.`}
+                        : `Only ${branding.siteName} wallet address senders can settle instantly to this alias.`}
                     </p>
                   </div>
 

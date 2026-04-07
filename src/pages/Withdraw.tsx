@@ -116,7 +116,7 @@ export const Withdraw = () => {
           <div className="flex flex-wrap gap-3">
             {[
               { id: 'external', label: 'External Wallet', detail: 'Blockchain transfer' },
-              { id: 'payid', label: `${branding.siteName} PayID`, detail: 'Internal instant payout' },
+              { id: 'payid', label: `${branding.siteName} Wallet Address`, detail: 'Internal instant transfer' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -196,7 +196,7 @@ export const Withdraw = () => {
                   {selectedAsset.name} ({selectedAsset.symbol})
                 </h3>
                 <p className="mt-1 text-sm text-gray-400">
-                  {method === 'external' ? 'Broadcast to an on-chain address' : `Send instantly to a verified ${branding.siteName} PayID`}
+                  {method === 'external' ? 'Broadcast to an on-chain address' : `Send instantly to a verified ${branding.siteName} wallet address`}
                 </p>
               </div>
             </div>
@@ -204,12 +204,12 @@ export const Withdraw = () => {
             <div className="mt-6 space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
-                  {method === 'external' ? 'Destination Address' : 'Recipient PayID'}
+                  {method === 'external' ? 'Destination Address' : 'Recipient Wallet Address'}
                 </label>
                 <input
                   value={recipient}
                   onChange={(event) => setRecipient(event.target.value)}
-                  placeholder={method === 'external' ? `Enter ${selectedAsset.network} address` : 'recipient@wallet'}
+                  placeholder={method === 'external' ? `Enter ${selectedAsset.network} address` : 'Enter recipient 0x wallet address'}
                   className="w-full rounded-2xl border border-gray-800 bg-dark-800 px-4 py-3 text-sm text-white placeholder:text-gray-500 focus:border-primary/50 focus:outline-none"
                 />
               </div>

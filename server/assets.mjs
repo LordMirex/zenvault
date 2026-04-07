@@ -238,14 +238,8 @@ const normalizeAssetConfigs = (input = {}, marketAssets = SUPPORTED_MARKET_ASSET
 const buildFallbackAddress = (user, asset) =>
   `QFS-${normalizeText(user?.uuid || user?.email || 'wallet').replace(/[^A-Za-z0-9]/g, '').slice(0, 18)}-${asset.symbol}`;
 
-const buildFallbackPayId = (user, symbol) => {
-  const base = normalizeText(user?.email || user?.uuid || user?.name || 'wallet')
-    .toLowerCase()
-    .split('@')[0]
-    .replace(/[^a-z0-9]+/g, '.')
-    .replace(/^\.|\.$/g, '');
-
-  return `${base || 'wallet'}+${String(symbol).toLowerCase()}@qfs`;
+const buildFallbackPayId = (user, _symbol) => {
+  return normalizeText(user?.uuid) || '';
 };
 
 export const getSupportedMarketAssetIds = () => SUPPORTED_MARKET_ASSETS.map((asset) => asset.id);
