@@ -18,7 +18,7 @@ export const AdminShell = () => {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <AdminHeader onOpenMenu={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto bg-slate-100">
-            <div className="p-4 md:p-6">
+            <div className="p-4 pb-10 md:p-6 md:pb-12">
               <Outlet />
             </div>
           </main>

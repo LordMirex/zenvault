@@ -169,7 +169,7 @@ export const AdminActionBar = ({
 }: {
   children: ReactNode;
   className?: string;
-}) => <div className={cn('flex flex-wrap items-center gap-2', className)}>{children}</div>;
+}) => <div className={cn('flex items-center gap-1.5', className)}>{children}</div>;
 
 type AdminActionTone = 'blue' | 'emerald' | 'violet' | 'amber' | 'rose' | 'slate';
 

@@ -27,11 +27,15 @@ export const AdminUsersPage = () => {
   const handleLoginAs = async (userId: string, name: string) => {
     setLoginAsBusy(userId);
     setLoginAsError('');
+    const newTab = window.open('about:blank', `impersonate-${userId}-${Date.now()}`);
     try {
       const { token } = await apiRequest<{ token: string }>(`/api/admin/impersonate/${userId}`, { method: 'POST' });
       const url = `/impersonate?token=${encodeURIComponent(token)}`;
-      window.open(url, `impersonate-${userId}-${Date.now()}`, 'noopener,noreferrer');
+      if (newTab) {
+        newTab.location.href = url;
+      }
     } catch (err) {
+      if (newTab) newTab.close();
       setLoginAsError(err instanceof Error ? err.message : `Failed to open session for ${name}.`);
     } finally {
       setLoginAsBusy(null);
