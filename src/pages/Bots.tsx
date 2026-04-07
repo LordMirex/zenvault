@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bot, Pause, Play, Plus, TrendingUp, Zap } from 'lucide-react';
+import { Bot, FlaskConical, Pause, Play, Plus, TrendingUp, Zap } from 'lucide-react';
 
 type BotStatus = 'Active' | 'Paused' | 'Stopped';
 
@@ -46,7 +46,19 @@ export const Bots = () => {
   const totalTrades = bots.reduce((sum, bot) => sum + bot.trades, 0);
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-start gap-3 rounded-[1.5rem] border border-primary/30 bg-primary/5 p-4">
+        <div className="mt-0.5 shrink-0 text-primary">
+          <FlaskConical size={18} />
+        </div>
+        <div>
+          <p className="text-sm font-black text-primary">Preview Mode — Demo Data</p>
+          <p className="mt-1 text-xs leading-relaxed text-gray-400">
+            Trading bots are not yet live. The dashboard below shows sample data so you can explore the layout. Live bot execution is coming soon.
+          </p>
+        </div>
+      </div>
+
       <section className="rounded-[2rem] border border-gray-800 bg-gradient-to-br from-dark-800 via-dark-900 to-dark-900 p-6 md:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
@@ -88,7 +100,8 @@ export const Bots = () => {
           <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">Your Bots</h3>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-[1.5rem] bg-primary px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-dark-900 transition-colors hover:bg-yellow-400"
+            title="Coming soon"
+            className="inline-flex cursor-not-allowed items-center gap-2 rounded-[1.5rem] bg-primary/40 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-dark-900/60"
           >
             <Plus size={16} />
             New Bot
@@ -161,9 +174,10 @@ export const Bots = () => {
               <p className="mt-2 text-xs leading-relaxed text-gray-500">{strategy.desc}</p>
               <button
                 type="button"
-                className="mt-4 w-full rounded-2xl border border-gray-700 bg-dark-900 py-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-300 transition-colors hover:text-white"
+                title="Coming soon"
+                className="mt-4 w-full cursor-not-allowed rounded-2xl border border-gray-800 bg-dark-900 py-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-600"
               >
-                Configure
+                Coming Soon
               </button>
             </div>
           ))}

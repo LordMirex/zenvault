@@ -1,5 +1,6 @@
 import { Search, ShieldCheck, CreditCard, Landmark, ArrowRight, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { formatPercent, formatUsd } from '../lib/format';
 import { useBranding } from '../context/BrandingContext';
@@ -9,6 +10,7 @@ const filters = ['All', 'Major', 'Stablecoin', 'Fast Settlement', 'EVM'];
 export const BuyCrypto = () => {
   const { branding } = useBranding();
   const { clientWalletAssets } = useAuth();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedAssetId, setSelectedAssetId] = useState(clientWalletAssets[0]?.id ?? '');
@@ -180,6 +182,7 @@ export const BuyCrypto = () => {
 
             <button
               type="button"
+              onClick={() => navigate(`/app/deposit?asset=${selectedAsset.id}`)}
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-[1.5rem] bg-primary px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-dark-900 transition-colors hover:bg-yellow-400"
             >
               Continue Purchase

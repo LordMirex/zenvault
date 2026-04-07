@@ -198,6 +198,7 @@ type AuthContextValue = {
   markAllNotificationsRead: () => Promise<void>;
   toggleClientAsset: (assetId: string) => Promise<void>;
   submitCardApplication: (input: { holderName: string; brand: 'Visa' | 'Mastercard'; note: string }) => Promise<string>;
+  swapAssets: (input: { fromAssetId: string; toAssetId: string; fromAmount: number; passcode: string }) => Promise<{ toAmount: number; message: string }>;
   updateClientSecurity: (input: {
     currentPassword: string;
     newPassword: string;
@@ -535,6 +536,15 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     return payload.message;
   };
 
+  const swapAssets = async (input: { fromAssetId: string; toAssetId: string; fromAmount: number; passcode: string }) => {
+    const payload = await apiRequest<{ toAmount: number; message: string }>('/api/client/swap', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    await refreshBootstrap();
+    return payload;
+  };
+
   const updateClientSecurity = async (input: {
     currentPassword: string;
     newPassword: string;
@@ -624,6 +634,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       markAllNotificationsRead,
       toggleClientAsset,
       submitCardApplication,
+      swapAssets,
       updateClientSecurity,
       createAdminUser,
       sendAdminEmail,

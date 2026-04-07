@@ -911,8 +911,8 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
     return res.status(409).json({ message: 'An account with that email already exists.' });
   }
 
-  const nextIdRow = await queryOne("SELECT nextval('users_id_seq') AS nextId");
-  const nextId = Number(nextIdRow?.nextId ?? 100);
+  const nextIdRow = await queryOne("SELECT nextval('users_id_seq') AS next_id");
+  const nextId = Number(nextIdRow?.next_id ?? 100);
   const uuid = `USR-${String(nextId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
 
   await query(
@@ -1609,7 +1609,139 @@ app.post('/api/client/passcode/verify', requireAuth, requireRole('user'), async 
   return res.json({ ok: true });
 });
 
-// FIX: was missing closing });
+// POST /api/client/swap — swap one asset for another within the user's wallet
+app.post('/api/client/swap', requireAuth, requireRole('user'), async (req, res) => {
+  const fromAssetId = String(req.body.fromAssetId ?? '').trim();
+  const toAssetId   = String(req.body.toAssetId ?? '').trim();
+  const fromAmount  = Number(req.body.fromAmount ?? 0);
+  const passcode    = String(req.body.passcode ?? '').trim();
+
+  if (!fromAssetId || !toAssetId || !Number.isFinite(fromAmount) || fromAmount <= 0) {
+    return res.status(400).json({ message: 'From asset, to asset, and a positive amount are required.' });
+  }
+
+  if (fromAssetId === toAssetId) {
+    return res.status(400).json({ message: 'Cannot swap an asset for itself.' });
+  }
+
+  if (!passcode || passcode.length !== 6) {
+    return res.status(400).json({ message: 'Passcode must be 6 digits.' });
+  }
+
+  const passcodeMatches = await compareSecret(passcode, req.user.passcode_hash);
+  if (!passcodeMatches) {
+    return res.status(400).json({ message: 'Incorrect passcode.' });
+  }
+
+  const holdings     = parseJson(req.user.holdings_json, []);
+  const marketAssets = priceFeed.getMarketAssets();
+  const walletSettings = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
+  const walletAssets = buildUserWalletAssets({ user: req.user, holdings, marketAssets, walletSettings });
+
+  const fromAsset = walletAssets.find((a) => a.id === fromAssetId);
+  const toAsset   = walletAssets.find((a) => a.id === toAssetId);
+
+  if (!fromAsset || !toAsset) {
+    return res.status(404).json({ message: 'One or both assets not found in this wallet.' });
+  }
+
+  if (fromAmount > Number(fromAsset.balance ?? 0)) {
+    return res.status(400).json({ message: 'Insufficient balance.' });
+  }
+
+  const fromPrice  = Number(fromAsset.price ?? 0);
+  const toPrice    = Number(toAsset.price ?? 0);
+
+  if (!fromPrice || !toPrice) {
+    return res.status(400).json({ message: 'Price data unavailable — try again shortly.' });
+  }
+
+  const toAmountReceived = Number(((fromAmount * fromPrice) / toPrice).toFixed(8));
+  const createdAt = createTimestampLabel();
+
+  const updatedFromAsset = {
+    ...fromAsset,
+    balance: Number((Number(fromAsset.balance) - fromAmount).toFixed(8)),
+    valueUsd: Number(((Number(fromAsset.balance) - fromAmount) * fromPrice).toFixed(2)),
+  };
+  const updatedToAsset = {
+    ...toAsset,
+    balance: Number((Number(toAsset.balance) + toAmountReceived).toFixed(8)),
+    valueUsd: Number(((Number(toAsset.balance) + toAmountReceived) * toPrice).toFixed(2)),
+  };
+
+  let updatedHoldings = upsertWalletHolding(holdings, updatedFromAsset);
+  updatedHoldings     = upsertWalletHolding(updatedHoldings, updatedToAsset);
+
+  const updatedWalletAssets = walletAssets.map((a) => {
+    if (a.id === fromAssetId) return updatedFromAsset;
+    if (a.id === toAssetId)   return updatedToAsset;
+    return a;
+  });
+
+  const nextPortfolioUsd = Number(sumWalletValue(updatedWalletAssets).toFixed(2));
+  const transactionId    = createPrefixedId('txn');
+
+  const nextNotifications = [
+    createUserNotification({
+      title: 'Swap completed',
+      message: `${formatAmountLabel(fromAmount)} ${fromAsset.symbol} swapped to ${formatAmountLabel(toAmountReceived)} ${toAsset.symbol}.`,
+      tone: 'success',
+    }),
+    ...parseJson(req.user.notifications_json, []),
+  ].slice(0, 20);
+
+  await query(
+    `UPDATE users
+     SET holdings_json       = :holdings,
+         notifications_json  = :notifications,
+         portfolio_usd       = :portfolioUsd,
+         available_usd       = :availableUsd,
+         last_seen           = :lastSeen
+     WHERE id = :id`,
+    {
+      holdings:      JSON.stringify(updatedHoldings),
+      notifications: JSON.stringify(nextNotifications),
+      portfolioUsd:  nextPortfolioUsd,
+      availableUsd:  nextPortfolioUsd,
+      lastSeen:      `Updated ${createdAt}`,
+      id:            req.user.id,
+    },
+  );
+
+  await query(
+    `INSERT INTO transactions (
+      id, user_id, type, asset, amount, channel, destination, status, created_at_label,
+      from_asset, to_asset, which_crypto, network_fee, rate
+    ) VALUES (
+      :id, :userId, 'Swap', :asset, :amountLabel, 'Internal', '', 'Completed', :createdAt,
+      :fromAsset, :toAsset, :fromAsset, '0', :rate
+    )`,
+    {
+      id:          transactionId,
+      userId:      req.user.id,
+      asset:       `${fromAsset.symbol} → ${toAsset.symbol}`,
+      amountLabel: `${formatAmountLabel(fromAmount)} ${fromAsset.symbol} → ${formatAmountLabel(toAmountReceived)} ${toAsset.symbol}`,
+      createdAt,
+      fromAsset:   fromAsset.symbol,
+      toAsset:     toAsset.symbol,
+      rate:        String(fromPrice),
+    },
+  );
+
+  await appendAdminTimelineEntry(
+    `${req.user.name} swapped ${fromAsset.symbol} → ${toAsset.symbol}`,
+    `${formatAmountLabel(fromAmount)} ${fromAsset.symbol} converted to ${formatAmountLabel(toAmountReceived)} ${toAsset.symbol}.`,
+  );
+
+  return res.status(201).json({
+    ok: true,
+    transactionId,
+    toAmount: toAmountReceived,
+    message: `Swap completed: ${formatAmountLabel(fromAmount)} ${fromAsset.symbol} → ${formatAmountLabel(toAmountReceived)} ${toAsset.symbol}.`,
+  });
+});
+
 app.get('/api/admin/bootstrap', requireAuth, requireRole('admin'), async (_req, res) => {
   return res.json(await getAdminBootstrap());
 });
@@ -1639,8 +1771,8 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
     return res.status(409).json({ message: 'A user with that email already exists.' });
   }
 
-  const nextIdRow = await queryOne("SELECT nextval('users_id_seq') AS nextId");
-  const nextId = Number(nextIdRow?.nextId ?? 100);
+  const nextIdRow = await queryOne("SELECT nextval('users_id_seq') AS next_id");
+  const nextId = Number(nextIdRow?.next_id ?? 100);
   const uuid = req.body.uuid ? String(req.body.uuid) : `USR-${String(nextId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
 
   await query(
@@ -1833,6 +1965,13 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
 
       nextItem.balance = Number(nextBalance.toFixed(8));
       nextItem.valueUsd = Number((nextItem.balance * price).toFixed(2));
+
+      if (action === 'add' && nextBalance > 0) {
+        nextItem.enabledByDefault = true;
+        if (nextItem.status === 'Paused') {
+          nextItem.status = 'Enabled';
+        }
+      }
     }
 
     return nextItem;

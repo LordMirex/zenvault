@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpDown, Settings, Info, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { ArrowUpDown, Settings, Info, ChevronDown, CheckCircle2, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -10,8 +10,9 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export const Swap = () => {
-  const { clientWalletAssets } = useAuth();
-  const tokens = clientWalletAssets.slice(0, 4).map((asset) => ({
+  const { clientWalletAssets, swapAssets } = useAuth();
+  const tokens = clientWalletAssets.slice(0, 6).map((asset) => ({
+    id: asset.id,
     symbol: asset.symbol,
     name: asset.name,
     balance: asset.balance.toString(),
@@ -22,13 +23,16 @@ export const Swap = () => {
   const [toToken, setToToken] = useState(tokens[2] ?? tokens[1] ?? null);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
+  const [passcode, setPasscode] = useState('');
   const [isSwapping, setIsSwapping] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (tokens.length >= 2) {
-      setFromToken((current) => (current ? (tokens.find((item) => item.symbol === current.symbol) ?? tokens[0]!) : tokens[0]!));
-      setToToken((current) => (current ? (tokens.find((item) => item.symbol === current.symbol) ?? tokens[1]!) : (tokens[2] ?? tokens[1]!)));
+      setFromToken((current) => (current ? (tokens.find((item) => item.id === current.id) ?? tokens[0]!) : tokens[0]!));
+      setToToken((current) => (current ? (tokens.find((item) => item.id === current.id) ?? tokens[1]!) : (tokens[2] ?? tokens[1]!)));
     }
   }, [clientWalletAssets]);
 
@@ -41,18 +45,32 @@ export const Swap = () => {
     }
   }, [fromAmount, fromToken, toToken]);
 
-  const handleSwapOrder = () => {
-    if (!fromAmount || Number.parseFloat(fromAmount) <= 0 || !fromToken || !toToken) {
+  const handleSwapOrder = async () => {
+    if (!fromAmount || Number.parseFloat(fromAmount) <= 0 || !fromToken || !toToken) return;
+    if (passcode.length !== 6) {
+      setError('Please enter your 6-digit passcode.');
       return;
     }
-
+    setError('');
     setIsSwapping(true);
-    window.setTimeout(() => {
-      setIsSwapping(false);
+    try {
+      const result = await swapAssets({
+        fromAssetId: fromToken.id,
+        toAssetId: toToken.id,
+        fromAmount: Number.parseFloat(fromAmount),
+        passcode,
+      });
+      setSuccessMessage(result.message);
       setShowSuccess(true);
-      window.setTimeout(() => setShowSuccess(false), 3000);
+      window.setTimeout(() => setShowSuccess(false), 4000);
       setFromAmount('');
-    }, 2000);
+      setPasscode('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Swap failed. Please try again.';
+      setError(msg);
+    } finally {
+      setIsSwapping(false);
+    }
   };
 
   const switchTokens = () => {
@@ -158,12 +176,34 @@ export const Swap = () => {
           </div>
         </div>
 
+        {fromAmount && Number.parseFloat(fromAmount) > 0 && (
+          <div className="mt-6 space-y-2 rounded-3xl border border-gray-800 bg-dark-900 p-5">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+              <Lock size={12} />
+              Security passcode
+            </div>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="Enter your 6-digit passcode"
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              className="w-full border-none bg-transparent p-0 text-lg font-bold tracking-[0.4em] text-white placeholder-gray-700 focus:ring-0"
+            />
+          </div>
+        )}
+
+        {error && (
+          <p className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>
+        )}
+
         <button
           type="button"
           onClick={handleSwapOrder}
           disabled={isSwapping || !fromAmount}
           className={cn(
-            'relative mt-8 w-full overflow-hidden rounded-[2rem] py-5 text-lg font-black transition-all active:scale-[0.98]',
+            'relative mt-6 w-full overflow-hidden rounded-[2rem] py-5 text-lg font-black transition-all active:scale-[0.98]',
             isSwapping
               ? 'cursor-wait bg-dark-700 text-gray-500'
               : !fromAmount
@@ -205,7 +245,7 @@ export const Swap = () => {
             <CheckCircle2 size={24} />
             <div className="text-left">
               <p className="text-sm font-bold">Swap completed successfully</p>
-              <p className="text-xs opacity-80">Balances will update within 60 seconds.</p>
+              <p className="text-xs opacity-80">{successMessage || 'Balances updated.'}</p>
             </div>
           </motion.div>
         )}

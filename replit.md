@@ -104,6 +104,18 @@ Render's free tier spins down after 15 minutes of inactivity. Set up a free cron
 - **Settings**: General branding, email (SMTP), wallet configuration
 - **Live Price Feed**: CoinGecko prices updated every 60 seconds
 
+## Known Limitations
+
+- **Bots page**: Shows demo data with a "Preview Mode" banner — trading bot execution is not yet live
+- **Email delivery**: Requires SMTP config in Admin > Settings > Email; all email failures are handled gracefully
+
+## Bug Fixes Applied
+
+- **Admin user creation**: PostgreSQL returns column aliases as lowercase — `AS nextId` was being read as `nextId` (undefined), causing every admin user create to attempt ID 100 and fail with a duplicate key error. Fixed by using `AS next_id` (lowercase) in both signup and admin create endpoints.
+- **Portfolio USD showing 0**: When the admin funded assets via wallet API, assets were stored with `enabledByDefault: false` and `status: Paused`, causing `sumVisiblePortfolioValue()` to skip them. Fixed: admin wallet funding now sets `enabledByDefault = true` and `status = Enabled` when adding balance to a previously unfunded asset.
+- **Swap page**: Was fully mocked; replaced with a real `/api/client/swap` endpoint that validates passcode, deducts from-asset, credits to-asset, and records the transaction.
+- **Buy Crypto**: "Continue Purchase" button was a no-op; now navigates to `/app/deposit?asset={id}`.
+
 ## File Storage
 
 All user-uploaded files (KYC documents, logos, favicons, profile images) are stored as binary data (`BYTEA`) in the `file_uploads` PostgreSQL table — never on disk. Files survive every restart and redeploy. Multer uses `memoryStorage()` so uploads never touch the filesystem.
