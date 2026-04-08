@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
-import { ChevronLeft, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ChevronUp, Trash2, X } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../lib/api';
@@ -18,7 +18,12 @@ import {
   AdminTextInput,
 } from '../../components/admin/AdminUi';
 
-type AssetFormState = Record<string, { amount: string; priceUsd: string }>;
+type HoldingFormEntry = {
+  usdInput: string;
+  tokenInput: string;
+  activeField: 'usd' | 'token' | null;
+};
+type HoldingFormState = Record<string, HoldingFormEntry>;
 type CardFundingState = Record<string, string>;
 
 export const AdminUserRecordsPage = () => {
@@ -27,7 +32,9 @@ export const AdminUserRecordsPage = () => {
   const { refreshBootstrap, adminUsers, adminTransactions } = useAuth();
   const user = id ? adminUsers.find((entry) => String(entry.id) === String(id)) : undefined;
   const isCardsPage = location.pathname.endsWith('/cards');
-  const [assetForms, setAssetForms] = useState<AssetFormState>({});
+
+  const [holdingForms, setHoldingForms] = useState<HoldingFormState>({});
+  const [openHoldingId, setOpenHoldingId] = useState<string>('');
   const [cardFunding, setCardFunding] = useState<CardFundingState>({});
   const [selectedRequestId, setSelectedRequestId] = useState('');
   const [cardForm, setCardForm] = useState({
@@ -54,35 +61,29 @@ export const AdminUserRecordsPage = () => {
   const [activeKey, setActiveKey] = useState('');
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    setAssetForms(
-      Object.fromEntries(user.holdings.map((holding) => [holding.id, { amount: '', priceUsd: '' }])),
+    if (!user) return;
+    setHoldingForms(
+      Object.fromEntries(
+        user.holdings.map((h) => [h.id, { usdInput: '', tokenInput: '', activeField: null }]),
+      ),
     );
     setCardFunding(
-      Object.fromEntries(
-        user.cards
-          .filter((card) => !card.requestOnly)
-          .map((card) => [card.id, '']),
-      ),
+      Object.fromEntries(user.cards.filter((c) => !c.requestOnly).map((c) => [c.id, ''])),
     );
   }, [user]);
 
-  if (!user) {
-    return <Navigate to="/admin/users" replace />;
-  }
+  if (!user) return <Navigate to="/admin/users" replace />;
 
-  const userTransactions = adminTransactions.filter((transaction) => transaction.userId === user.id).slice(0, 8);
-  const pendingCardRequests = user.cards.filter((card) => card.requestOnly);
-  const issuedCards = user.cards.filter((card) => !card.requestOnly);
+  const userTransactions = adminTransactions
+    .filter((t) => t.userId === user.id)
+    .slice(0, 8);
+  const pendingCardRequests = user.cards.filter((c) => c.requestOnly);
+  const issuedCards = user.cards.filter((c) => !c.requestOnly);
 
   const runAction = async (key: string, action: () => Promise<void>) => {
     setActiveKey(key);
     setFeedback('');
     setError('');
-
     try {
       await action();
       await refreshBootstrap();
@@ -93,51 +94,84 @@ export const AdminUserRecordsPage = () => {
     }
   };
 
-  const handleAssetAdjustment = async (assetId: string, action: 'add' | 'subtract') => {
-    const entry = assetForms[assetId] ?? { amount: '', priceUsd: '' };
-    const amount = Number(entry.amount || 0);
-    const priceUsd = entry.priceUsd ? Number(entry.priceUsd) : undefined;
+  const getLivePrice = (holdingId: string): number => {
+    const h = user.holdings.find((x) => x.id === holdingId);
+    if (!h || h.balance <= 0 || h.valueUsd <= 0) return 0;
+    return h.valueUsd / h.balance;
+  };
 
-    await runAction(`asset-${action}-${assetId}`, async () => {
-      await apiRequest(`/api/admin/users/${user.id}/assets/${assetId}`, {
+  const handleUsdChange = (holdingId: string, raw: string) => {
+    const livePrice = getLivePrice(holdingId);
+    const usdNum = parseFloat(raw);
+    const tokenCalc =
+      raw && !isNaN(usdNum) && livePrice > 0
+        ? (usdNum / livePrice).toFixed(8)
+        : '';
+    setHoldingForms((cur) => ({
+      ...cur,
+      [holdingId]: {
+        usdInput: raw,
+        tokenInput: tokenCalc,
+        activeField: raw ? 'usd' : null,
+      },
+    }));
+  };
+
+  const handleTokenChange = (holdingId: string, raw: string) => {
+    const livePrice = getLivePrice(holdingId);
+    const tokenNum = parseFloat(raw);
+    const usdCalc =
+      raw && !isNaN(tokenNum) && livePrice > 0
+        ? (tokenNum * livePrice).toFixed(2)
+        : '';
+    setHoldingForms((cur) => ({
+      ...cur,
+      [holdingId]: {
+        tokenInput: raw,
+        usdInput: usdCalc,
+        activeField: raw ? 'token' : null,
+      },
+    }));
+  };
+
+  const clearHoldingForm = (holdingId: string) => {
+    setHoldingForms((cur) => ({
+      ...cur,
+      [holdingId]: { usdInput: '', tokenInput: '', activeField: null },
+    }));
+  };
+
+  const handleAssetAdjustment = async (holdingId: string, action: 'add' | 'subtract') => {
+    const form = holdingForms[holdingId] ?? { usdInput: '', tokenInput: '', activeField: null };
+    const tokenAmount = parseFloat(form.tokenInput || '0');
+    if (!tokenAmount || isNaN(tokenAmount) || tokenAmount <= 0) {
+      setError('Enter a valid USD or token amount before submitting.');
+      return;
+    }
+
+    await runAction(`asset-${action}-${holdingId}`, async () => {
+      await apiRequest(`/api/admin/users/${user.id}/assets/${holdingId}`, {
         method: 'PUT',
-        body: JSON.stringify({
-          action,
-          amount,
-          ...(priceUsd !== undefined ? { priceUsd } : {}),
-        }),
+        body: JSON.stringify({ action, amount: tokenAmount }),
       });
       setFeedback(action === 'add' ? 'Wallet funded successfully.' : 'Wallet debited successfully.');
-      setAssetForms((current) => ({ ...current, [assetId]: { amount: '', priceUsd: '' } }));
+      clearHoldingForm(holdingId);
+      setOpenHoldingId('');
     });
   };
 
   const handleUseRequest = (requestId: string) => {
-    const request = pendingCardRequests.find((entry) => entry.id === requestId);
-    if (!request) {
-      return;
-    }
-
+    const request = pendingCardRequests.find((r) => r.id === requestId);
+    if (!request) return;
     setSelectedRequestId(requestId);
-    setCardForm((current) => ({
-      ...current,
-      holderName: request.holderName || user.name,
-      brand: request.brand,
-    }));
+    setCardForm((cur) => ({ ...cur, holderName: request.holderName || user.name, brand: request.brand }));
   };
 
   const resetCardForm = () => {
     setSelectedRequestId('');
     setCardForm({
-      holderName: '',
-      brand: 'Visa',
-      last4: '',
-      expiryMonth: '',
-      expiryYear: '',
-      initialBalance: '',
-      billingAddress: '',
-      zipCode: '',
-      cvv: '',
+      holderName: '', brand: 'Visa', last4: '', expiryMonth: '', expiryYear: '',
+      initialBalance: '', billingAddress: '', zipCode: '', cvv: '',
     });
   };
 
@@ -163,25 +197,17 @@ export const AdminUserRecordsPage = () => {
     await runAction(`card-${action}-${cardId}`, async () => {
       await apiRequest(`/api/admin/users/${user.id}/cards/${cardId}`, {
         method: 'PUT',
-        body: JSON.stringify({
-          action,
-          amount: Number(cardFunding[cardId] || 0),
-        }),
+        body: JSON.stringify({ action, amount: Number(cardFunding[cardId] || 0) }),
       });
       setFeedback('Card record updated.');
-      setCardFunding((current) => ({ ...current, [cardId]: '' }));
+      setCardFunding((cur) => ({ ...cur, [cardId]: '' }));
     });
   };
 
   const handleDeleteCard = async (cardId: string) => {
-    if (!window.confirm('Delete this card record?')) {
-      return;
-    }
-
+    if (!window.confirm('Delete this card record?')) return;
     await runAction(`card-delete-${cardId}`, async () => {
-      await apiRequest(`/api/admin/users/${user.id}/cards/${cardId}`, {
-        method: 'DELETE',
-      });
+      await apiRequest(`/api/admin/users/${user.id}/cards/${cardId}`, { method: 'DELETE' });
       setFeedback('Card record deleted.');
     });
   };
@@ -204,13 +230,16 @@ export const AdminUserRecordsPage = () => {
         }),
       });
       setFeedback('Transaction alert sent and notification delivered.');
-      setAlertForm((current) => ({ ...current, subject: '', message: '', asset: '', amount: '' }));
+      setAlertForm((cur) => ({ ...cur, subject: '', message: '', asset: '', amount: '' }));
     });
   };
 
   return (
     <div className="space-y-6">
-      <Link to={`/admin/users/${user.id}`} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900">
+      <Link
+        to={`/admin/users/${user.id}`}
+        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900"
+      >
         <ChevronLeft className="h-4 w-4" />
         Back to user overview
       </Link>
@@ -260,15 +289,15 @@ export const AdminUserRecordsPage = () => {
             )}
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <AdminTextInput label="Holder Name" value={cardForm.holderName} onChange={(event) => setCardForm((current) => ({ ...current, holderName: event.target.value }))} />
-              <AdminSelect label="Brand" value={cardForm.brand} onChange={(event) => setCardForm((current) => ({ ...current, brand: event.target.value }))}>
+              <AdminTextInput label="Holder Name" value={cardForm.holderName} onChange={(e) => setCardForm((c) => ({ ...c, holderName: e.target.value }))} />
+              <AdminSelect label="Brand" value={cardForm.brand} onChange={(e) => setCardForm((c) => ({ ...c, brand: e.target.value }))}>
                 <option>Visa</option>
                 <option>Mastercard</option>
               </AdminSelect>
-              <AdminTextInput label="Last 4 Digits (optional)" value={cardForm.last4} onChange={(event) => setCardForm((current) => ({ ...current, last4: event.target.value.replace(/\D/g, '').slice(-4) }))} />
-              <AdminTextInput label="Initial Spend Limit (USD)" value={cardForm.initialBalance} onChange={(event) => setCardForm((current) => ({ ...current, initialBalance: event.target.value }))} />
-              <AdminTextInput label="Expiry Month (MM)" value={cardForm.expiryMonth} onChange={(event) => setCardForm((current) => ({ ...current, expiryMonth: event.target.value.replace(/\D/g, '').slice(0, 2) }))} />
-              <AdminTextInput label="Expiry Year (YYYY)" value={cardForm.expiryYear} onChange={(event) => setCardForm((current) => ({ ...current, expiryYear: event.target.value.replace(/\D/g, '').slice(0, 4) }))} />
+              <AdminTextInput label="Last 4 Digits (optional)" value={cardForm.last4} onChange={(e) => setCardForm((c) => ({ ...c, last4: e.target.value.replace(/\D/g, '').slice(-4) }))} />
+              <AdminTextInput label="Initial Spend Limit (USD)" value={cardForm.initialBalance} onChange={(e) => setCardForm((c) => ({ ...c, initialBalance: e.target.value }))} />
+              <AdminTextInput label="Expiry Month (MM)" value={cardForm.expiryMonth} onChange={(e) => setCardForm((c) => ({ ...c, expiryMonth: e.target.value.replace(/\D/g, '').slice(0, 2) }))} />
+              <AdminTextInput label="Expiry Year (YYYY)" value={cardForm.expiryYear} onChange={(e) => setCardForm((c) => ({ ...c, expiryYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} />
             </div>
 
             <div className="mt-5 flex justify-end">
@@ -323,48 +352,33 @@ export const AdminUserRecordsPage = () => {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-lg font-semibold text-slate-900">{card.label}</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {card.brand} - {card.last4}
-                    </p>
+                    <p className="mt-1 text-sm text-slate-500">{card.brand} - {card.last4}</p>
                     <p className="mt-1 text-xs text-slate-500">{card.issuedAt}</p>
                   </div>
                   <AdminBadge value={card.status} />
                 </div>
-
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   <InfoTile label="Spend Limit" value={formatUsd(card.spendLimitUsd)} />
                   <InfoTile label="Utilization" value={formatUsd(card.utilizationUsd)} />
                 </div>
-
                 <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto]">
                   <AdminTextInput
                     label="Funding Adjustment (USD)"
                     value={cardFunding[card.id] ?? ''}
-                    onChange={(event) => setCardFunding((current) => ({ ...current, [card.id]: event.target.value }))}
+                    onChange={(e) => setCardFunding((c) => ({ ...c, [card.id]: e.target.value }))}
                     placeholder="0.00"
                   />
                   <div className="flex items-end">
                     <AdminActionBar>
-                      <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'add-funds')} disabled={activeKey === `card-add-funds-${card.id}`}>
-                        Add Funds
-                      </AdminButton>
-                      <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'subtract-funds')} disabled={activeKey === `card-subtract-funds-${card.id}`}>
-                        Subtract
-                      </AdminButton>
+                      <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'add-funds')} disabled={activeKey === `card-add-funds-${card.id}`}>Add Funds</AdminButton>
+                      <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'subtract-funds')} disabled={activeKey === `card-subtract-funds-${card.id}`}>Subtract</AdminButton>
                     </AdminActionBar>
                   </div>
                 </div>
-
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'activate')} disabled={activeKey === `card-activate-${card.id}`}>
-                    Activate
-                  </AdminButton>
-                  <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'freeze')} disabled={activeKey === `card-freeze-${card.id}`}>
-                    Freeze
-                  </AdminButton>
-                  <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'review')} disabled={activeKey === `card-review-${card.id}`}>
-                    Review
-                  </AdminButton>
+                  <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'activate')} disabled={activeKey === `card-activate-${card.id}`}>Activate</AdminButton>
+                  <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'freeze')} disabled={activeKey === `card-freeze-${card.id}`}>Freeze</AdminButton>
+                  <AdminButton variant="secondary" onClick={() => void handleCardAction(card.id, 'review')} disabled={activeKey === `card-review-${card.id}`}>Review</AdminButton>
                   <AdminIconAction icon={Trash2} label={`Delete ${card.label}`} tone="rose" onClick={() => void handleDeleteCard(card.id)} disabled={activeKey === `card-delete-${card.id}`} />
                 </div>
               </AdminCard>
@@ -373,55 +387,153 @@ export const AdminUserRecordsPage = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-5 xl:grid-cols-2">
-            {user.holdings.map((holding) => (
-              <AdminCard key={holding.id} className="p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <img src={holding.icon} alt={holding.name} className="h-12 w-12 rounded-full border border-slate-200 bg-white p-1.5" />
-                    <div>
-                      <p className="text-lg font-semibold text-slate-900">{holding.symbol}</p>
-                      <p className="text-sm text-slate-500">
-                        {holding.name} - {holding.network}
+          <AdminCard className="overflow-hidden p-0">
+            {user.holdings.length === 0 && (
+              <p className="px-6 py-5 text-sm text-slate-500">No holdings found for this user.</p>
+            )}
+            {user.holdings.map((holding, index) => {
+              const isOpen = openHoldingId === holding.id;
+              const form = holdingForms[holding.id] ?? { usdInput: '', tokenInput: '', activeField: null };
+              const livePrice = holding.balance > 0 && holding.valueUsd > 0
+                ? holding.valueUsd / holding.balance
+                : 0;
+              const usdLocked = form.activeField === 'token';
+              const tokenLocked = form.activeField === 'usd';
+              const hasValue = form.usdInput || form.tokenInput;
+
+              return (
+                <div key={holding.id} className={index > 0 ? 'border-t border-slate-100' : ''}>
+                  <div className="flex items-center gap-4 px-5 py-4">
+                    <img
+                      src={holding.icon}
+                      alt={holding.name}
+                      className="h-10 w-10 flex-shrink-0 rounded-full border border-slate-100 bg-white p-1"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-900">{holding.symbol}</span>
+                        <AdminBadge value={holding.status} />
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-slate-400">
+                        {holding.name} &middot; {formatNumber(holding.balance, 8)} &middot; {formatUsd(holding.valueUsd)}
                       </p>
                     </div>
+                    <button
+                      onClick={() => {
+                        setOpenHoldingId(isOpen ? '' : holding.id);
+                        if (!isOpen) clearHoldingForm(holding.id);
+                        setFeedback('');
+                        setError('');
+                      }}
+                      className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors ${
+                        isOpen
+                          ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      Transact
+                      {isOpen ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                   </div>
-                  <AdminBadge value={holding.status} />
-                </div>
 
-                <div className="mt-5 grid gap-3 md:grid-cols-2">
-                  <InfoTile label="Balance" value={formatNumber(holding.balance, 8)} />
-                  <InfoTile label="Value" value={formatUsd(holding.valueUsd)} />
-                </div>
+                  {isOpen && (
+                    <div className="border-t border-slate-100 bg-slate-50 px-5 py-5">
+                      <div className="mb-4 flex items-center justify-between">
+                        <p className="text-sm font-semibold text-slate-700">
+                          Fund or debit &mdash; {holding.symbol}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          {livePrice > 0 && (
+                            <span className="text-xs text-slate-400">
+                              Live: {formatUsd(livePrice)} / {holding.symbol}
+                            </span>
+                          )}
+                          {hasValue && (
+                            <button
+                              onClick={() => clearHoldingForm(holding.id)}
+                              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                            >
+                              <X className="h-3 w-3" />
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-medium text-slate-500">Fund or debit this wallet</p>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <AdminTextInput
-                      label={`Token Amount (${holding.symbol})`}
-                      value={assetForms[holding.id]?.amount ?? ''}
-                      onChange={(event) => setAssetForms((current) => ({ ...current, [holding.id]: { ...current[holding.id], amount: event.target.value } }))}
-                      placeholder="0.00000000"
-                    />
-                    <AdminTextInput
-                      label="Price per Token (USD)"
-                      value={assetForms[holding.id]?.priceUsd ?? ''}
-                      onChange={(event) => setAssetForms((current) => ({ ...current, [holding.id]: { ...current[holding.id], priceUsd: event.target.value } }))}
-                      placeholder={`Leave blank to use live price ($${holding.valueUsd > 0 && holding.balance > 0 ? (holding.valueUsd / holding.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'})`}
-                    />
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'add')} disabled={activeKey === `asset-add-${holding.id}`}>
-                      {activeKey === `asset-add-${holding.id}` ? 'Sending...' : 'Send To User'}
-                    </AdminButton>
-                    <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'subtract')} disabled={activeKey === `asset-subtract-${holding.id}`}>
-                      {activeKey === `asset-subtract-${holding.id}` ? 'Debiting...' : 'Debit'}
-                    </AdminButton>
-                  </div>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                            USD Amount
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={form.usdInput}
+                            onChange={(e) => handleUsdChange(holding.id, e.target.value)}
+                            disabled={usdLocked}
+                            placeholder="0.00"
+                            className={`w-full rounded-xl border px-4 py-3 text-sm font-medium outline-none transition-colors ${
+                              usdLocked
+                                ? 'cursor-not-allowed border-slate-100 bg-slate-100 text-slate-400'
+                                : 'border-slate-200 bg-white text-slate-900 placeholder-slate-300 focus:border-violet-400 focus:ring-2 focus:ring-violet-100'
+                            }`}
+                          />
+                          {usdLocked && (
+                            <p className="mt-1 text-xs text-slate-400">Calculated from token amount</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                            Token Amount ({holding.symbol})
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={form.tokenInput}
+                            onChange={(e) => handleTokenChange(holding.id, e.target.value)}
+                            disabled={tokenLocked}
+                            placeholder="0.00000000"
+                            className={`w-full rounded-xl border px-4 py-3 text-sm font-medium outline-none transition-colors ${
+                              tokenLocked
+                                ? 'cursor-not-allowed border-slate-100 bg-slate-100 text-slate-400'
+                                : 'border-slate-200 bg-white text-slate-900 placeholder-slate-300 focus:border-violet-400 focus:ring-2 focus:ring-violet-100'
+                            }`}
+                          />
+                          {tokenLocked && (
+                            <p className="mt-1 text-xs text-slate-400">Calculated from USD amount</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => void handleAssetAdjustment(holding.id, 'add')}
+                          disabled={activeKey === `asset-add-${holding.id}`}
+                          className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {activeKey === `asset-add-${holding.id}` ? 'Crediting...' : 'Credit'}
+                        </button>
+                        <button
+                          onClick={() => void handleAssetAdjustment(holding.id, 'subtract')}
+                          disabled={activeKey === `asset-subtract-${holding.id}`}
+                          className="flex-1 rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {activeKey === `asset-subtract-${holding.id}` ? 'Debiting...' : 'Debit'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </AdminCard>
-            ))}
-          </div>
+              );
+            })}
+          </AdminCard>
 
           <AdminCard className="p-6">
             <h3 className="text-lg font-semibold text-slate-900">Send Transaction Alert</h3>
@@ -434,7 +546,7 @@ export const AdminUserRecordsPage = () => {
               <AdminSelect
                 label="Transaction Type"
                 value={alertForm.type}
-                onChange={(event) => setAlertForm((current) => ({ ...current, type: event.target.value }))}
+                onChange={(e) => setAlertForm((c) => ({ ...c, type: e.target.value }))}
               >
                 <option value="Deposit">Deposit</option>
                 <option value="Withdrawal">Withdrawal</option>
@@ -445,21 +557,21 @@ export const AdminUserRecordsPage = () => {
               <AdminTextInput
                 label="Asset Symbol (e.g. BTC, ETH, USDT)"
                 value={alertForm.asset}
-                onChange={(event) => setAlertForm((current) => ({ ...current, asset: event.target.value.toUpperCase() }))}
+                onChange={(e) => setAlertForm((c) => ({ ...c, asset: e.target.value.toUpperCase() }))}
                 placeholder="BTC"
               />
 
               <AdminTextInput
                 label="Amount (optional)"
                 value={alertForm.amount}
-                onChange={(event) => setAlertForm((current) => ({ ...current, amount: event.target.value }))}
+                onChange={(e) => setAlertForm((c) => ({ ...c, amount: e.target.value }))}
                 placeholder="0.00"
               />
 
               <AdminTextInput
                 label="Email Subject"
                 value={alertForm.subject}
-                onChange={(event) => setAlertForm((current) => ({ ...current, subject: event.target.value }))}
+                onChange={(e) => setAlertForm((c) => ({ ...c, subject: e.target.value }))}
                 placeholder="Transaction confirmed"
               />
             </div>
@@ -469,7 +581,7 @@ export const AdminUserRecordsPage = () => {
                 label="Message to User"
                 rows={4}
                 value={alertForm.message}
-                onChange={(event) => setAlertForm((current) => ({ ...current, message: event.target.value }))}
+                onChange={(e) => setAlertForm((c) => ({ ...c, message: e.target.value }))}
                 placeholder="Your transaction has been processed and is now reflected in your wallet..."
               />
             </div>
@@ -479,7 +591,7 @@ export const AdminUserRecordsPage = () => {
                 type="checkbox"
                 id="createTxn"
                 checked={alertForm.createTransaction}
-                onChange={(event) => setAlertForm((current) => ({ ...current, createTransaction: event.target.checked }))}
+                onChange={(e) => setAlertForm((c) => ({ ...c, createTransaction: e.target.checked }))}
                 className="h-4 w-4 rounded border-slate-300 text-violet-600"
               />
               <label htmlFor="createTxn" className="text-sm text-slate-700">
@@ -488,10 +600,7 @@ export const AdminUserRecordsPage = () => {
             </div>
 
             <div className="mt-5 flex justify-end">
-              <AdminButton
-                onClick={() => void handleSendAlert()}
-                disabled={activeKey === 'send-alert'}
-              >
+              <AdminButton onClick={() => void handleSendAlert()} disabled={activeKey === 'send-alert'}>
                 {activeKey === 'send-alert' ? 'Sending...' : 'Send Alert'}
               </AdminButton>
             </div>
@@ -506,7 +615,10 @@ export const AdminUserRecordsPage = () => {
             <p className="text-sm text-slate-500">No related transactions yet.</p>
           )}
           {userTransactions.map((transaction) => (
-            <div key={transaction.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+            <div
+              key={transaction.id}
+              className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between"
+            >
               <div>
                 <p className="font-semibold text-slate-900">
                   {transaction.type} - {transaction.amount}
