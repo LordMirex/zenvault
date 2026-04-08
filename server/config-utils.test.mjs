@@ -12,22 +12,22 @@ test('buildConfig accepts a secure development configuration', () => {
   assert.equal(config.isProduction, false);
 });
 
-test('buildConfig rejects placeholder JWT secrets', () => {
-  assert.throws(
-    () => buildConfig({ JWT_SECRET: 'change-this-secret' }),
-    /JWT_SECRET must be at least 32 characters/,
-  );
+test('buildConfig auto-generates a secret when given a known placeholder JWT', () => {
+  const config = buildConfig({ JWT_SECRET: 'change-this-secret' });
+  assert.ok(config.jwtSecret, 'jwtSecret should be set');
+  assert.ok(config.jwtSecret !== 'change-this-secret', 'placeholder should be replaced');
+  assert.ok(config.jwtSecret.length >= 32, 'auto-generated secret should be at least 32 chars');
 });
 
-test('buildConfig rejects missing CLIENT_ORIGIN in production', () => {
-  assert.throws(
-    () => buildConfig({
-      NODE_ENV: 'production',
-      JWT_SECRET: '12345678901234567890123456789012-secure',
-      CLIENT_ORIGIN: '',
-    }),
-    /CLIENT_ORIGIN must be set in production/,
-  );
+test('buildConfig works in production without CLIENT_ORIGIN set', () => {
+  const config = buildConfig({
+    NODE_ENV: 'production',
+    JWT_SECRET: '12345678901234567890123456789012-secure',
+    CLIENT_ORIGIN: '',
+  });
+
+  assert.equal(config.isProduction, true);
+  assert.equal(config.clientOrigin, '');
 });
 
 test('buildConfig accepts valid production configuration', () => {

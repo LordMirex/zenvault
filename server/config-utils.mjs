@@ -46,7 +46,6 @@ export const buildConfig = (env = process.env) => {
     isProduction,
     isRender,
     apiPort: parsePort(env.PORT ?? env.API_PORT, 4000),
-    sqliteDbPath: toTrimmedString(env.SQLITE_DB_PATH, '') || null,
     jwtSecret,
     clientOrigin,
     accessTokenTtl: toTrimmedString(env.ACCESS_TOKEN_TTL, '12h') || '12h',
