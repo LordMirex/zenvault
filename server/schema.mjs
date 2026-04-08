@@ -85,27 +85,27 @@ const seedDatabase = async (pool) => {
       const passcodeHash = await hashSecret(user.passcode);
       await pool.query(
         `INSERT INTO users (
-          id, role, name, email, phone, uuid, country,
+          id, role, name, email, uuid, country,
           status, kyc_status, portfolio_usd, available_usd,
           portfolio_change_usd, portfolio_change_pct,
-          last_seen, note, password_hash, passcode_hash,
+          last_seen, password_hash, passcode_hash,
           holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
           notifications_json, address_book_json, sessions_json, kyc_checklist_json
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,
-          $8,$9,$10,$11,
-          $12,$13,
-          $14,$15,$16,$17,
-          $18,$19,$20,$21,
-          $22,$23,$24,$25
+          $1,$2,$3,$4,$5,$6,
+          $7,$8,$9,$10,
+          $11,$12,
+          $13,$14,$15,
+          $16,$17,$18,$19,
+          $20,$21,$22,$23
         ) ON CONFLICT (id) DO NOTHING`,
         [
-          user.id, user.role, user.name, user.email, user.phone ?? '',
+          user.id, user.role, user.name, user.email,
           user.uuid ?? '', user.country ?? '',
           user.status ?? '', user.kycStatus ?? '',
           user.portfolioUsd ?? 0, user.availableUsd ?? 0,
           user.portfolioChangeUsd ?? 0, user.portfolioChangePct ?? 0,
-          user.lastSeen ?? '', user.note ?? null, passwordHash, passcodeHash,
+          user.lastSeen ?? '', passwordHash, passcodeHash,
           JSON.stringify(user.holdings ?? []),
           JSON.stringify(user.cards ?? []),
           JSON.stringify(user.depositActivity ?? []),

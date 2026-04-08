@@ -14,7 +14,6 @@ import {
   AdminCard,
   AdminPageHeading,
   AdminSelect,
-  AdminTextArea,
   AdminTextInput,
 } from '../../components/admin/AdminUi';
 
@@ -47,14 +46,6 @@ export const AdminUserRecordsPage = () => {
     billingAddress: '',
     zipCode: '',
     cvv: '',
-  });
-  const [alertForm, setAlertForm] = useState({
-    type: 'Deposit',
-    asset: '',
-    amount: '',
-    subject: '',
-    message: '',
-    createTransaction: true,
   });
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
@@ -209,28 +200,6 @@ export const AdminUserRecordsPage = () => {
     await runAction(`card-delete-${cardId}`, async () => {
       await apiRequest(`/api/admin/users/${user.id}/cards/${cardId}`, { method: 'DELETE' });
       setFeedback('Card record deleted.');
-    });
-  };
-
-  const handleSendAlert = async () => {
-    if (!alertForm.subject.trim() || !alertForm.message.trim()) {
-      setError('Subject and message are required to send an alert.');
-      return;
-    }
-    await runAction('send-alert', async () => {
-      await apiRequest(`/api/admin/users/${user.id}/notify`, {
-        method: 'POST',
-        body: JSON.stringify({
-          type: alertForm.type,
-          asset: alertForm.asset.trim().toUpperCase(),
-          amount: alertForm.amount.trim(),
-          subject: alertForm.subject.trim(),
-          message: alertForm.message.trim(),
-          createTransaction: alertForm.createTransaction,
-        }),
-      });
-      setFeedback('Transaction alert sent and notification delivered.');
-      setAlertForm((cur) => ({ ...cur, subject: '', message: '', asset: '', amount: '' }));
     });
   };
 
@@ -535,76 +504,6 @@ export const AdminUserRecordsPage = () => {
             })}
           </AdminCard>
 
-          <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Send Transaction Alert</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Send a transaction notification and email to the user. Optionally create a transaction record in their history.
-              Use this to notify the user of deposits, withdrawals, or any wallet event.
-            </p>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <AdminSelect
-                label="Transaction Type"
-                value={alertForm.type}
-                onChange={(e) => setAlertForm((c) => ({ ...c, type: e.target.value }))}
-              >
-                <option value="Deposit">Deposit</option>
-                <option value="Withdrawal">Withdrawal</option>
-                <option value="Transfer">Transfer</option>
-                <option value="Swap">Swap</option>
-              </AdminSelect>
-
-              <AdminTextInput
-                label="Asset Symbol (e.g. BTC, ETH, USDT)"
-                value={alertForm.asset}
-                onChange={(e) => setAlertForm((c) => ({ ...c, asset: e.target.value.toUpperCase() }))}
-                placeholder="BTC"
-              />
-
-              <AdminTextInput
-                label="Amount (optional)"
-                value={alertForm.amount}
-                onChange={(e) => setAlertForm((c) => ({ ...c, amount: e.target.value }))}
-                placeholder="0.00"
-              />
-
-              <AdminTextInput
-                label="Email Subject"
-                value={alertForm.subject}
-                onChange={(e) => setAlertForm((c) => ({ ...c, subject: e.target.value }))}
-                placeholder="Transaction confirmed"
-              />
-            </div>
-
-            <div className="mt-4">
-              <AdminTextArea
-                label="Message to User"
-                rows={4}
-                value={alertForm.message}
-                onChange={(e) => setAlertForm((c) => ({ ...c, message: e.target.value }))}
-                placeholder="Your transaction has been processed and is now reflected in your wallet..."
-              />
-            </div>
-
-            <div className="mt-4 flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="createTxn"
-                checked={alertForm.createTransaction}
-                onChange={(e) => setAlertForm((c) => ({ ...c, createTransaction: e.target.checked }))}
-                className="h-4 w-4 rounded border-slate-300 text-violet-600"
-              />
-              <label htmlFor="createTxn" className="text-sm text-slate-700">
-                Also create a transaction record in the user's history
-              </label>
-            </div>
-
-            <div className="mt-5 flex justify-end">
-              <AdminButton onClick={() => void handleSendAlert()} disabled={activeKey === 'send-alert'}>
-                {activeKey === 'send-alert' ? 'Sending...' : 'Send Alert'}
-              </AdminButton>
-            </div>
-          </AdminCard>
         </div>
       )}
 

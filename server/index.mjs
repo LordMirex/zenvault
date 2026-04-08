@@ -1942,11 +1942,11 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
   const nextNotifications = action
     ? [
       createUserNotification({
-        title: action === 'add' ? 'Wallet credited' : 'Wallet debited',
+        title: action === 'add' ? `Deposit: ${formatAmountLabel(amount)} ${current.symbol}` : `Debit: ${formatAmountLabel(amount)} ${current.symbol}`,
         message:
           action === 'add'
-            ? `${formatAmountLabel(amount)} ${current.symbol} was credited to your wallet by the admin team.`
-            : `${formatAmountLabel(amount)} ${current.symbol} was removed from your wallet by the admin team.`,
+            ? `${formatAmountLabel(amount)} ${current.symbol} has been deposited into your wallet.`
+            : `${formatAmountLabel(amount)} ${current.symbol} has been removed from your wallet.`,
         tone: action === 'add' ? 'success' : 'warning',
         category: 'Transfers',
       }),
