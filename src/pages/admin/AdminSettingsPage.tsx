@@ -186,7 +186,7 @@ export const AdminSettingsPage = () => {
   };
 
   const handleTestEmail = async () => {
-    const to = testEmailTo.trim() || adminSettings?.email?.fromAddress || '';
+    const to = testEmailTo.trim() || String(adminSettings?.email?.fromAddress ?? '') || '';
     if (!to) return;
     setTestEmailSending(true);
     setTestEmailResult(null);
@@ -599,7 +599,7 @@ export const AdminSettingsPage = () => {
                   type="email"
                   value={testEmailTo}
                   onChange={(event) => { setTestEmailTo(event.target.value); setTestEmailResult(null); }}
-                  placeholder={adminSettings?.email?.fromAddress || "admin@example.com"}
+                  placeholder={String(adminSettings?.email?.fromAddress ?? "") || "admin@example.com"}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
                 />
               </div>
