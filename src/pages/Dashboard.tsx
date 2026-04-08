@@ -236,7 +236,7 @@ export const Dashboard = () => {
               </div>
               <p className="mt-2 text-sm font-black text-white">{formatUsd(asset.price)}</p>
               <p className={cn('text-xs font-semibold', asset.change >= 0 ? 'text-success' : 'text-danger')}>
-                {asset.change >= 0 ? '+' : ''}{formatPercent(asset.change)}
+                {formatPercent(asset.change)}
               </p>
             </div>
           ))}
