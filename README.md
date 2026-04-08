@@ -119,22 +119,56 @@ Render free tier spins down after 15 minutes of inactivity. Set up a free cron j
 
 ## Deploying on VPS with AAPanel
 
+### AAPanel Node project settings
+
 | Field | Value |
 |---|---|
 | Run opt | `start:prod` |
 | Port | `4000` |
 | Boot | Tick "auto-start on server reboot" |
 
-**Environment variables to set in the Node project config:**
+### Environment variables — all required
 
-| Variable | Value |
-|---|---|
-| `DATABASE_URL` | Your PostgreSQL connection string |
-| `JWT_SECRET` | Any random string, at least 32 characters |
-| `ALLOWED_ORIGINS` | Your domain e.g. `https://zenvault.one,https://www.zenvault.one` |
-| `NODE_ENV` | `production` |
+Go to the Node project → **Config** in AAPanel and set every variable below. Missing any of these will cause the deployment to fail or the site to show a blank page.
 
-Pull the repo, `npm install`, set the variables, start — site is live.
+| Variable | Value | Why it's needed |
+|---|---|---|
+| `DATABASE_URL` | Your PostgreSQL connection string | Server won't start without it |
+| `JWT_SECRET` | Any random string, at least 32 characters | Auth will be broken without it |
+| `NODE_ENV` | `production` | Enables production mode |
+| `ALLOWED_ORIGINS` | `https://zenvault.one,https://www.zenvault.one` | **Critical — see note below** |
+
+> **Why `ALLOWED_ORIGINS` is required on VPS (not optional)**
+>
+> On Render, the server automatically trusts any `.onrender.com` domain. On a VPS, there is no such automatic trust — the server has no way of knowing what your domain is. When `NODE_ENV=production` and the domain is not explicitly listed, the server blocks every API call from the browser.
+>
+> The result: the HTML, favicon, and page title load fine (those are direct file requests), but the JavaScript app never gets data — you see a blank white page. Adding `ALLOWED_ORIGINS` with your domain is what makes the app actually load.
+>
+> If you have both `www` and non-`www`, include both separated by a comma — no spaces:
+> ```
+> https://zenvault.one,https://www.zenvault.one
+> ```
+
+### Steps
+
+1. Pull the repo on your VPS
+2. Run `npm install`
+3. Set all four environment variables above in AAPanel
+4. Start the app — site is live ✅
+
+---
+
+## Troubleshooting — Blank White Page
+
+**Symptom**: The site loads (you can see the browser tab title and favicon), but the page is blank or just shows a spinner that never resolves.
+
+**Cause**: The server is running in production mode and is blocking API calls from your domain because the domain is not in the allowed origins list.
+
+**Fix**: Set the `ALLOWED_ORIGINS` environment variable to your domain and redeploy/restart the server.
+
+This applies to both:
+- **VPS** — `ALLOWED_ORIGINS` is always required
+- **Render with a custom domain** — your `.onrender.com` subdomain is auto-allowed, but once you add a custom domain you must add it to `ALLOWED_ORIGINS`
 
 ---
 
