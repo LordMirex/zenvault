@@ -104,7 +104,7 @@ export const describeLocation = (ipAddress = '') => {
   }
 
   if (localIpv4Patterns.some((pattern) => pattern.test(source))) {
-    return 'Localhost session';
+    return 'Secure session';
   }
 
   if (privateIpv4Patterns.some((pattern) => pattern.test(source)) || source.startsWith('fc') || source.startsWith('fd') || source.startsWith('fe80')) {

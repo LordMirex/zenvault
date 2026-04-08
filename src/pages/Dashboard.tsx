@@ -79,8 +79,8 @@ export const Dashboard = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
 
-      {/* KYC banner */}
-      {!kycApproved && (
+      {/* KYC banner — only show for users who need action (not fresh new accounts) */}
+      {!kycApproved && kycStatus !== 'Pending' && (
         <button
           type="button"
           onClick={() => navigate('/app/kyc')}
@@ -93,14 +93,14 @@ export const Dashboard = () => {
                 Identity verification {kycStatus === 'Needs review' ? 'needs review' : 'required'}
               </p>
               <p className="mt-0.5 text-xs text-orange-400/80">
-                {kycStatus === 'Pending'
-                  ? 'Complete KYC to unlock deposits, withdrawals and full account access.'
-                  : "Your documents are under review. We'll notify you when complete."}
+                {kycStatus === 'Needs review'
+                  ? "Your documents need attention. We'll notify you when complete."
+                  : 'Complete KYC to unlock deposits, withdrawals and full account access.'}
               </p>
             </div>
           </div>
           <span className="shrink-0 rounded-xl border border-orange-500/40 px-3 py-1.5 text-xs font-bold text-orange-300">
-            {kycStatus === 'Pending' ? 'Verify now' : 'View status'}
+            {kycStatus === 'Needs review' ? 'View status' : 'Verify now'}
           </span>
         </button>
       )}
@@ -111,7 +111,7 @@ export const Dashboard = () => {
         <div className="absolute left-1/3 bottom-0 h-32 w-32 rounded-full bg-blue-500/5 blur-2xl" />
 
         <div className="relative z-10">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-gray-400">
               <span className="text-sm font-medium tracking-wide">Account Portfolio</span>
               <button
@@ -127,7 +127,7 @@ export const Dashboard = () => {
             <button
               type="button"
               onClick={() => void copyAccountId()}
-              className="flex items-center gap-2 rounded-full border border-gray-800 bg-dark-900/60 px-3 py-1.5 transition-colors hover:border-primary/40"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-800 bg-dark-900/60 px-2.5 py-1.5 transition-colors hover:border-primary/40"
               title="Copy wallet ID"
             >
               {copied ? (
@@ -135,7 +135,7 @@ export const Dashboard = () => {
               ) : (
                 <Copy size={12} className="text-gray-500" />
               )}
-              <span className="font-mono text-xs text-gray-300 max-w-[160px] truncate">{accountId}</span>
+              <span className="font-mono text-xs text-gray-300 max-w-[100px] truncate">{accountId}</span>
             </button>
           </div>
 

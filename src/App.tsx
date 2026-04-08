@@ -65,8 +65,9 @@ const AdminProfilePage = lazyNamed(() => import('./pages/admin/AdminProfilePage'
 const AdminEmailPage = lazyNamed(() => import('./pages/admin/AdminEmailPage'), 'AdminEmailPage');
 
 const FullPageState = ({ message }: { message: string }) => (
-  <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-white">
-    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">{message}</p>
+  <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 px-6 text-center text-white">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-amber-400" />
+    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{message}</p>
   </div>
 );
 

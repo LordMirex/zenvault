@@ -117,11 +117,11 @@ export const Navbar = () => {
           <Link to="/app" className="shrink-0">
             <BrandLogo size="lg" variant="icon" stretch invertFallback wrapperClassName="shrink-0" />
           </Link>
-          <div className="min-w-0">
-            <p className={`truncate text-[10px] font-bold uppercase tracking-[0.24em] ${metaClasses}`}>
+          <div className="hidden min-w-0 sm:block">
+            <p className={`text-[10px] font-bold uppercase tracking-[0.24em] ${metaClasses}`}>
               {branding.siteName}
             </p>
-            <h1 className={`truncate text-sm font-semibold md:text-base ${titleClasses}`}>{currentTitle}</h1>
+            <h1 className={`text-sm font-semibold md:text-base ${titleClasses}`}>{currentTitle}</h1>
           </div>
         </div>
 

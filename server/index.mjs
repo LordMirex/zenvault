@@ -1399,6 +1399,12 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
     return res.status(404).json({ message: 'Asset not found in this wallet.' });
   }
 
+  // Only allow sending coins that are active on the system
+  const systemActiveIds = new Set(walletSettings.activeAssetIds ?? []);
+  if (!systemActiveIds.has(asset.id)) {
+    return res.status(400).json({ message: `${asset.symbol} is not currently available for transfers on this platform.` });
+  }
+
   const feeAmount = method === 'external' ? Number(asset.withdrawFee ?? 0) : 0;
   const totalDebit = amount + feeAmount;
 
@@ -2690,7 +2696,144 @@ app.put('/api/admin/transactions/:id', requireAuth, requireRole('admin'), async 
     return res.status(404).json({ message: 'Transaction not found.' });
   }
 
+  const previousStatus = String(existing.status ?? '').trim();
   await query('UPDATE transactions SET status = :status WHERE id = :id', { status, id: transactionId });
+
+  // Auto-credit recipient when admin approves an internal (P2P) transfer
+  const isInternalTransfer =
+    String(existing.type ?? '').trim() === 'Withdrawal' &&
+    String(existing.channel ?? '').trim() === 'Internal Transfer';
+
+  if (status === 'Completed' && previousStatus !== 'Completed' && isInternalTransfer) {
+    const recipientUuid = String(existing.destination ?? '').trim();
+    const symbol = String(existing.which_crypto ?? existing.asset ?? '').trim().toUpperCase();
+    const amountStr = String(existing.amount ?? '').trim();
+    const numericAmount = parseFloat(amountStr.split(' ')[0]);
+
+    if (recipientUuid && symbol && Number.isFinite(numericAmount) && numericAmount > 0) {
+      const recipientUser = await queryOne(
+        "SELECT * FROM users WHERE uuid = :uuid AND role = 'user'",
+        { uuid: recipientUuid },
+      );
+
+      if (recipientUser) {
+        const mktAssets = priceFeed.getMarketAssets();
+        const settingsWallets = await getSetting('wallets', {});
+        const wSettings = normalizeWalletSettings(settingsWallets, mktAssets);
+        const recipientHoldings = parseJson(recipientUser.holdings_json, []);
+        const recipientWalletAssets = buildUserWalletAssets({
+          user: recipientUser,
+          holdings: recipientHoldings,
+          marketAssets: mktAssets,
+          walletSettings: wSettings,
+        });
+
+        const targetAsset = recipientWalletAssets.find(
+          (a) => a.symbol.toUpperCase() === symbol,
+        );
+
+        if (targetAsset) {
+          const price = Number(targetAsset.price ?? 0);
+          const newBalance = Number((Number(targetAsset.balance ?? 0) + numericAmount).toFixed(8));
+          const updatedTargetAsset = {
+            ...targetAsset,
+            balance: newBalance,
+            valueUsd: Number((newBalance * price).toFixed(2)),
+            enabledByDefault: true,
+            status: targetAsset.status === 'Paused' ? 'Enabled' : targetAsset.status,
+          };
+          const updatedRecipientHoldings = upsertWalletHolding(recipientHoldings, updatedTargetAsset);
+          const updatedRecipientAssets = recipientWalletAssets.map((a) =>
+            a.symbol.toUpperCase() === symbol ? updatedTargetAsset : a,
+          );
+          const nextTotal = Number(sumWalletValue(updatedRecipientAssets).toFixed(2));
+          const creditedAt = createTimestampLabel();
+
+          const recipientDepositActivity = [
+            {
+              id: createPrefixedId('dep'),
+              assetId: targetAsset.id,
+              amount: `${formatAmountLabel(numericAmount)} ${symbol}`,
+              method: 'Internal Transfer',
+              destination: recipientUser.uuid,
+              status: 'Completed',
+              time: creditedAt,
+            },
+            ...parseJson(recipientUser.deposit_activity_json, []),
+          ].slice(0, 12);
+
+          const recipientNotifications = [
+            createUserNotification({
+              title: `${formatAmountLabel(numericAmount)} ${symbol} received`,
+              message: `${formatAmountLabel(numericAmount)} ${symbol} has been credited to your wallet via internal transfer.`,
+              tone: 'success',
+              category: 'Transfers',
+            }),
+            ...parseJson(recipientUser.notifications_json, []),
+          ].slice(0, 20);
+
+          await query(
+            `UPDATE users
+             SET holdings_json = :holdings,
+                 deposit_activity_json = :deposits,
+                 notifications_json = :notifications,
+                 portfolio_usd = :portfolioUsd,
+                 available_usd = :availableUsd,
+                 last_seen = :lastSeen
+             WHERE id = :id`,
+            {
+              id: recipientUser.id,
+              holdings: JSON.stringify(updatedRecipientHoldings),
+              deposits: JSON.stringify(recipientDepositActivity),
+              notifications: JSON.stringify(recipientNotifications),
+              portfolioUsd: nextTotal,
+              availableUsd: nextTotal,
+              lastSeen: `Updated ${creditedAt}`,
+            },
+          );
+
+          // Also update sender's withdrawal activity to show Completed
+          const senderUser = await queryOne('SELECT * FROM users WHERE id = :id', { id: existing.user_id });
+          if (senderUser) {
+            const senderWithdrawals = parseJson(senderUser.withdrawal_activity_json, []).map((w) => {
+              if (
+                w.assetId === targetAsset.id &&
+                w.method === 'Internal Transfer' &&
+                w.destination === recipientUuid &&
+                w.status === 'Pending'
+              ) {
+                return { ...w, status: 'Completed' };
+              }
+              return w;
+            });
+            await query(
+              'UPDATE users SET withdrawal_activity_json = :withdrawals WHERE id = :id',
+              { id: senderUser.id, withdrawals: JSON.stringify(senderWithdrawals) },
+            );
+          }
+
+          await sendSystemEmailSafely({
+            logContext: `P2P credit email to ${recipientUser.email}`,
+            to: recipientUser.email,
+            subject: `${formatAmountLabel(numericAmount)} ${symbol} received in your wallet`,
+            title: `${symbol} transfer received`,
+            preheader: `${formatAmountLabel(numericAmount)} ${symbol} has been deposited into your wallet.`,
+            intro: `A transfer of ${formatAmountLabel(numericAmount)} ${symbol} has been credited to your wallet and is now available.`,
+            recipientName: recipientUser.name,
+            highlights: [
+              `Asset: ${symbol}`,
+              `Amount: ${formatAmountLabel(numericAmount)} ${symbol}`,
+              `New balance: ${formatAmountLabel(newBalance)} ${symbol}`,
+              `Date: ${creditedAt}`,
+            ],
+            ctaLabel: 'View my wallet',
+            ctaUrl: await toClientUrl('/app'),
+            signatureRole: 'Transfers Team',
+          });
+        }
+      }
+    }
+  }
 
   await appendAdminTimelineEntry(
     `${req.user.name} updated transaction ${transactionId}`,
