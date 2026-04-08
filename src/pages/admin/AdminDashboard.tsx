@@ -190,7 +190,7 @@ export const AdminDashboard = () => {
       </div>
 
       {/* Main content: transactions table + sidebar */}
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_360px] min-w-0">
         {/* Recent transactions */}
         <AdminTableWrap>
           <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
@@ -266,7 +266,7 @@ export const AdminDashboard = () => {
         </AdminTableWrap>
 
         {/* Right column */}
-        <div className="space-y-5">
+        <div className="space-y-5 min-w-0">
           {/* Admin Alerts */}
           <AdminCard className="p-5">
             <h3 className="text-sm font-semibold text-slate-900">Internal Alerts</h3>
@@ -298,9 +298,9 @@ export const AdminDashboard = () => {
               {adminAlerts.map((alert, index) => (
                 <div
                   key={`${alert}-${index}`}
-                  className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5"
+                  className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 min-w-0 overflow-hidden"
                 >
-                  <p className="text-sm leading-6 text-amber-900">{alert}</p>
+                  <p className="text-sm leading-6 text-amber-900 break-words min-w-0 overflow-hidden">{alert}</p>
                   <button
                     type="button"
                     disabled={alertBusy}

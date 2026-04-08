@@ -65,8 +65,8 @@ const AdminProfilePage = lazyNamed(() => import('./pages/admin/AdminProfilePage'
 const AdminEmailPage = lazyNamed(() => import('./pages/admin/AdminEmailPage'), 'AdminEmailPage');
 
 const FullPageState = ({ message }: { message: string }) => (
-  <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 px-6 text-center text-white">
-    <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-amber-400" />
+  <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0b1120] px-6 text-center text-white">
+    <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-400/30 border-t-amber-400" />
     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{message}</p>
   </div>
 );
@@ -121,7 +121,7 @@ function App() {
       }}
     >
       <BrandingProvider>
-        <Suspense fallback={<FullPageState message="Loading page" />}>
+        <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<PublicShell />}>
               <Route index element={<PublicHome />} />

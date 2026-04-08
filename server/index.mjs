@@ -2728,9 +2728,30 @@ app.put('/api/admin/transactions/:id', requireAuth, requireRole('admin'), async 
           walletSettings: wSettings,
         });
 
-        const targetAsset = recipientWalletAssets.find(
+        let targetAsset = recipientWalletAssets.find(
           (a) => a.symbol.toUpperCase() === symbol,
         );
+
+        // If recipient doesn't have the coin yet, create a synthetic entry from market data
+        if (!targetAsset) {
+          const mktEntry = mktAssets.find((m) => String(m.symbol ?? '').toUpperCase() === symbol);
+          if (mktEntry) {
+            targetAsset = {
+              id: `holding-${symbol.toLowerCase()}-${recipientUser.id}`,
+              symbol: mktEntry.symbol,
+              network: mktEntry.network ?? symbol,
+              name: mktEntry.name ?? symbol,
+              balance: 0,
+              valueUsd: 0,
+              price: Number(mktEntry.price ?? 0),
+              change: Number(mktEntry.change ?? 0),
+              icon: mktEntry.icon ?? '',
+              enabledByDefault: true,
+              status: 'Enabled',
+              marketAssetId: mktEntry.id,
+            };
+          }
+        }
 
         if (targetAsset) {
           const price = Number(targetAsset.price ?? 0);

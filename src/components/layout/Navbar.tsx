@@ -29,6 +29,7 @@ export const Navbar = () => {
   const routeTitles = [
     { path: '/app', title: 'Dashboard', exact: true },
     { path: '/app/buy', title: 'Buy Crypto' },
+    { path: '/app/swap', title: 'Swap Assets' },
     { path: '/app/send', title: 'Send Assets' },
     { path: '/app/receive', title: 'Receive Assets' },
     { path: '/app/deposit', title: 'Deposit' },
@@ -59,6 +60,11 @@ export const Navbar = () => {
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const base = branding.siteName || 'ZenVault';
+    document.title = currentTitle !== 'Dashboard' ? `${currentTitle} — ${base}` : base;
+  }, [currentTitle, branding.siteName]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -118,9 +124,6 @@ export const Navbar = () => {
             <BrandLogo size="lg" variant="icon" stretch invertFallback wrapperClassName="shrink-0" />
           </Link>
           <div className="hidden min-w-0 sm:block">
-            <p className={`text-[10px] font-bold uppercase tracking-[0.24em] ${metaClasses}`}>
-              {branding.siteName}
-            </p>
             <h1 className={`text-sm font-semibold md:text-base ${titleClasses}`}>{currentTitle}</h1>
           </div>
         </div>

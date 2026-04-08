@@ -414,7 +414,7 @@ export const ProfileSecurity = () => {
                     <div className="flex gap-3">
                       <div
                         className={`mt-1 flex h-10 w-10 items-center justify-center rounded-2xl ${
-                          isLightTheme ? 'bg-white text-slate-700' : 'bg-white/6 text-white'
+                          isLightTheme ? 'bg-slate-100 text-slate-700' : 'bg-white/10 text-slate-200'
                         }`}
                       >
                         <layer.icon size={18} />
@@ -504,8 +504,8 @@ export const ProfileSecurity = () => {
                               ? 'bg-rose-100 text-rose-600'
                               : 'bg-rose-500/10 text-rose-300'
                             : isLightTheme
-                              ? 'bg-slate-950 text-white'
-                              : 'bg-white/8 text-white'
+                              ? 'bg-sky-100 text-sky-700'
+                              : 'bg-sky-500/15 text-sky-300'
                         }`}
                       >
                         <Fingerprint size={18} />

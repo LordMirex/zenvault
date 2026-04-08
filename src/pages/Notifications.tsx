@@ -108,17 +108,17 @@ export const Notifications = () => {
 
             return (
               <div key={item.id} className="rounded-[1.75rem] border border-gray-800 bg-dark-800/70 p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex gap-4">
+                <div className="flex items-start justify-between gap-4 min-w-0">
+                  <div className="flex gap-4 min-w-0 flex-1">
                     <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${toneClasses[item.tone]}`}>
                       <Icon size={18} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-bold text-white">{item.title}</p>
                         {item.unread && <span className="h-2 w-2 rounded-full bg-primary" />}
                       </div>
-                      <p className="mt-1 text-sm text-gray-400">{item.message}</p>
+                      <p className="mt-1 text-sm text-gray-400 break-words overflow-hidden">{item.message}</p>
                       <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gray-600">
                         {item.category} - {item.time}
                       </p>

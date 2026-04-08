@@ -188,7 +188,7 @@ export const AdminTransactionsPage = () => {
                     {transaction.asset} - {transaction.amount}
                   </td>
                   <td className="px-5 py-4 text-slate-700">{transaction.channel}</td>
-                  <td className="px-5 py-4 text-slate-700">{transaction.destination}</td>
+                  <td className="px-5 py-4 text-slate-700 max-w-[160px]"><p className="truncate" title={transaction.destination}>{transaction.destination}</p></td>
                   <td className="px-5 py-4">
                     <AdminBadge value={transaction.status} />
                   </td>
