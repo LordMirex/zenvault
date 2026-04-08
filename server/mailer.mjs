@@ -1,7 +1,17 @@
 import nodemailer from 'nodemailer';
+import { lookup } from 'dns';
+import { promisify } from 'util';
 import { config } from './config.mjs';
 import { queryOne } from './db.mjs';
 import { normalizeGeneralSettings, resolveSiteOrigin } from './settings.mjs';
+
+const dnsLookup = promisify(lookup);
+
+const forceIPv4Lookup = (hostname, options, callback) => {
+  dnsLookup(hostname, { ...options, family: 4 })
+    .then(({ address, family }) => callback(null, address, family))
+    .catch((err) => callback(err));
+};
 
 const parseJson = (value, fallback = {}) => {
   if (!value) {
@@ -164,6 +174,10 @@ export const createMailClient = async () => {
     secure,
     requireTLS,
     family: 4,
+    lookup: forceIPv4Lookup,
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 30000,
   };
 
   if (mailUsername || mailPassword) {
