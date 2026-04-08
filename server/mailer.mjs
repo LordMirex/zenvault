@@ -163,6 +163,7 @@ export const createMailClient = async () => {
     port: Number.isFinite(mailPort) ? mailPort : 465,
     secure,
     requireTLS,
+    family: 4,
   };
 
   if (mailUsername || mailPassword) {

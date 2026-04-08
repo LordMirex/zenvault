@@ -45,6 +45,7 @@ class PriceFeed {
     this.marketAssets = [...fallbackMarketAssets];
     this.lastUpdatedAt = null;
     this.isFetching = false;
+    this.rateLimitedUntil = null;
   }
 
   async fetchFromCoinGecko() {
@@ -84,6 +85,10 @@ class PriceFeed {
       return;
     }
 
+    if (this.rateLimitedUntil && Date.now() < this.rateLimitedUntil) {
+      return;
+    }
+
     this.isFetching = true;
 
     try {
@@ -92,6 +97,7 @@ class PriceFeed {
         return;
       }
 
+      this.rateLimitedUntil = null;
       this.marketAssets = marketAssets;
       this.cache = new Map(
         marketAssets.map((asset) => [
@@ -107,7 +113,13 @@ class PriceFeed {
         `PriceFeed: updated ${marketAssets.length} supported assets at ${this.lastUpdatedAt.toISOString()}`,
       );
     } catch (error) {
-      console.warn('PriceFeed: market update failed', error.message);
+      if (error.message && error.message.includes('429')) {
+        const backoffMs = 5 * 60 * 1000;
+        this.rateLimitedUntil = Date.now() + backoffMs;
+        console.warn(`PriceFeed: rate limited by CoinGecko, pausing updates for 5 minutes`);
+      } else {
+        console.warn('PriceFeed: market update failed', error.message);
+      }
     } finally {
       this.isFetching = false;
     }
