@@ -2008,25 +2008,31 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
       },
     );
 
+    const amtLabel = `${formatAmountLabel(amount)} ${current.symbol}`;
+    const newBalLabel = `${formatAmountLabel(updatedAsset.balance)} ${current.symbol}`;
     await sendSystemEmailSafely({
       logContext: `admin wallet update email to ${user.email}`,
       to: user.email,
-      subject: action === 'add' ? `You received ${formatAmountLabel(amount)} ${current.symbol}` : `${formatAmountLabel(amount)} ${current.symbol} removed from your wallet`,
-      title: action === 'add' ? `${current.symbol} deposit received` : `${current.symbol} removed from wallet`,
-      preheader: action === 'add' ? `${formatAmountLabel(amount)} ${current.symbol} has arrived in your wallet.` : `${formatAmountLabel(amount)} ${current.symbol} was removed from your wallet.`,
-      intro:
-        action === 'add'
-          ? `${formatAmountLabel(amount)} ${current.symbol} has been deposited into your wallet and is now available.`
-          : `${formatAmountLabel(amount)} ${current.symbol} has been removed from your wallet.`,
+      subject: action === 'add'
+        ? `You received ${amtLabel}`
+        : `${amtLabel} withdrawn from your wallet`,
+      title: action === 'add'
+        ? `You received ${current.symbol}`
+        : `${current.symbol} withdrawal`,
+      preheader: action === 'add'
+        ? `${amtLabel} just landed in your ZenVault wallet.`
+        : `${amtLabel} has been withdrawn from your ZenVault wallet.`,
+      intro: action === 'add'
+        ? `${amtLabel} was just sent to your ZenVault wallet and is ready to use.`
+        : `${amtLabel} has been withdrawn from your ZenVault wallet.`,
       recipientName: user.name,
-      paragraphs: [
-        'Your wallet balance has been updated and the change is now reflected in your account.',
-        'If you did not expect this transaction, please contact our support team immediately.',
-      ],
+      paragraphs: action === 'add'
+        ? ['The funds are available in your wallet right now.']
+        : ['If you did not request this withdrawal, please contact support immediately.'],
       highlights: [
-        `Asset: ${current.symbol}`,
-        `Amount: ${formatAmountLabel(amount)} ${current.symbol}`,
-        `New balance: ${formatAmountLabel(updatedAsset.balance)} ${current.symbol}`,
+        `Coin: ${current.symbol}`,
+        `Amount: ${amtLabel}`,
+        `Balance: ${newBalLabel}`,
         `Date: ${updatedAt}`,
       ],
       ctaLabel: 'View my wallet',
