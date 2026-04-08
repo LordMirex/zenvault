@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Coins, CreditCard, KeyRound, LogIn } from 'lucide-react';
+import { ChevronLeft, Coins, CreditCard, FilePlus, KeyRound, LogIn } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../lib/api';
 import { formatCompactUsd } from '../../lib/format';
@@ -10,6 +10,7 @@ import {
   AdminButton,
   AdminCard,
   AdminIconAction,
+  AdminModal,
   AdminNotice,
   AdminPageHeading,
   AdminSelect,
@@ -28,6 +29,27 @@ export const AdminUserDetailPage = () => {
   const [loginAsBusy, setLoginAsBusy] = useState(false);
   const [loginAsError, setLoginAsError] = useState('');
 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createBusy, setCreateBusy] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    type: 'Deposit',
+    asset: 'USDT',
+    amount: '1000 USDT',
+    channel: 'TRC20 Wallet',
+    destination: 'Treasury funding',
+    status: 'Pending',
+    fromAsset: '',
+    toAsset: '',
+    networkFee: '',
+    rate: '',
+  });
+
+  const createAssetOptions = useMemo(() => {
+    const holdings = user?.holdings ?? [];
+    if (holdings.length === 0) return ['USDT'];
+    return Array.from(new Set(holdings.map((h) => h.symbol)));
+  }, [user]);
+
   if (!user) {
     return <Navigate to="/admin/users" replace />;
   }
@@ -43,6 +65,38 @@ export const AdminUserDetailPage = () => {
     } catch (err) {
       setLoginAsError(err instanceof Error ? err.message : 'Failed to open session.');
       setLoginAsBusy(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    setFeedback('');
+    setError('');
+    setCreateBusy(true);
+
+    try {
+      await apiRequest('/api/admin/transactions', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...createForm,
+          userId: Number(user.id),
+        }),
+      });
+      await refreshBootstrap();
+      setFeedback('Transaction created successfully.');
+      setShowCreateModal(false);
+      setCreateForm((current) => ({
+        ...current,
+        amount: '1000 USDT',
+        destination: 'Treasury funding',
+        networkFee: '',
+        rate: '',
+        fromAsset: '',
+        toAsset: '',
+      }));
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Unable to create the transaction.');
+    } finally {
+      setCreateBusy(false);
     }
   };
 
@@ -106,6 +160,7 @@ export const AdminUserDetailPage = () => {
                 Edit Profile
               </AdminButton>
             )}
+            <AdminIconAction icon={FilePlus} label={`Create transaction for ${user.name}`} tone="violet" onClick={() => setShowCreateModal(true)} />
             <AdminIconAction icon={KeyRound} label={`Reset ${user.name} password`} tone="amber" to={`/admin/users/${user.id}/password`} />
             <AdminIconAction icon={Coins} label={`Open ${user.name} crypto records`} tone="blue" to={`/admin/users/${user.id}/crypto`} />
             <AdminIconAction icon={CreditCard} label={`Open ${user.name} card records`} tone="emerald" to={`/admin/users/${user.id}/cards`} />
@@ -217,6 +272,54 @@ export const AdminUserDetailPage = () => {
           ))}
         </div>
       </AdminCard>
+
+      <AdminModal
+        open={showCreateModal}
+        title={`Create Transaction for ${user.name}`}
+        description="Add a funding, reward, transfer, or withdrawal record for this user directly from the admin console."
+        onClose={() => setShowCreateModal(false)}
+        footer={
+          <div className="flex justify-end">
+            <AdminButton onClick={() => void handleCreate()} disabled={createBusy}>
+              {createBusy ? 'Creating...' : 'Create Transaction'}
+            </AdminButton>
+          </div>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <AdminSelect label="Type" value={createForm.type} onChange={(event) => setCreateForm((current) => ({ ...current, type: event.target.value }))}>
+            <option>Deposit</option>
+            <option>Withdrawal</option>
+            <option>Reward</option>
+            <option>Transfer</option>
+          </AdminSelect>
+          <AdminSelect
+            label="Asset"
+            value={createForm.asset}
+            onChange={(event) => setCreateForm((current) => ({ ...current, asset: event.target.value }))}
+          >
+            {createAssetOptions.map((asset) => (
+              <option key={asset}>{asset}</option>
+            ))}
+          </AdminSelect>
+          <AdminSelect
+            label="Status"
+            value={createForm.status}
+            onChange={(event) => setCreateForm((current) => ({ ...current, status: event.target.value }))}
+          >
+            <option>Pending</option>
+            <option>Completed</option>
+            <option>Review</option>
+          </AdminSelect>
+          <AdminTextInput label="Amount" value={createForm.amount} onChange={(event) => setCreateForm((current) => ({ ...current, amount: event.target.value }))} />
+          <AdminTextInput label="Channel" value={createForm.channel} onChange={(event) => setCreateForm((current) => ({ ...current, channel: event.target.value }))} />
+          <AdminTextInput label="Destination" value={createForm.destination} onChange={(event) => setCreateForm((current) => ({ ...current, destination: event.target.value }))} />
+          <AdminTextInput label="From Asset ID" value={createForm.fromAsset} onChange={(event) => setCreateForm((current) => ({ ...current, fromAsset: event.target.value }))} placeholder="Optional assetId for activity log" />
+          <AdminTextInput label="To Asset" value={createForm.toAsset} onChange={(event) => setCreateForm((current) => ({ ...current, toAsset: event.target.value }))} />
+          <AdminTextInput label="Network Fee" value={createForm.networkFee} onChange={(event) => setCreateForm((current) => ({ ...current, networkFee: event.target.value }))} />
+          <AdminTextInput label="Rate" value={createForm.rate} onChange={(event) => setCreateForm((current) => ({ ...current, rate: event.target.value }))} />
+        </div>
+      </AdminModal>
     </div>
   );
 };

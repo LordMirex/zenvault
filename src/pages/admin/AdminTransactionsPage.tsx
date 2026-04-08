@@ -1,40 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, Check, Coins, Eye, RotateCcw, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../lib/api';
 import {
   AdminActionBar,
   AdminBadge,
-  AdminButton,
   AdminIconAction,
   AdminModal,
   AdminNotice,
   AdminPageHeading,
-  AdminSelect,
   AdminTableWrap,
-  AdminTextInput,
 } from '../../components/admin/AdminUi';
 
 export const AdminTransactionsPage = () => {
   const { refreshBootstrap, adminTransactions, adminUsers } = useAuth();
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
-  const [createForm, setCreateForm] = useState({
-    userId: adminUsers[0]?.id ?? '',
-    type: 'Deposit',
-    asset: 'USDT',
-    amount: '1000 USDT',
-    channel: 'TRC20 Wallet',
-    destination: 'Treasury funding',
-    status: 'Pending',
-    fromAsset: '',
-    toAsset: '',
-    networkFee: '',
-    rate: '',
-  });
 
   const selectedTransaction = selectedTransactionId
     ? adminTransactions.find((transaction) => transaction.id === selectedTransactionId) ?? null
@@ -42,31 +25,6 @@ export const AdminTransactionsPage = () => {
   const selectedUser = selectedTransaction
     ? adminUsers.find((entry) => entry.id === selectedTransaction.userId) ?? null
     : null;
-
-  const selectedCreateUser = useMemo(
-    () => adminUsers.find((user) => user.id === createForm.userId) ?? null,
-    [adminUsers, createForm.userId],
-  );
-
-  const createAssetOptions = useMemo(() => {
-    if (!selectedCreateUser || selectedCreateUser.holdings.length === 0) {
-      return ['USDT'];
-    }
-
-    return Array.from(new Set(selectedCreateUser.holdings.map((holding) => holding.symbol)));
-  }, [selectedCreateUser]);
-
-  useEffect(() => {
-    if (!createForm.userId && adminUsers[0]?.id) {
-      setCreateForm((current) => ({ ...current, userId: adminUsers[0]?.id ?? '' }));
-    }
-  }, [adminUsers, createForm.userId]);
-
-  useEffect(() => {
-    if (!createAssetOptions.includes(createForm.asset)) {
-      setCreateForm((current) => ({ ...current, asset: createAssetOptions[0] ?? 'USDT' }));
-    }
-  }, [createAssetOptions, createForm.asset]);
 
   const handleStatusChange = async (transactionId: string, status: 'Completed' | 'Pending' | 'Review') => {
     setFeedback('');
@@ -110,50 +68,11 @@ export const AdminTransactionsPage = () => {
     }
   };
 
-  const handleCreate = async () => {
-    setFeedback('');
-    setError('');
-
-    if (!createForm.userId) {
-      setError('Select a user before creating a transaction.');
-      return;
-    }
-
-    setActiveTransactionId('create');
-
-    try {
-      await apiRequest('/api/admin/transactions', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...createForm,
-          userId: Number(createForm.userId),
-        }),
-      });
-      await refreshBootstrap();
-      setFeedback('Transaction created.');
-      setShowCreateModal(false);
-      setCreateForm((current) => ({
-        ...current,
-        amount: '1000 USDT',
-        destination: 'Treasury funding',
-        networkFee: '',
-        rate: '',
-        fromAsset: '',
-        toAsset: '',
-      }));
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Unable to create the transaction.');
-    } finally {
-      setActiveTransactionId(null);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <AdminPageHeading
         title="Transactions"
-        description="Recovered transaction ledger with create, inspect, status, and delete actions backed by the admin API."
-        actions={<AdminButton onClick={() => setShowCreateModal(true)}>Create Transaction</AdminButton>}
+        description="Recovered transaction ledger with inspect, status, and delete actions backed by the admin API."
       />
 
       {feedback && <AdminNotice tone="success">{feedback}</AdminNotice>}
@@ -286,61 +205,6 @@ export const AdminTransactionsPage = () => {
             <InfoTile label="Network Fee" value={selectedTransaction.networkFee || 'Unavailable'} />
           </div>
         )}
-      </AdminModal>
-
-      <AdminModal
-        open={showCreateModal}
-        title="Create Transaction"
-        description="Add a funding, reward, transfer, or withdrawal record directly from the admin console."
-        onClose={() => setShowCreateModal(false)}
-        footer={
-          <div className="flex justify-end">
-            <AdminButton onClick={() => void handleCreate()} disabled={activeTransactionId === 'create' || !createForm.userId}>
-              {activeTransactionId === 'create' ? 'Creating...' : 'Create Transaction'}
-            </AdminButton>
-          </div>
-        }
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <AdminSelect label="User" value={createForm.userId} onChange={(event) => setCreateForm((current) => ({ ...current, userId: event.target.value }))}>
-            {adminUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </AdminSelect>
-          <AdminSelect label="Type" value={createForm.type} onChange={(event) => setCreateForm((current) => ({ ...current, type: event.target.value }))}>
-            <option>Deposit</option>
-            <option>Withdrawal</option>
-            <option>Reward</option>
-            <option>Transfer</option>
-          </AdminSelect>
-          <AdminSelect
-            label="Asset"
-            value={createForm.asset}
-            onChange={(event) => setCreateForm((current) => ({ ...current, asset: event.target.value }))}
-          >
-            {createAssetOptions.map((asset) => (
-              <option key={asset}>{asset}</option>
-            ))}
-          </AdminSelect>
-          <AdminSelect
-            label="Status"
-            value={createForm.status}
-            onChange={(event) => setCreateForm((current) => ({ ...current, status: event.target.value }))}
-          >
-            <option>Pending</option>
-            <option>Completed</option>
-            <option>Review</option>
-          </AdminSelect>
-          <AdminTextInput label="Amount" value={createForm.amount} onChange={(event) => setCreateForm((current) => ({ ...current, amount: event.target.value }))} />
-          <AdminTextInput label="Channel" value={createForm.channel} onChange={(event) => setCreateForm((current) => ({ ...current, channel: event.target.value }))} />
-          <AdminTextInput label="Destination" value={createForm.destination} onChange={(event) => setCreateForm((current) => ({ ...current, destination: event.target.value }))} />
-          <AdminTextInput label="From Asset ID" value={createForm.fromAsset} onChange={(event) => setCreateForm((current) => ({ ...current, fromAsset: event.target.value }))} placeholder="Optional assetId for user activity log" />
-          <AdminTextInput label="To Asset" value={createForm.toAsset} onChange={(event) => setCreateForm((current) => ({ ...current, toAsset: event.target.value }))} />
-          <AdminTextInput label="Network Fee" value={createForm.networkFee} onChange={(event) => setCreateForm((current) => ({ ...current, networkFee: event.target.value }))} />
-          <AdminTextInput label="Rate" value={createForm.rate} onChange={(event) => setCreateForm((current) => ({ ...current, rate: event.target.value }))} />
-        </div>
       </AdminModal>
     </div>
   );
