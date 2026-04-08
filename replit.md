@@ -70,6 +70,25 @@ Render's free tier spins down after 15 minutes of inactivity. Set up a free cron
    - Enable → Save
 3. Done — your server never sleeps
 
+## Custom Domain Setup (zenvault.one)
+
+If you are serving the app from a custom domain (e.g. `https://zenvault.one`), you must complete these extra steps so CORS and email links work correctly.
+
+### Step 1 — Add ALLOWED_ORIGINS in the Render Dashboard
+Go to your Render service → **Environment** → **Add Environment Variable**:
+
+| Key | Value |
+|---|---|
+| `ALLOWED_ORIGINS` | `https://zenvault.one,https://www.zenvault.one` |
+
+### Step 2 — Update Site URL in the Admin Panel
+Once the site loads, go to **Admin → Settings → General** and set the **Site URL** to `https://zenvault.one`. This ensures email links (welcome emails, login notifications, etc.) point to the custom domain instead of the Render URL.
+
+### Step 3 — Redeploy on Render
+Trigger a manual redeploy so the new `ALLOWED_ORIGINS` environment variable and updated CORS code are picked up together.
+
+> **Why this matters**: The frontend is built with `VITE_API_BASE_URL=https://zenvault.onrender.com`. The `ALLOWED_ORIGINS` variable tells the server to also accept requests from the custom domain, preventing blank/CORS errors when visiting via `zenvault.one`.
+
 ## Environment Variables
 
 | Variable | Required | Description |
@@ -78,6 +97,7 @@ Render's free tier spins down after 15 minutes of inactivity. Set up a free cron
 | `JWT_SECRET` | **Always** | Min 32 chars, strong random string |
 | `NODE_ENV` | Production | Set to `production` |
 | `PORT` | Render auto | Set automatically by Render |
+| `ALLOWED_ORIGINS` | Custom domain | Comma-separated list of allowed origins, e.g. `https://zenvault.one,https://www.zenvault.one` |
 | `ACCESS_TOKEN_TTL` | Optional | JWT expiry (default `12h`) |
 | `PENDING_TOKEN_TTL` | Optional | Pending token expiry (default `10m`) |
 
