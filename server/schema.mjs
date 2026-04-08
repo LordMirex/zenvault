@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   uuid TEXT NOT NULL DEFAULT '',
   country TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT '',
-  kyc_status TEXT NOT NULL DEFAULT '',
+  kyc_status TEXT NOT NULL DEFAULT 'Pending',
   portfolio_usd NUMERIC(20,2) NOT NULL DEFAULT 0,
   available_usd NUMERIC(20,2) NOT NULL DEFAULT 0,
   portfolio_change_usd NUMERIC(20,2) NOT NULL DEFAULT 0,
@@ -189,6 +189,17 @@ export const initSchema = async () => {
   await pool.query(`ALTER TABLE kyc_cases DROP COLUMN IF EXISTS risk_level`);
   await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS phone`);
   await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS note`);
+
+  // Migration: ensure kyc_status column default is 'Pending' on existing tables
+  await pool.query(`ALTER TABLE users ALTER COLUMN kyc_status SET DEFAULT 'Pending'`);
+
+  // Migration: update kyc_status from 'None' or '' to 'Pending', excluding only the seeded admin account
+  await pool.query(`
+    UPDATE users
+    SET kyc_status = 'Pending'
+    WHERE (kyc_status = 'None' OR kyc_status = '')
+      AND id != 1
+  `);
 
   console.log('[schema] Schema ready.');
   await seedDatabase(pool);

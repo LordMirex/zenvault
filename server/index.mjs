@@ -877,7 +877,7 @@ app.post('/api/auth/signup', async (req, res) => {
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, :uuid, :country, 'Active', 'None',
+      :id, 'user', :name, :email, :uuid, :country, 'Active', 'Pending',
       0, 0, 0, 0, 'Just created',
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
@@ -1722,7 +1722,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
   const password = String(req.body.password ?? createTemporaryPassword());
   const country = String(req.body.country ?? '');
   const status = String(req.body.status ?? 'Active');
-  const kycStatus = String(req.body.kycStatus ?? 'None');
+  const kycStatus = String(req.body.kycStatus ?? 'Pending');
   const passcode = String(req.body.passcode ?? '').replace(/\D/g, '');
   const sendEmail = req.body.sendEmail !== false;
 
