@@ -110,7 +110,7 @@ export const Navbar = () => {
     : 'text-rose-200 hover:bg-rose-500/10 hover:text-white';
 
   return (
-    <header className={`sticky top-0 z-40 shrink-0 border-b px-4 py-3 backdrop-blur-md md:px-8 ${headerClasses}`}>
+    <header className={`z-40 shrink-0 border-b px-4 py-3 backdrop-blur-md md:px-8 ${headerClasses}`}>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         {/* Left: logo + title */}
         <div className="flex min-w-0 items-center gap-3">

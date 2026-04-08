@@ -15,10 +15,10 @@ export const Shell = () => {
   };
 
   return (
-    <div className="wallet-theme-scope flex h-screen overflow-hidden bg-dark-900 text-gray-100 font-sans selection:bg-primary/30 selection:text-primary">
+    <div className="wallet-theme-scope fixed inset-0 flex bg-dark-900 text-gray-100 font-sans selection:bg-primary/30 selection:text-primary">
       <Sidebar />
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col">
         {impersonating && (
           <div className="flex shrink-0 items-center justify-between gap-4 bg-amber-400 px-4 py-2 text-amber-950">
             <span className="text-xs font-bold uppercase tracking-wide">Admin view — logged in as client</span>
@@ -33,7 +33,7 @@ export const Shell = () => {
 
         <Navbar />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <div className="mx-auto mb-20 w-full max-w-7xl p-4 md:mb-0 md:p-8 lg:p-10">
             <AnimatePresence mode="wait">
               <motion.div

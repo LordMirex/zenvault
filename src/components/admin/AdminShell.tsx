@@ -12,7 +12,7 @@ export const AdminShell = () => {
   }, [location.pathname]);
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-100 text-slate-900">
+    <div className="fixed inset-0 bg-slate-100 text-slate-900">
       <div className="flex h-full flex-col md:flex-row">
         <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

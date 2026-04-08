@@ -46,7 +46,7 @@ type SettingsItem = SettingsLinkItem | SettingsToggleItem;
 
 export const Settings = () => {
   const navigate = useNavigate();
-  const { logout, clientCards, clientCardRequests, clientCardApplicationFeeUsd, clientProfile, clientSummary, user } = useAuth();
+  const { logout, clientCards, clientCardRequests, clientCardApplicationFeeUsd, clientProfile, user } = useAuth();
   const { branding } = useBranding();
   const { theme, toggleTheme, isLightTheme } = useTheme();
 
