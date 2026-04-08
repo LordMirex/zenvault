@@ -810,10 +810,11 @@ app.post('/api/auth/login', async (req, res) => {
 
   const { sessionId } = await createAuthenticatedSession(user, req);
 
-  const emailSettings = await getSetting('email', {});
-  if (emailSettings.notifyOnLogin !== false) {
+  getSetting('email', {}).then(async (emailSettings) => {
+    if (emailSettings.notifyOnLogin === false) return;
     const brandName = await getBrandName();
     const loginTime = createTimestampLabel();
+    const ctaUrl = await toClientUrl('/app');
     await sendSystemEmailSafely({
       logContext: `login notification to ${email}`,
       to: email,
@@ -830,10 +831,10 @@ app.post('/api/auth/login', async (req, res) => {
         `Time: ${loginTime}`,
       ],
       ctaLabel: 'Go to my account',
-      ctaUrl: await toClientUrl('/app'),
+      ctaUrl,
       signatureRole: 'Security Team',
     });
-  }
+  }).catch(() => {});
 
   return res.json({
     accessToken: createAccessToken(user, sessionId),
@@ -891,10 +892,10 @@ app.post('/api/auth/signup', async (req, res) => {
     },
   );
 
-  const emailSettings = await getSetting('email', {});
-
-  if (emailSettings.notifyOnUserRegistration !== false) {
+  getSetting('email', {}).then(async (emailSettings) => {
+    if (emailSettings.notifyOnUserRegistration === false) return;
     const brandName = await getBrandName();
+    const ctaUrl = await toClientUrl('/login');
     await sendSystemEmailSafely({
       logContext: `welcome email to ${email}`,
       to: email,
@@ -912,10 +913,10 @@ app.post('/api/auth/signup', async (req, res) => {
         'Default passcode: 000000 (update on first login)',
       ],
       ctaLabel: 'Sign in to your account',
-      ctaUrl: await toClientUrl('/login'),
+      ctaUrl,
       signatureRole: 'Support Team',
     });
-  }
+  }).catch(() => {});
 
   return res.status(201).json({ message: 'Account created successfully. Please sign in.' });
 });
