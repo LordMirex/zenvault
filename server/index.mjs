@@ -818,12 +818,12 @@ app.post('/api/auth/login', async (req, res) => {
       logContext: `login notification to ${email}`,
       to: email,
       subject: `New sign-in to your ${brandName} account`,
-      title: 'Sign-in detected',
-      preheader: `Your ${brandName} account was accessed on ${loginTime}.`,
-      intro: 'Someone just signed in to your account. If this was you, no action is needed.',
+      title: `New sign-in to your account`,
+      preheader: `Your ${brandName} account was just accessed.`,
+      intro: `We noticed a new sign-in to your ${brandName} account.`,
       recipientName: user.name,
       paragraphs: [
-        'If you did not sign in just now, your password may have been compromised. Change your password immediately from your security settings and contact support.',
+        "If this was you, there's nothing you need to do. If you don't recognize this sign-in, change your password immediately and contact our support team.",
       ],
       highlights: [
         `Account: ${email}`,
@@ -898,24 +898,22 @@ app.post('/api/auth/signup', async (req, res) => {
     await sendSystemEmailSafely({
       logContext: `welcome email to ${email}`,
       to: email,
-      subject: `Welcome to ${brandName} — your account is ready`,
+      subject: `Welcome to ${brandName} — you're all set`,
       title: `Welcome to ${brandName}`,
-      preheader: `Your ${brandName} account is set up and ready to use.`,
-      intro: 'Your account has been created. Sign in now to complete your setup and start using your wallet.',
+      preheader: `Your ${brandName} account is ready. Sign in and get started.`,
+      intro: `Your ${brandName} account is ready. Sign in now and start exploring your wallet.`,
       recipientName: fullName,
       paragraphs: [
-        'Use your email and the password you chose during registration to sign in. Once logged in, complete identity verification (KYC) to unlock all wallet features.',
-        'Your default security passcode is 000000 — please update it from your security settings right after your first login.',
-        'If you did not create this account, contact our support team immediately.',
+        'Once you sign in, complete your identity verification to unlock full access to all wallet features and higher limits.',
+        "For your security, update your 6-digit passcode from your account settings on your first login.",
       ],
       highlights: [
         `Email: ${email}`,
-        'Default passcode: 000000 (update this on first login)',
-        'KYC status: Pending — complete verification to unlock full access',
+        'Default passcode: 000000 (update on first login)',
       ],
       ctaLabel: 'Sign in to your account',
       ctaUrl: await toClientUrl('/login'),
-      signatureRole: 'Client Operations',
+      signatureRole: 'Support Team',
     });
   }
 
@@ -1040,22 +1038,21 @@ app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) 
       await sendSystemEmailSafely({
         logContext: `kyc submission email to ${req.user.email}`,
         to: req.user.email,
-        subject: `${brandName} — We received your verification documents`,
-        title: 'Documents received',
-        preheader: `Your ${brandName} verification documents have been submitted and are under review.`,
-        intro: `Thank you for submitting your verification documents to ${brandName}. Our compliance team will review them shortly.`,
+        subject: `We've received your verification documents`,
+        title: 'Verification documents received',
+        preheader: 'Your documents are under review. We\'ll update you as soon as it\'s done.',
+        intro: `We've received your identity documents and your verification is now under review.`,
         recipientName: req.user.name,
         paragraphs: [
-          'Your documents are now securely stored and attached to your account. You can view the submission status at any time from the KYC section of your dashboard.',
-          'If our team needs additional documents or higher-quality images, we will notify you through your dashboard notifications and via email.',
-          'Most reviews are completed within 1–3 business days.',
+          'Most verifications are completed within 1–3 business days. We\'ll notify you by email and in your dashboard as soon as a decision is made.',
+          'If we need any additional information or clearer documents, we\'ll reach out to you directly.',
         ],
         highlights: [
           `Documents submitted: ${documentType}`,
-          `Submitted at: ${submittedAt}`,
-          'Review status: Pending',
+          `Submitted: ${submittedAt}`,
+          'Status: Under review',
         ],
-        ctaLabel: 'Check verification status',
+        ctaLabel: 'View verification status',
         ctaUrl: await toClientUrl('/app/kyc'),
         signatureRole: 'Compliance Team',
       });
@@ -1293,23 +1290,22 @@ app.post('/api/client/cards/apply', requireAuth, requireRole('user'), async (req
   await sendSystemEmailSafely({
     logContext: `card request email to ${req.user.email}`,
     to: req.user.email,
-    subject: `Your ${brand} card request has been received`,
-    title: 'Card request received',
-    preheader: 'Your card application is in the queue and will be reviewed shortly.',
-    intro: 'We have received your card request. Our team will review and process it as soon as possible.',
+    subject: `Your ${brand} card application is being reviewed`,
+    title: `${brand} card application received`,
+    preheader: `We've got your ${brand} card application and are reviewing it now.`,
+    intro: `We've received your ${brand} card application and it's currently under review.`,
     recipientName: req.user.name,
     paragraphs: [
-      'Your application is now in the review queue. Once approved, your card details will appear in the Cards section of your dashboard.',
+      "Once your card is approved and issued, you'll find it in the Cards section of your dashboard. We'll send you an email as soon as it's ready.",
       applicationFeeUsd > 0 && fundingAsset
-        ? `An application fee of ${formatAmountLabel(feeAssetAmount)} ${fundingAsset.symbol} has been deducted from your wallet balance.`
+        ? `An application fee of ${formatAmountLabel(feeAssetAmount)} ${fundingAsset.symbol} has been deducted from your wallet.`
         : 'No application fee was charged for this request.',
-      'You will receive another email as soon as your card has been issued.',
     ],
     highlights: [
-      `Card type: ${brand}`,
-      `Requested at: ${requestedAt}`,
+      `Card: ${brand}`,
+      `Requested: ${requestedAt}`,
       `Application fee: $${applicationFeeUsd.toFixed(2)}`,
-      'Status: Pending review',
+      'Status: Under review',
     ],
     ctaLabel: 'View my cards',
     ctaUrl: await toClientUrl('/app/cards'),
@@ -1500,23 +1496,22 @@ app.post('/api/client/withdrawals', requireAuth, requireRole('user'), async (req
   await sendSystemEmailSafely({
     logContext: `withdrawal email to ${req.user.email}`,
     to: req.user.email,
-    subject: `Withdrawal request for ${formatAmountLabel(amount)} ${asset.symbol} received`,
-    title: 'Withdrawal request received',
-    preheader: `Your withdrawal of ${formatAmountLabel(amount)} ${asset.symbol} is now pending review.`,
-    intro: 'We have received your withdrawal request. It is currently being reviewed by our team before processing.',
+    subject: `Your ${formatAmountLabel(amount)} ${asset.symbol} transfer is on its way`,
+    title: `${asset.symbol} transfer initiated`,
+    preheader: `Your ${formatAmountLabel(amount)} ${asset.symbol} transfer has been submitted.`,
+    intro: `Your transfer of ${formatAmountLabel(amount)} ${asset.symbol} has been submitted and is being processed.`,
     recipientName: req.user.name,
     paragraphs: [
-      'Your funds are reserved and the transfer is queued for processing. You will be notified once the withdrawal has been completed or if any additional action is required.',
-      'If you did not initiate this withdrawal, contact support immediately.',
+      "You'll receive a confirmation once the transfer has been completed.",
     ],
     highlights: [
       `Amount: ${formatAmountLabel(amount)} ${asset.symbol}`,
-      `Destination: ${recipient}`,
+      `To: ${recipient}`,
       `Method: ${method === 'external' ? 'External Wallet' : 'Internal Transfer'}`,
       `Network fee: ${formatAmountLabel(feeAmount)} ${asset.symbol}`,
-      'Status: Pending review',
+      'Status: Processing',
     ],
-    ctaLabel: 'Track this withdrawal',
+    ctaLabel: 'Track transfer',
     ctaUrl: await toClientUrl('/app/withdraw'),
     signatureRole: 'Transfers Team',
   });
@@ -2123,24 +2118,21 @@ app.post('/api/admin/users/:userId/cards', requireAuth, requireRole('admin'), as
   await sendSystemEmailSafely({
     logContext: `card issued email to ${user.email}`,
     to: user.email,
-    subject: `Your ${brand} card ending in ${last4} has been issued`,
-    title: 'Your card is ready',
-    preheader: `Your ${brand} card ending in ${last4} is now active and available in your account.`,
-    intro: 'Great news! Your card has been issued and is now active. You can find your card details in the Cards section of your dashboard.',
+    subject: `Your ${brand} card ending in ${last4} is ready`,
+    title: `Your ${brand} card is ready`,
+    preheader: `Your ${brand} card ending in ${last4} is active and ready to use.`,
+    intro: `Your ${brand} card ending in ${last4} has been issued and is now active on your account.`,
     recipientName: user.name,
     paragraphs: [
-      'Your card details — including the card number, expiry, and CVV — are securely stored and accessible from your wallet dashboard.',
-      `Your current spend limit is $${initialBalance.toFixed(2)}. If you need a higher limit, contact support.`,
+      'Your card number, expiry date, and CVV are available in the Cards section of your dashboard.',
     ],
     highlights: [
-      `Card type: ${brand}`,
-      `Card ending in: ${last4}`,
-      `Issued at: ${createdAt}`,
+      `Card: ${brand} ···· ${last4}`,
+      `Issued: ${createdAt}`,
       `Spend limit: $${initialBalance.toFixed(2)}`,
     ],
     ctaLabel: 'View my card',
     ctaUrl: await toClientUrl('/app/cards'),
-    signatureName: req.user.name,
     signatureRole: 'Card Services',
   });
 
@@ -2369,7 +2361,7 @@ app.post('/api/admin/users/:userId/notify', requireAuth, requireRole('admin'), a
   });
 
   await sendSystemEmailSafely({
-    logContext: 'admin transaction alert to ' + user.email,
+    logContext: 'transaction alert to ' + user.email,
     to: user.email,
     subject,
     title: subject,
@@ -2377,7 +2369,7 @@ app.post('/api/admin/users/:userId/notify', requireAuth, requireRole('admin'), a
     intro: messageText,
     recipientName: user.name,
     paragraphs: [
-      'This is an official message from your account operations team. If you have questions about this notification, please contact our support team.',
+      'If you have any questions about this transaction, please reach out to our support team.',
     ],
     highlights: [
       ...(asset && amount ? [`Asset: ${asset}`, `Amount: ${amount} ${asset}`] : []),
@@ -2385,8 +2377,7 @@ app.post('/api/admin/users/:userId/notify', requireAuth, requireRole('admin'), a
     ],
     ctaLabel: 'View my wallet',
     ctaUrl: await toClientUrl('/app'),
-    signatureName: req.user.name,
-    signatureRole: 'Wallet Operations',
+    signatureRole: 'Transfers Team',
   });
 
   await appendAdminTimelineEntry(
@@ -2657,23 +2648,21 @@ app.put('/api/admin/kyc/:caseId', requireAuth, requireRole('admin'), async (req,
       await sendSystemEmailSafely({
         logContext: `kyc approval email to ${targetUser.email}`,
         to: targetUser.email,
-        subject: `Your ${brandName} identity verification has been approved`,
-        title: 'Verification approved',
-        preheader: 'Your identity verification is complete. Your account is now fully verified.',
-        intro: 'Congratulations! Your identity verification has been reviewed and approved by our compliance team.',
+        subject: `Your identity has been verified`,
+        title: 'Identity verified',
+        preheader: 'Your account is fully verified. All features are now unlocked.',
+        intro: 'Your identity verification is complete. Your account now has full access to all wallet features.',
         recipientName: targetUser.name,
         paragraphs: [
-          'Your account is now fully verified. You can access all wallet features including higher transfer limits.',
-          'If your personal details or documents change in the future, please resubmit your verification documents to keep your account in good standing.',
+          'You can now access higher transfer limits and all available wallet features.',
         ],
         highlights: [
-          'Verification status: Approved',
-          `Approved at: ${createTimestampLabel()}`,
-          'Account access: Full',
+          'Verification: Approved',
+          `Date: ${createTimestampLabel()}`,
+          'Access level: Full',
         ],
         ctaLabel: 'Go to my dashboard',
-        ctaUrl: await toClientUrl('/app/kyc'),
-        signatureName: req.user.name,
+        ctaUrl: await toClientUrl('/app'),
         signatureRole: 'Compliance Team',
       });
     }
