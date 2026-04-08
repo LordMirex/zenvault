@@ -9,7 +9,6 @@ import {
   AdminNotice,
   AdminPageHeading,
   AdminSelect,
-  AdminTextArea,
   AdminTextInput,
 } from '../../components/admin/AdminUi';
 
@@ -25,7 +24,6 @@ export const AdminUserCreatePage = () => {
     passcode: '',
     country: '',
     status: 'Active',
-    note: '',
     requireKyc: true,
     sendEmail: true,
   });
@@ -43,7 +41,6 @@ export const AdminUserCreatePage = () => {
       email: '',
       password: '',
       passcode: '',
-      note: '',
       requireKyc: true,
       sendEmail: true,
     }));
@@ -180,13 +177,6 @@ export const AdminUserCreatePage = () => {
                   </span>
                 </span>
               </label>
-              <AdminTextArea
-                label="Internal Note"
-                rows={3}
-                value={form.note}
-                onChange={(event) => updateField('note', event.target.value)}
-                placeholder="Operator notes about this account..."
-              />
             </div>
           </AdminCard>
 

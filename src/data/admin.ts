@@ -41,7 +41,6 @@ export type AdminUser = {
   portfolioUsd: number;
   availableUsd: number;
   lastSeen: string;
-  note: string;
   openCards: number;
   holdings: AdminHolding[];
   cards: AdminCardRecord[];

@@ -13,7 +13,6 @@ import {
   AdminNotice,
   AdminPageHeading,
   AdminSelect,
-  AdminTextArea,
   AdminTextInput,
 } from '../../components/admin/AdminUi';
 
@@ -54,7 +53,6 @@ export const AdminUserDetailPage = () => {
       country: user.country,
       status: user.status,
       kycStatus: user.kycStatus,
-      note: user.note,
     });
     setFeedback('');
     setError('');
@@ -143,9 +141,6 @@ export const AdminUserDetailPage = () => {
               <option>Pending</option>
               <option>Needs review</option>
             </AdminSelect>
-            <div className="md:col-span-2">
-              <AdminTextArea label="Internal Note" rows={4} value={editForm.note} onChange={(e) => updateField('note', e.target.value)} />
-            </div>
           </div>
           <div className="mt-5 flex gap-3">
             <AdminButton onClick={() => void handleSave()} disabled={saving}>
@@ -167,9 +162,6 @@ export const AdminUserDetailPage = () => {
             <div className="mt-5 flex flex-wrap gap-2">
               <AdminBadge value={user.status} />
               <AdminBadge value={user.kycStatus} />
-            </div>
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">
-              {user.note}
             </div>
           </AdminCard>
 

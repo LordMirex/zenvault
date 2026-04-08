@@ -487,7 +487,6 @@ const mapAdminUser = (user, options = {}) => {
     portfolioUsd: Number(user.portfolio_usd),
     availableUsd: Number(user.available_usd),
     lastSeen: user.last_seen,
-    note: user.note,
     openCards: cards.filter((card) => !card.requestOnly).length,
     holdings: buildAdminHoldings(user, options),
     cards,
@@ -706,7 +705,6 @@ const getClientBootstrap = async (userId) => {
       id: String(user.id),
       name: user.name,
       email: user.email,
-      phone: user.phone,
       uuid: user.uuid,
       country: user.country,
       kycStatus: user.kyc_status,
@@ -845,7 +843,6 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/signup', async (req, res) => {
   const fullName = String(req.body.fullName ?? '').trim();
   const email = String(req.body.email ?? '').trim().toLowerCase();
-  const phone = String(req.body.phone ?? '').trim();
   const country = String(req.body.country ?? '').trim();
   const passcode = String(req.body.passcode ?? '').replace(/\D/g, '');
   const password = String(req.body.password ?? '');
@@ -873,20 +870,19 @@ app.post('/api/auth/signup', async (req, res) => {
 
   await query(
     `INSERT INTO users (
-      id, role, name, email, phone, uuid, country, status, kyc_status,
-      portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen, note,
+      id, role, name, email, uuid, country, status, kyc_status,
+      portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen,
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, :phone, :uuid, :country, 'Active', 'None',
-      0, 0, 0, 0, 'Just created', 'New signup awaiting funding.',
+      :id, 'user', :name, :email, :uuid, :country, 'Active', 'None',
+      0, 0, 0, 0, 'Just created',
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
     {
       id: nextId,
       name: fullName,
       email,
-      phone,
       country,
       uuid,
       passwordHash: await hashSecret(password),
@@ -1742,13 +1738,13 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
 
   await query(
     `INSERT INTO users (
-      id, role, name, email, phone, uuid, country, status, kyc_status,
-      portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen, note,
+      id, role, name, email, uuid, country, status, kyc_status,
+      portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen,
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, '', :uuid, :country, :status, :kycStatus,
-      0, 0, 0, 0, 'Just created', :note,
+      :id, 'user', :name, :email, :uuid, :country, :status, :kycStatus,
+      0, 0, 0, 0, 'Just created',
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
     {
@@ -1759,7 +1755,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       country,
       status,
       kycStatus,
-      note: String(req.body.note ?? 'Created from admin panel.'),
       passwordHash: await hashSecret(password),
       passcodeHash: await hashSecret(passcode || '000000'),
     },
@@ -1884,6 +1879,7 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
 
   const action = String(req.body.action ?? '').trim().toLowerCase();
   const amount = Number(req.body.amount ?? 0);
+  const customPriceUsd = req.body.priceUsd !== undefined && Number.isFinite(Number(req.body.priceUsd)) ? Number(req.body.priceUsd) : null;
   const nextStatus = req.body.status
     ? pickAllowedValue(req.body.status, adminHoldingStatuses, '')
     : '';
@@ -1913,7 +1909,7 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
 
     if (action) {
       const currentBalance = Number(nextItem.balance ?? 0);
-      const price = Number(nextItem.price ?? 0);
+      const price = customPriceUsd !== null ? customPriceUsd : Number(nextItem.price ?? 0);
       const nextBalance = action === 'add' ? currentBalance + amount : currentBalance - amount;
 
       if (nextBalance < 0) {
@@ -2837,11 +2833,9 @@ app.put('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
   const allowedFields = {
     name: 'name',
     email: 'email',
-    phone: 'phone',
     country: 'country',
     status: 'status',
     kycStatus: 'kyc_status',
-    note: 'note',
   };
 
   for (const [bodyKey, dbColumn] of Object.entries(allowedFields)) {

@@ -12,7 +12,6 @@ export const SignupPage = () => {
   const [form, setForm] = useState({
     fullName: '',
     email: '',
-    phone: '',
     country: '',
     passcode: '',
     password: '',
@@ -97,14 +96,6 @@ export const SignupPage = () => {
                 type="email"
                 placeholder="you@example.com"
                 required
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Phone number">
-              <input
-                value={form.phone}
-                onChange={(event) => updateField('phone', event.target.value)}
-                placeholder="+1 000 000 0000"
                 className={inputCls}
               />
             </Field>

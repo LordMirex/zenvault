@@ -18,7 +18,7 @@ import {
   AdminTextInput,
 } from '../../components/admin/AdminUi';
 
-type AssetFormState = Record<string, string>;
+type AssetFormState = Record<string, { amount: string; priceUsd: string }>;
 type CardFundingState = Record<string, string>;
 
 export const AdminUserRecordsPage = () => {
@@ -59,7 +59,7 @@ export const AdminUserRecordsPage = () => {
     }
 
     setAssetForms(
-      Object.fromEntries(user.holdings.map((holding) => [holding.id, ''])),
+      Object.fromEntries(user.holdings.map((holding) => [holding.id, { amount: '', priceUsd: '' }])),
     );
     setCardFunding(
       Object.fromEntries(
@@ -94,7 +94,9 @@ export const AdminUserRecordsPage = () => {
   };
 
   const handleAssetAdjustment = async (assetId: string, action: 'add' | 'subtract') => {
-    const amount = Number(assetForms[assetId] || 0);
+    const entry = assetForms[assetId] ?? { amount: '', priceUsd: '' };
+    const amount = Number(entry.amount || 0);
+    const priceUsd = entry.priceUsd ? Number(entry.priceUsd) : undefined;
 
     await runAction(`asset-${action}-${assetId}`, async () => {
       await apiRequest(`/api/admin/users/${user.id}/assets/${assetId}`, {
@@ -102,10 +104,11 @@ export const AdminUserRecordsPage = () => {
         body: JSON.stringify({
           action,
           amount,
+          ...(priceUsd !== undefined ? { priceUsd } : {}),
         }),
       });
       setFeedback(action === 'add' ? 'Wallet funded successfully.' : 'Wallet debited successfully.');
-      setAssetForms((current) => ({ ...current, [assetId]: '' }));
+      setAssetForms((current) => ({ ...current, [assetId]: { amount: '', priceUsd: '' } }));
     });
   };
 
@@ -393,23 +396,27 @@ export const AdminUserRecordsPage = () => {
 
                 <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-medium text-slate-500">Fund or debit this wallet</p>
-                  <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <AdminTextInput
-                      label="Amount"
-                      value={assetForms[holding.id] ?? ''}
-                      onChange={(event) => setAssetForms((current) => ({ ...current, [holding.id]: event.target.value }))}
-                      placeholder="0.00"
+                      label={`Token Amount (${holding.symbol})`}
+                      value={assetForms[holding.id]?.amount ?? ''}
+                      onChange={(event) => setAssetForms((current) => ({ ...current, [holding.id]: { ...current[holding.id], amount: event.target.value } }))}
+                      placeholder="0.00000000"
                     />
-                    <div className="flex items-end">
-                      <AdminActionBar>
-                        <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'add')} disabled={activeKey === `asset-add-${holding.id}`}>
-                          Send To User
-                        </AdminButton>
-                        <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'subtract')} disabled={activeKey === `asset-subtract-${holding.id}`}>
-                          Debit
-                        </AdminButton>
-                      </AdminActionBar>
-                    </div>
+                    <AdminTextInput
+                      label="Price per Token (USD)"
+                      value={assetForms[holding.id]?.priceUsd ?? ''}
+                      onChange={(event) => setAssetForms((current) => ({ ...current, [holding.id]: { ...current[holding.id], priceUsd: event.target.value } }))}
+                      placeholder={`Leave blank to use live price ($${holding.valueUsd > 0 && holding.balance > 0 ? (holding.valueUsd / holding.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'})`}
+                    />
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'add')} disabled={activeKey === `asset-add-${holding.id}`}>
+                      {activeKey === `asset-add-${holding.id}` ? 'Sending...' : 'Send To User'}
+                    </AdminButton>
+                    <AdminButton variant="secondary" onClick={() => void handleAssetAdjustment(holding.id, 'subtract')} disabled={activeKey === `asset-subtract-${holding.id}`}>
+                      {activeKey === `asset-subtract-${holding.id}` ? 'Debiting...' : 'Debit'}
+                    </AdminButton>
                   </div>
                 </div>
               </AdminCard>

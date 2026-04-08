@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL DEFAULT 'user',
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  phone TEXT NOT NULL DEFAULT '',
   uuid TEXT NOT NULL DEFAULT '',
   country TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT '',
@@ -18,7 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
   portfolio_change_usd NUMERIC(20,2) NOT NULL DEFAULT 0,
   portfolio_change_pct NUMERIC(10,4) NOT NULL DEFAULT 0,
   last_seen TEXT NOT NULL DEFAULT '',
-  note TEXT,
   password_hash TEXT NOT NULL,
   passcode_hash TEXT NOT NULL,
   holdings_json TEXT NOT NULL DEFAULT '[]',
@@ -189,6 +187,8 @@ export const initSchema = async () => {
   await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS risk_level`);
   await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS referrals_json`);
   await pool.query(`ALTER TABLE kyc_cases DROP COLUMN IF EXISTS risk_level`);
+  await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS phone`);
+  await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS note`);
 
   console.log('[schema] Schema ready.');
   await seedDatabase(pool);

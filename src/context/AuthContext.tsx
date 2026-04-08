@@ -47,7 +47,6 @@ type ClientBootstrap = {
     id: string;
     name: string;
     email: string;
-    phone: string;
     uuid: string;
     country: string;
 
@@ -179,7 +178,6 @@ type AuthContextValue = {
   signup: (input: {
     fullName: string;
     email: string;
-    phone: string;
     country: string;
     passcode: string;
     password: string;
@@ -469,7 +467,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const signup = async (input: {
     fullName: string;
     email: string;
-    phone: string;
     country: string;
     passcode: string;
     password: string;
