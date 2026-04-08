@@ -208,6 +208,7 @@ type AuthContextValue = {
     failedRecipients: string[];
   }>;
   saveAdminSettings: (section: 'general' | 'email' | 'wallets', payload: Record<string, unknown>) => Promise<void>;
+  sendAdminTestEmail: (to: string) => Promise<void>;
   refreshBootstrap: () => Promise<void>;
 };
 
@@ -576,6 +577,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     return payload;
   };
 
+  const sendAdminTestEmail = async (to: string) => {
+    await apiRequest('/api/admin/email/test', {
+      method: 'POST',
+      body: JSON.stringify({ to }),
+    });
+  };
+
   const saveAdminSettings = async (
     section: 'general' | 'email' | 'wallets',
     payload: Record<string, unknown>,
@@ -628,6 +636,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       createAdminUser,
       sendAdminEmail,
       saveAdminSettings,
+      sendAdminTestEmail,
       refreshBootstrap,
     }),
     [

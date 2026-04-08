@@ -2492,6 +2492,49 @@ app.post('/api/admin/upload/favicon', requireAuth, requireRole('admin'), (req, r
   });
 });
 
+// POST /api/admin/email/test — send a test email to the logged-in admin
+app.post('/api/admin/email/test', requireAuth, requireRole('admin'), async (req, res) => {
+  const toAddress = String(req.body.to ?? req.user.email ?? '').trim().toLowerCase();
+  if (!toAddress) {
+    return res.status(400).json({ message: 'A recipient email address is required.' });
+  }
+
+  let client;
+  try {
+    client = await createMailClient();
+  } catch (error) {
+    return res.status(500).json({ message: `Email is not configured: ${error.message}` });
+  }
+
+  try {
+    const brandName = await getBrandName();
+    const ctaUrl = await toClientUrl('/admin/settings/email');
+    await deliverBrandedEmail(client, {
+      to: toAddress,
+      subject: `Test email from ${brandName}`,
+      title: 'SMTP connection verified',
+      preheader: 'Your email delivery settings are working correctly.',
+      intro: 'This is a test message confirming that your SMTP configuration is set up correctly and delivering mail.',
+      recipientName: req.user.name,
+      paragraphs: [
+        'If you received this, your email settings are working perfectly. All system emails — welcome messages, KYC notices, password resets, and broadcasts — will be delivered using this configuration.',
+      ],
+      highlights: [
+        `Sent to: ${toAddress}`,
+        `Host: ${client.defaults.sanitizedEmailSettings?.mailHost ?? 'configured'}`,
+        `From: ${client.defaults.from}`,
+      ],
+      ctaLabel: 'Back to Email Settings',
+      ctaUrl,
+      signatureName: req.user.name,
+      signatureRole: 'Platform Admin',
+    });
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ message: `Test email failed: ${error.message}` });
+  }
+});
+
 // POST /api/admin/email/send — send a bulk or targeted email from admin panel
 app.post('/api/admin/email/send', requireAuth, requireRole('admin'), async (req, res) => {
   const scope = String(req.body.scope ?? 'all').trim().toLowerCase();

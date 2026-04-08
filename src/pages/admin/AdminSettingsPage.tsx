@@ -30,7 +30,7 @@ const timeAgo = (isoString: string | null): string => {
 
 export const AdminSettingsPage = () => {
   const location = useLocation();
-  const { adminSettings, saveAdminSettings, adminAssetCatalog } = useAuth();
+  const { adminSettings, saveAdminSettings, sendAdminTestEmail, adminAssetCatalog } = useAuth();
   const { refreshBranding } = useBranding();
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -40,6 +40,9 @@ export const AdminSettingsPage = () => {
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
   const hasSavedMailPassword = Boolean(adminSettings?.email?.mailPasswordMasked);
+  const [testEmailTo, setTestEmailTo] = useState('');
+  const [testEmailSending, setTestEmailSending] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const [priceFeedStatus, setPriceFeedStatus] = useState<{
     lastUpdatedAt: string | null;
@@ -182,6 +185,20 @@ export const AdminSettingsPage = () => {
     }
   };
 
+  const handleTestEmail = async () => {
+    const to = testEmailTo.trim() || adminSettings?.email?.fromAddress || '';
+    if (!to) return;
+    setTestEmailSending(true);
+    setTestEmailResult(null);
+    try {
+      await sendAdminTestEmail(to);
+      setTestEmailResult({ ok: true, message: `Test email sent to ${to}. Check the inbox.` });
+    } catch (err) {
+      setTestEmailResult({ ok: false, message: err instanceof Error ? err.message : 'Test email failed.' });
+    } finally {
+      setTestEmailSending(false);
+    }
+  };
   const saveEmail = async () => {
     setSaving(true);
     setSaveError('');
@@ -571,6 +588,32 @@ export const AdminSettingsPage = () => {
                 <AdminButton onClick={saveEmail} disabled={saving}>{saving ? 'Saving...' : 'Save Email Settings'}</AdminButton>
               </div>
             </div>
+          </AdminCard>
+          <AdminCard className="p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Test Connection</h3>
+            <p className="mt-1 text-sm text-slate-500">Send a test email to verify your SMTP settings are working.</p>
+            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">Send test to</label>
+                <input
+                  type="email"
+                  value={testEmailTo}
+                  onChange={(event) => { setTestEmailTo(event.target.value); setTestEmailResult(null); }}
+                  placeholder={adminSettings?.email?.fromAddress || "admin@example.com"}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                />
+              </div>
+              <AdminButton onClick={handleTestEmail} disabled={testEmailSending}>
+                {testEmailSending ? "Sending..." : "Send Test Email"}
+              </AdminButton>
+            </div>
+            {testEmailResult && (
+              <div className={`mt-4 rounded-lg px-4 py-3 text-sm font-medium ${
+                testEmailResult.ok ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"
+              }`}>
+                {testEmailResult.message}
+              </div>
+            )}
           </AdminCard>
         </div>
       )}
