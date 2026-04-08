@@ -66,6 +66,28 @@ Click **Manual Deploy → Deploy latest commit**.
 
 Render will: install all dependencies → build frontend → start server → connect to PostgreSQL → seed data → go live ✅
 
+### 6. Custom Domain (e.g. zenvault.one)
+
+If you point a custom domain at the service, do these three extra steps so CORS and email links work correctly:
+
+**a) Add `ALLOWED_ORIGINS` in the Render dashboard**
+
+Go to your service → **Environment** → **Add Environment Variable**:
+
+| Key | Value |
+|---|---|
+| `ALLOWED_ORIGINS` | `https://zenvault.one,https://www.zenvault.one` |
+
+**b) Update Site URL in the Admin panel**
+
+Once the site loads, go to **Admin → Settings → General** and set the **Site URL** to `https://zenvault.one`. This makes all email links (welcome emails, login notifications, etc.) point to your custom domain instead of the Render URL.
+
+**c) Redeploy**
+
+Trigger a **Manual Deploy → Deploy latest commit** so the new env var and CORS code are picked up together.
+
+> **Why**: The frontend build bakes in `VITE_API_BASE_URL=https://zenvault.onrender.com`. `ALLOWED_ORIGINS` tells the server to also accept requests coming from the custom domain, preventing blank pages or CORS errors.
+
 ---
 
 ## Deploying on VPS with AAPanel
