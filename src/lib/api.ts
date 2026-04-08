@@ -43,8 +43,10 @@ export const exitImpersonation = () => {
 
 export const clearStoredAuth = () => {
   if (isImpersonating()) {
-    window.localStorage.removeItem(IMPERSONATION_ACTIVE_KEY);
-    window.localStorage.removeItem(ADMIN_TOKEN_BACKUP_KEY);
+    exitImpersonation();
+    clearPendingToken();
+    window.location.replace('/admin/dashboard');
+    return;
   }
   clearAccessToken();
   clearPendingToken();
@@ -89,9 +91,12 @@ export const apiRequest = async <T>(path: string, options: RequestOptions = {}):
     const message = typeof payload?.message === 'string' ? payload.message : 'Request failed.';
 
     if (response.status === 401 && token) {
+      const wasImpersonating = isImpersonating();
       clearStoredAuth();
-      window.sessionStorage.setItem(AUTH_NOTICE_KEY, message);
-      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message } }));
+      if (!wasImpersonating) {
+        window.sessionStorage.setItem(AUTH_NOTICE_KEY, message);
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message } }));
+      }
     }
 
     throw new Error(message);
