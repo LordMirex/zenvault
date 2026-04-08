@@ -150,9 +150,9 @@ const seedDatabase = async (pool) => {
     console.log('[schema] Seeding KYC cases...');
     for (const kyc of seedKycCases) {
       await pool.query(
-        `INSERT INTO kyc_cases (id, user_id, document_type, submitted_at_label, country, risk_level, status, note, documents_json)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
-        [kyc.id, kyc.userId, kyc.documentType, kyc.submittedAt ?? '', kyc.country ?? '', kyc.riskLevel ?? '', kyc.status ?? '', kyc.note ?? null, '[]']
+        `INSERT INTO kyc_cases (id, user_id, document_type, submitted_at_label, country, status, note, documents_json)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+        [kyc.id, kyc.userId, kyc.documentType, kyc.submittedAt ?? '', kyc.country ?? '', kyc.status ?? '', kyc.note ?? null, '[]']
       );
     }
     console.log(`[schema] ${seedKycCases.length} KYC cases seeded.`);

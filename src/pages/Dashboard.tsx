@@ -432,14 +432,6 @@ export const Dashboard = () => {
               <Zap size={18} className="text-primary shrink-0" />
               Bots
             </button>
-            <button
-              type="button"
-              onClick={() => navigate('/app/referral')}
-              className="flex items-center gap-3 rounded-2xl border border-gray-800 bg-dark-800/60 px-4 py-3.5 text-left text-sm font-semibold text-gray-300 transition-colors hover:border-primary/30 hover:bg-dark-800 hover:text-white"
-            >
-              <ArrowLeftRight size={18} className="text-gray-400 shrink-0" />
-              Referral
-            </button>
           </div>
         </section>
       </div>

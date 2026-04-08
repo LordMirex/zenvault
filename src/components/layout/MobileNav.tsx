@@ -12,7 +12,6 @@ import {
   Menu,
   Settings,
   ShieldCheck,
-  Users,
   Wallet,
   X,
 } from 'lucide-react';
@@ -38,7 +37,6 @@ const moreItems = [
   { name: 'KYC', href: '/app/kyc', icon: ShieldCheck },
   { name: 'Manage Crypto', href: '/app/crypto-manage', icon: LayoutGrid },
   { name: 'Trading Bots', href: '/app/bots', icon: Bot },
-  { name: 'Referral', href: '/app/referral', icon: Users },
   { name: 'Settings', href: '/app/settings', icon: Settings },
 ];
 

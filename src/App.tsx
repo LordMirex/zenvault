@@ -46,7 +46,6 @@ const LoginPage = lazyNamed(() => import('./pages/auth/LoginPage'), 'LoginPage')
 const SignupPage = lazyNamed(() => import('./pages/auth/SignupPage'), 'SignupPage');
 const ImpersonatePage = lazyNamed(() => import('./pages/auth/ImpersonatePage'), 'ImpersonatePage');
 const Bots = lazyNamed(() => import('./pages/Bots'), 'Bots');
-const Referral = lazyNamed(() => import('./pages/Referral'), 'Referral');
 const AdminDashboard = lazyNamed(() => import('./pages/admin/AdminDashboard'), 'AdminDashboard');
 const AdminUsersPage = lazyNamed(() => import('./pages/admin/AdminUsersPage'), 'AdminUsersPage');
 const AdminUserCreatePage = lazyNamed(() => import('./pages/admin/AdminUserCreatePage'), 'AdminUserCreatePage');
@@ -173,7 +172,6 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="cards" element={<Cards />} />
                 <Route path="bots" element={<Bots />} />
-                <Route path="referral" element={<Referral />} />
               </Route>
             </Route>
 
@@ -218,7 +216,6 @@ function App() {
             <Route path="/notifications" element={<Navigate to="/app/notifications" replace />} />
             <Route path="/cards" element={<Navigate to="/app/cards" replace />} />
             <Route path="/bots" element={<Navigate to="/app/bots" replace />} />
-            <Route path="/referral" element={<Navigate to="/app/referral" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

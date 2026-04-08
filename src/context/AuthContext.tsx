@@ -257,8 +257,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setClientRecentSessions([]);
     setClientKycChecklist([]);
     setClientKycCases([]);
-    setClientReferralMilestones([]);
-    setClientRecentReferrals([]);
     setAdminSettings(null);
     setAdminUsers([]);
     setAdminKycCases([]);
@@ -324,8 +322,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       setClientRecentSessions([]);
       setClientKycChecklist([]);
       setClientKycCases([]);
-      setClientReferralMilestones([]);
-      setClientRecentReferrals([]);
     }
 
     setBootstrapReady(true);

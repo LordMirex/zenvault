@@ -141,7 +141,7 @@ export const AdminUserCreatePage = () => {
 
         <div className="space-y-6">
           <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Risk and Verification</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Account Status &amp; Verification</h3>
             <div className="mt-5 grid gap-4">
               <AdminSelect
                 label="Account Status"
@@ -151,15 +151,6 @@ export const AdminUserCreatePage = () => {
                 <option>Active</option>
                 <option>Review</option>
                 <option>Suspended</option>
-              </AdminSelect>
-              <AdminSelect
-                label="Risk Level"
-                value={form.riskLevel}
-                onChange={(event) => updateField('riskLevel', event.target.value)}
-              >
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
               </AdminSelect>
               <label className="flex items-start gap-3 rounded-lg border border-slate-300 bg-white px-3 py-3 cursor-pointer">
                 <input
