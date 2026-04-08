@@ -87,7 +87,6 @@ type ClientBootstrap = {
     documentType: string;
     submittedAt: string;
     country: string;
-    riskLevel: string;
     status: string;
     note: string;
     documents: {
@@ -102,8 +101,6 @@ type ClientBootstrap = {
       downloadPath: string;
     }[];
   }[];
-  referralMilestones: { label: string; reward: string; requirement: string }[];
-  recentReferrals: { id: string; name: string; joinedAt: string; status: string; reward: string }[];
 };
 
 type AdminBootstrap = {
@@ -146,13 +143,10 @@ type ClientKycCase = {
   documentType: string;
   submittedAt: string;
   country: string;
-  riskLevel: string;
   status: string;
   note: string;
   documents: ClientKycDocument[];
 };
-type ReferralMilestone = { label: string; reward: string; requirement: string };
-type RecentReferral = { id: string; name: string; joinedAt: string; status: string; reward: string };
 
 type AuthContextValue = {
   status: 'loading' | 'anonymous' | 'authenticated';
@@ -171,8 +165,6 @@ type AuthContextValue = {
   clientRecentSessions: ClientSession[];
   clientKycChecklist: KycChecklistItem[];
   clientKycCases: ClientKycCase[];
-  clientReferralMilestones: ReferralMilestone[];
-  clientRecentReferrals: RecentReferral[];
   adminSettings: AdminBootstrap['adminSettings'] | null;
   adminUsers: AdminBootstrap['adminUsers'];
   adminKycCases: AdminBootstrap['adminKycCases'];
@@ -238,8 +230,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [clientRecentSessions, setClientRecentSessions] = useState<ClientSession[]>([]);
   const [clientKycChecklist, setClientKycChecklist] = useState<KycChecklistItem[]>([]);
   const [clientKycCases, setClientKycCases] = useState<ClientKycCase[]>([]);
-  const [clientReferralMilestones, setClientReferralMilestones] = useState<ReferralMilestone[]>([]);
-  const [clientRecentReferrals, setClientRecentReferrals] = useState<RecentReferral[]>([]);
   const [adminSettings, setAdminSettings] = useState<AdminBootstrap['adminSettings'] | null>(null);
   const [adminUsers, setAdminUsers] = useState<AdminBootstrap['adminUsers']>([]);
   const [adminKycCases, setAdminKycCases] = useState<AdminBootstrap['adminKycCases']>([]);
@@ -300,8 +290,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       setClientRecentSessions(payload.recentSessions ?? []);
       setClientKycChecklist(payload.kycChecklist ?? []);
       setClientKycCases(payload.kycCases ?? []);
-      setClientReferralMilestones(payload.referralMilestones ?? []);
-      setClientRecentReferrals(payload.recentReferrals ?? []);
       setAdminSettings(null);
       setAdminUsers([]);
       setAdminKycCases([]);
@@ -615,8 +603,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       clientRecentSessions,
       clientKycChecklist,
       clientKycCases,
-      clientReferralMilestones,
-      clientRecentReferrals,
       adminSettings,
       adminUsers,
       adminKycCases,
@@ -644,8 +630,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       status, user, clientProfile, clientSummary, clientWalletAssets, marketAssets,
       clientDepositActivity, clientWithdrawalActivity, clientAddressBookEntries,
       clientNotificationItems, clientCards, clientCardRequests, clientCardApplicationFeeUsd,
-      clientRecentSessions, clientKycChecklist, clientKycCases, clientReferralMilestones,
-      clientRecentReferrals, adminSettings, adminUsers, adminKycCases, adminTransactions,
+      adminSettings, adminUsers, adminKycCases, adminTransactions,
       adminAssetCatalog, adminEmailTemplates, adminAlerts, adminTimeline, adminMetrics,
       bootstrapReady
     ],

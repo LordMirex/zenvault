@@ -236,7 +236,6 @@ const mapKycCase = (kycCase) => {
     documentType: kycCase.document_type,
     submittedAt: kycCase.submitted_at_label,
     country: kycCase.country,
-    riskLevel: kycCase.risk_level,
     status: kycCase.status,
     note: kycCase.note ?? '',
     documents,
@@ -485,7 +484,6 @@ const mapAdminUser = (user, options = {}) => {
     country: user.country,
     status: user.status,
     kycStatus: user.kyc_status,
-    riskLevel: user.risk_level,
     portfolioUsd: Number(user.portfolio_usd),
     availableUsd: Number(user.available_usd),
     lastSeen: user.last_seen,
@@ -672,8 +670,6 @@ const getClientBootstrap = async (userId) => {
     'SELECT * FROM kyc_cases WHERE user_id = :userId ORDER BY created_at DESC',
     { userId },
   );
-  const referralMilestones = await getSetting('referralMilestones', []);
-  const recentReferrals = parseJson(user.referrals_json, []);
   const rawHoldings = parseJson(user.holdings_json, []);
   const marketAssets = priceFeed.getMarketAssets();
   const settingsWallets = normalizeWalletSettings(await getSetting('wallets', {}), marketAssets);
@@ -730,8 +726,6 @@ const getClientBootstrap = async (userId) => {
     recentSessions: parseJson(user.sessions_json, []),
     kycChecklist: parseJson(user.kyc_checklist_json, []),
     kycCases: kycCases.map((item) => mapKycCase(item)),
-    referralMilestones,
-    recentReferrals,
     cards: cards.filter((card) => !card.requestOnly),
     cardRequests: cards.filter((card) => card.requestOnly),
     cardApplicationFeeUsd: settingsWallets.cardApplicationFeeUsd,
@@ -879,14 +873,14 @@ app.post('/api/auth/signup', async (req, res) => {
 
   await query(
     `INSERT INTO users (
-      id, role, name, email, phone, uuid, country, status, kyc_status, risk_level,
+      id, role, name, email, phone, uuid, country, status, kyc_status,
       portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen, note,
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
-      notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
+      notifications_json, address_book_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, :phone, :uuid, :country, 'Active', 'None', 'Low',
+      :id, 'user', :name, :email, :phone, :uuid, :country, 'Active', 'None',
       0, 0, 0, 0, 'Just created', 'New signup awaiting funding.',
-      :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
+      :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
     {
       id: nextId,
@@ -987,7 +981,6 @@ app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) 
          SET document_type = :documentType,
              submitted_at_label = :submittedAt,
              country = :country,
-             risk_level = :riskLevel,
              status = 'Pending',
              note = :note,
              documents_json = :documents
@@ -997,7 +990,6 @@ app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) 
           documentType,
           submittedAt,
           country: req.user.country,
-          riskLevel: req.user.risk_level,
           note,
           documents: JSON.stringify(documents),
         },
@@ -1005,9 +997,9 @@ app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) 
     } else {
       await query(
         `INSERT INTO kyc_cases (
-          id, user_id, document_type, submitted_at_label, country, risk_level, status, note, documents_json
+          id, user_id, document_type, submitted_at_label, country, status, note, documents_json
         ) VALUES (
-          :id, :userId, :documentType, :submittedAt, :country, :riskLevel, 'Pending', :note, :documents
+          :id, :userId, :documentType, :submittedAt, :country, 'Pending', :note, :documents
         )`,
         {
           id: createPrefixedId(`kyc-${req.user.id}`),
@@ -1015,7 +1007,6 @@ app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) 
           documentType,
           submittedAt,
           country: req.user.country,
-          riskLevel: req.user.risk_level,
           note,
           documents: JSON.stringify(documents),
         },
@@ -1729,7 +1720,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
   const country = String(req.body.country ?? '');
   const status = String(req.body.status ?? 'Active');
   const kycStatus = String(req.body.kycStatus ?? 'None');
-  const riskLevel = String(req.body.riskLevel ?? 'Low');
   const passcode = String(req.body.passcode ?? '').replace(/\D/g, '');
   const sendEmail = req.body.sendEmail !== false;
 
@@ -1752,14 +1742,14 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
 
   await query(
     `INSERT INTO users (
-      id, role, name, email, phone, uuid, country, status, kyc_status, risk_level,
+      id, role, name, email, phone, uuid, country, status, kyc_status,
       portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen, note,
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
-      notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
+      notifications_json, address_book_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, '', :uuid, :country, :status, :kycStatus, :riskLevel,
+      :id, 'user', :name, :email, '', :uuid, :country, :status, :kycStatus,
       0, 0, 0, 0, 'Just created', :note,
-      :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
+      :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
     {
       id: nextId,
@@ -1769,7 +1759,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       country,
       status,
       kycStatus,
-      riskLevel,
       note: String(req.body.note ?? 'Created from admin panel.'),
       passwordHash: await hashSecret(password),
       passcodeHash: await hashSecret(passcode || '000000'),
@@ -2852,7 +2841,6 @@ app.put('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
     country: 'country',
     status: 'status',
     kycStatus: 'kyc_status',
-    riskLevel: 'risk_level',
     note: 'note',
   };
 

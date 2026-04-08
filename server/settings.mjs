@@ -21,9 +21,6 @@ export const defaultGeneralSettings = {
   companyAddress: '',
   companyPhone: '',
   companyEmail: '',
-  referralEnabled: true,
-  referralBonusAmount: 5,
-  bonusDistribution: 'Instant Bonus',
 };
 
 export const normalizeGeneralSettings = (input = {}) => {
@@ -31,8 +28,6 @@ export const normalizeGeneralSettings = (input = {}) => {
     ...defaultGeneralSettings,
     ...(input ?? {}),
   };
-
-  const referralBonusAmount = Number(merged.referralBonusAmount);
 
   return {
     siteName: trimString(merged.siteName) || defaultGeneralSettings.siteName,
@@ -50,11 +45,6 @@ export const normalizeGeneralSettings = (input = {}) => {
     companyAddress: trimString(merged.companyAddress) || defaultGeneralSettings.companyAddress,
     companyPhone: trimString(merged.companyPhone) || defaultGeneralSettings.companyPhone,
     companyEmail: trimLowercase(merged.companyEmail) || defaultGeneralSettings.companyEmail,
-    referralEnabled: merged.referralEnabled !== false,
-    referralBonusAmount: Number.isFinite(referralBonusAmount)
-      ? referralBonusAmount
-      : defaultGeneralSettings.referralBonusAmount,
-    bonusDistribution: trimString(merged.bonusDistribution) || defaultGeneralSettings.bonusDistribution,
   };
 };
 

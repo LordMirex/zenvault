@@ -25,7 +25,6 @@ export const AdminUserCreatePage = () => {
     passcode: '',
     country: '',
     status: 'Active',
-    riskLevel: 'Medium',
     note: '',
     requireKyc: true,
     sendEmail: true,

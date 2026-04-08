@@ -44,8 +44,6 @@ export const AdminSettingsPage = () => {
     companyAddress: '',
     companyPhone: '',
     companyEmail: '',
-    referralBonusAmount: '',
-    bonusDistribution: '',
   });
 
   const [emailForm, setEmailForm] = useState({
@@ -85,8 +83,6 @@ export const AdminSettingsPage = () => {
         companyAddress: String(adminSettings.general.companyAddress ?? ''),
         companyPhone: String(adminSettings.general.companyPhone ?? ''),
         companyEmail: String(adminSettings.general.companyEmail ?? ''),
-        referralBonusAmount: String(adminSettings.general.referralBonusAmount ?? ''),
-        bonusDistribution: String(adminSettings.general.bonusDistribution ?? ''),
       });
     }
 
@@ -145,7 +141,6 @@ export const AdminSettingsPage = () => {
       await saveAdminSettings('general', {
         ...adminSettings?.general,
         ...generalForm,
-        referralEnabled: true,
       });
       await refreshBranding();
       setMessage('General settings saved.');
@@ -447,15 +442,7 @@ export const AdminSettingsPage = () => {
               <AdminTextInput label="Company Address" value={generalForm.companyAddress} onChange={(event) => setGeneralForm((current) => ({ ...current, companyAddress: event.target.value }))} placeholder="Office or mailing address" />
               <AdminTextInput label="Company Phone" value={generalForm.companyPhone} onChange={(event) => setGeneralForm((current) => ({ ...current, companyPhone: event.target.value }))} placeholder="+1 555 000 0000" />
               <AdminTextInput label="Company Email" value={generalForm.companyEmail} onChange={(event) => setGeneralForm((current) => ({ ...current, companyEmail: event.target.value }))} placeholder="support@example.com" />
-            </div>
-          </AdminCard>
-
-          <AdminCard className="p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Referral Settings</h3>
-            <div className="mt-5 space-y-4">
-              <AdminTextInput label="Referral Bonus Amount (USD)" value={generalForm.referralBonusAmount} onChange={(event) => setGeneralForm((current) => ({ ...current, referralBonusAmount: event.target.value }))} />
-              <AdminTextInput label="Bonus Distribution" value={generalForm.bonusDistribution} onChange={(event) => setGeneralForm((current) => ({ ...current, bonusDistribution: event.target.value }))} />
-              <AdminButton onClick={saveGeneral} disabled={saving}>{saving ? 'Saving…' : 'Save General Settings'}</AdminButton>
+              <AdminButton onClick={saveGeneral} disabled={saving}>{saving ? ‘Saving…’ : ‘Save General Settings’}</AdminButton>
             </div>
           </AdminCard>
         </div>

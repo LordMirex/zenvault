@@ -54,7 +54,6 @@ export const AdminUserDetailPage = () => {
       country: user.country,
       status: user.status,
       kycStatus: user.kycStatus,
-      riskLevel: user.riskLevel,
       note: user.note,
     });
     setFeedback('');
@@ -124,7 +123,6 @@ export const AdminUserDetailPage = () => {
       <div className="grid gap-4 md:grid-cols-4">
         <InfoTile label="Portfolio" value={formatCompactUsd(user.portfolioUsd)} />
         <InfoTile label="Available" value={formatCompactUsd(user.availableUsd)} />
-        <InfoTile label="Risk" value={user.riskLevel} />
       </div>
 
       {editForm ? (
@@ -144,11 +142,6 @@ export const AdminUserDetailPage = () => {
               <option>Approved</option>
               <option>Pending</option>
               <option>Needs review</option>
-            </AdminSelect>
-            <AdminSelect label="Risk Level" value={editForm.riskLevel} onChange={(e) => updateField('riskLevel', e.target.value)}>
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
             </AdminSelect>
             <div className="md:col-span-2">
               <AdminTextArea label="Internal Note" rows={4} value={editForm.note} onChange={(e) => updateField('note', e.target.value)} />

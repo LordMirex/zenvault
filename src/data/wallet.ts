@@ -285,15 +285,6 @@ export let notificationItems: NotificationItem[] = [
     unread: false,
     tone: 'info',
   },
-  {
-    id: 'notif-4',
-    title: 'Referral bonus settled',
-    message: 'A 250 USDT referral payout has been credited to your rewards ledger.',
-    category: 'Rewards',
-    time: 'Yesterday',
-    unread: false,
-    tone: 'success',
-  },
 ];
 
 export let addressBookEntries: AddressBookEntry[] = [
@@ -320,22 +311,6 @@ export let addressBookEntries: AddressBookEntry[] = [
     address: '0x98F2A42c5a6D40b1c78fD7A9b6E4c3D25abC4f19',
     kind: 'External Wallet',
     trustedSince: 'Trusted since Mar 03, 2026',
-  },
-];
-
-export let referralMilestones = [
-  { label: 'Starter Circle', reward: '100 USDT', requirement: 'Invite 1 verified trader' },
-  { label: 'Growth Desk', reward: '500 USDT', requirement: 'Invite 5 active wallets' },
-  { label: 'Prime Ambassador', reward: '1,500 USDT', requirement: 'Invite 15 funded accounts' },
-];
-
-export let recentReferrals = [
-  {
-    id: 'ref-1',
-    name: 'Ava Martins',
-    joinedAt: 'Mar 18, 2026',
-    status: 'Verified',
-    reward: '250 USDT',
   },
 ];
 
@@ -393,8 +368,6 @@ export const hydrateWalletData = (payload: {
   withdrawalActivity: WalletActivity[];
   notificationItems: NotificationItem[];
   addressBookEntries: AddressBookEntry[];
-  referralMilestones: typeof referralMilestones;
-  recentReferrals: typeof recentReferrals;
   recentSessions: typeof recentSessions;
   kycChecklist: typeof kycChecklist;
 }) => {
@@ -403,8 +376,6 @@ export const hydrateWalletData = (payload: {
   withdrawalActivity = payload.withdrawalActivity;
   notificationItems = payload.notificationItems;
   addressBookEntries = payload.addressBookEntries;
-  referralMilestones = payload.referralMilestones;
-  recentReferrals = payload.recentReferrals;
   recentSessions = payload.recentSessions;
   kycChecklist = payload.kycChecklist;
 };

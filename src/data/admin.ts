@@ -1,6 +1,6 @@
 export type AdminUserStatus = 'Active' | 'Review' | 'Suspended';
 export type AdminKycStatus = 'Approved' | 'Pending' | 'Needs review';
-export type AdminRiskLevel = 'Low' | 'Medium' | 'High';
+
 export type AdminTransactionStatus = 'Completed' | 'Pending' | 'Review';
 
 export type AdminHolding = {
@@ -38,7 +38,6 @@ export type AdminUser = {
   country: string;
   status: AdminUserStatus;
   kycStatus: AdminKycStatus;
-  riskLevel: AdminRiskLevel;
   portfolioUsd: number;
   availableUsd: number;
   lastSeen: string;
@@ -66,7 +65,6 @@ export type AdminKycCase = {
   documentType: string;
   submittedAt: string;
   country: string;
-  riskLevel: AdminRiskLevel;
   status: AdminKycStatus;
   note: string;
   documents: AdminKycDocument[];

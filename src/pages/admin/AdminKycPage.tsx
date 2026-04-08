@@ -263,7 +263,6 @@ export const AdminKycPage = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <InfoTile label="Case ID" value={selectedCase.id} />
               <InfoTile label="Country" value={selectedCase.country || 'Unavailable'} />
-              <InfoTile label="Risk" value={selectedCase.riskLevel} />
               <InfoTile label="Status" value={selectedCase.status} />
               <InfoTile label="Submitted" value={selectedCase.submittedAt || 'Awaiting upload'} />
               <InfoTile label="User UUID" value={selectedUser?.uuid ?? 'Unavailable'} />

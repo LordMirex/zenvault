@@ -13,7 +13,6 @@ export const seedUsers = [
     country: '',
     status: 'Active',
     kycStatus: 'Approved',
-    riskLevel: 'Low',
     portfolioUsd: 0,
     availableUsd: 0,
     portfolioChangeUsd: 0,
@@ -28,7 +27,6 @@ export const seedUsers = [
     withdrawalActivity: [],
     notifications: [],
     addressBook: [],
-    referrals: [],
     recentSessions: [],
     kycChecklist: [],
   },
@@ -62,9 +60,6 @@ export const seedSettings = {
     companyAddress: '',
     companyPhone: '',
     companyEmail: 'webdaddyempire@gmail.com',
-    referralEnabled: true,
-    referralBonusAmount: 5,
-    bonusDistribution: 'Instant Bonus',
   },
   email: {
     mailDriver: 'SMTP',
@@ -95,11 +90,6 @@ export const seedSettings = {
     ],
     cardApplicationFeeUsd: 75,
   },
-  referralMilestones: [
-    { label: 'Starter Circle', reward: '100 USDT', requirement: 'Invite 1 verified trader' },
-    { label: 'Growth Desk', reward: '500 USDT', requirement: 'Invite 5 active wallets' },
-    { label: 'Prime Ambassador', reward: '1,500 USDT', requirement: 'Invite 15 funded accounts' },
-  ],
   adminDashboard: {
     alerts: [],
     timeline: [],
