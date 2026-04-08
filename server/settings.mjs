@@ -4,20 +4,20 @@ const trimString = (value) => String(value ?? '').trim();
 const trimLowercase = (value) => trimString(value).toLowerCase();
 
 export const defaultGeneralSettings = {
-  siteName: 'My Wallet',
+  siteName: 'Zenvault Wallet',
   siteUrl: String(config.clientOrigin ?? 'http://localhost:5173').replace(/\/$/, ''),
   logoUrl: '/logo.png',
   faviconUrl: '/favicon.png',
-  companyName: '',
-  publicTopbarLabel: 'Welcome',
+  companyName: 'Zenvault Wallet',
+  publicTopbarLabel: 'Zenvault Wallet',
   publicTopbarText:
     'Secure digital asset management with guided support and transparent pricing.',
   publicHeroTitle: 'Your trusted digital wallet platform.',
   publicHeroDescription:
     'Manage your digital assets with confidence — secure transactions, transparent pricing, and dedicated support when you need it.',
   footerSummary:
-    'A secure and transparent digital asset platform with dedicated support for every step of your journey.',
-  authHeadline: 'Sign in to your account',
+    'Zenvault Wallet — secure crypto wallet and OTC trading with transparent pricing and human support.',
+  authHeadline: 'Sign in to your Zenvault Wallet account',
   companyAddress: '',
   companyPhone: '',
   companyEmail: '',

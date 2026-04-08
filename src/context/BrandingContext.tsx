@@ -29,22 +29,22 @@ export type BrandingSettings = {
 };
 
 const defaultBranding: BrandingSettings = {
-  siteName: 'My Wallet',
+  siteName: 'Zenvault Wallet',
   siteUrl: typeof window === 'undefined' ? '' : window.location.origin,
   logoUrl: '/logo.png',
   faviconUrl: '/favicon.png',
-  publicTopbarLabel: 'Welcome',
+  publicTopbarLabel: 'Zenvault Wallet',
   publicTopbarText:
     'Secure digital asset management with guided support and transparent pricing.',
   publicHeroTitle: 'Your trusted digital wallet platform.',
   publicHeroDescription:
     'Manage your digital assets with confidence — secure transactions, transparent pricing, and dedicated support when you need it.',
   footerSummary:
-    'A secure and transparent digital asset platform with dedicated support for every step of your journey.',
-  authHeadline: 'Sign in to your account',
+    'Zenvault Wallet — secure crypto wallet and OTC trading with transparent pricing and human support.',
+  authHeadline: 'Sign in to your Zenvault Wallet account',
   authDescription:
     'Access your wallet, portfolio activity, and account controls through a secure login flow.',
-  companyName: '',
+  companyName: 'Zenvault Wallet',
   companyAddress: '',
   companyPhone: '',
   companyEmail: '',
@@ -93,7 +93,7 @@ export function BrandingProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let cancelled = false;
-    apiRequest<{ branding: Record<string, unknown> }>('/api/settings/branding', { method: 'GET' })
+    apiRequest<{ branding: Record<string, unknown> }>('/api/public/settings', { method: 'GET' })
       .then((data) => {
         if (!cancelled && data?.branding) {
           setBranding(normalizeBranding(data.branding));
