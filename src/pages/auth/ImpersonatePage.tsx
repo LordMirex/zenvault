@@ -9,11 +9,11 @@ export const ImpersonatePage = () => {
     const token = searchParams.get('token');
     if (token) {
       setImpersonationToken(token);
-      window.location.replace('/app');
+      window.location.href = '/app';
     } else {
-      window.location.replace('/login');
+      window.location.href = '/login';
     }
-  }, [searchParams]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950">
