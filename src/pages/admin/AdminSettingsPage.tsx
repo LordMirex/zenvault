@@ -194,7 +194,8 @@ export const AdminSettingsPage = () => {
       await sendAdminTestEmail(to);
       setTestEmailResult({ ok: true, message: `Test email sent to ${to}. Check the inbox.` });
     } catch (err) {
-      setTestEmailResult({ ok: false, message: err instanceof Error ? err.message : 'Test email failed.' });
+      const isTimeout = err instanceof Error && err.name === 'AbortError';
+      setTestEmailResult({ ok: false, message: isTimeout ? 'Connection timed out. Check your SMTP host and port.' : err instanceof Error ? err.message : 'Test email failed.' });
     } finally {
       setTestEmailSending(false);
     }

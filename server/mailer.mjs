@@ -163,6 +163,9 @@ export const createMailClient = async () => {
     port: Number.isFinite(mailPort) ? mailPort : 465,
     secure,
     requireTLS,
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000,
   };
 
   if (mailUsername || mailPassword) {

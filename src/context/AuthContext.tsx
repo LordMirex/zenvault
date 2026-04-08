@@ -578,10 +578,17 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   };
 
   const sendAdminTestEmail = async (to: string) => {
-    await apiRequest('/api/admin/email/test', {
-      method: 'POST',
-      body: JSON.stringify({ to }),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      await apiRequest('/api/admin/email/test', {
+        method: 'POST',
+        body: JSON.stringify({ to }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
   };
 
   const saveAdminSettings = async (
