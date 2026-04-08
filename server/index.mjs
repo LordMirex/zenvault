@@ -1943,11 +1943,12 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
   const nextNotifications = action
     ? [
       createUserNotification({
-        title: action === 'add' ? `Deposit: ${formatAmountLabel(amount)} ${current.symbol}` : `Debit: ${formatAmountLabel(amount)} ${current.symbol}`,
-        message:
-          action === 'add'
-            ? `${formatAmountLabel(amount)} ${current.symbol} has been deposited into your wallet.`
-            : `${formatAmountLabel(amount)} ${current.symbol} has been removed from your wallet.`,
+        title: action === 'add'
+          ? `You received ${formatAmountLabel(amount)} ${current.symbol}`
+          : `Transfer of ${formatAmountLabel(amount)} ${current.symbol} completed`,
+        message: action === 'add'
+          ? `${formatAmountLabel(amount)} ${current.symbol} has been transferred to your wallet.`
+          : `${formatAmountLabel(amount)} ${current.symbol} has been transferred out of your wallet.`,
         tone: action === 'add' ? 'success' : 'warning',
         category: 'Transfers',
       }),
@@ -1985,6 +1986,7 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
   }
 
   if (action) {
+    const fundingTxnId = createPrefixedId('txn');
     await query(
       `INSERT INTO transactions (
         id, user_id, type, asset, amount, channel, destination, status, created_at_label,
@@ -1994,13 +1996,13 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
         :fromAsset, '', :whichCrypto, '0', :rate
       )`,
       {
-        id: createPrefixedId('txn'),
+        id: fundingTxnId,
         userId,
         type: action === 'add' ? 'Deposit' : 'Withdrawal',
         asset: current.symbol,
         amount: `${formatAmountLabel(amount)} ${current.symbol}`,
-        channel: 'Admin Wallet Funding',
-        destination: action === 'add' ? 'User wallet credit' : 'User wallet debit',
+        channel: action === 'add' ? 'Crypto Transfer' : 'Crypto Withdrawal',
+        destination: action === 'add' ? user.uuid : 'External',
         createdAt: updatedAt,
         fromAsset: current.symbol,
         whichCrypto: current.symbol,
@@ -2009,33 +2011,31 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
     );
 
     const amtLabel = `${formatAmountLabel(amount)} ${current.symbol}`;
-    const newBalLabel = `${formatAmountLabel(updatedAsset.balance)} ${current.symbol}`;
+    const network = current.network || current.symbol;
     await sendSystemEmailSafely({
-      logContext: `admin wallet update email to ${user.email}`,
+      logContext: `wallet transfer email to ${user.email}`,
       to: user.email,
       subject: action === 'add'
         ? `You received ${amtLabel}`
-        : `${amtLabel} withdrawn from your wallet`,
+        : `Transfer of ${amtLabel} completed`,
       title: action === 'add'
-        ? `You received ${current.symbol}`
-        : `${current.symbol} withdrawal`,
+        ? `You received ${amtLabel}`
+        : `Transfer of ${amtLabel} completed`,
       preheader: action === 'add'
-        ? `${amtLabel} just landed in your ZenVault wallet.`
-        : `${amtLabel} has been withdrawn from your ZenVault wallet.`,
+        ? `${amtLabel} has been transferred to your wallet.`
+        : `${amtLabel} has been transferred out of your wallet.`,
       intro: action === 'add'
-        ? `${amtLabel} was just sent to your ZenVault wallet and is ready to use.`
-        : `${amtLabel} has been withdrawn from your ZenVault wallet.`,
+        ? `${amtLabel} has been transferred to your wallet.`
+        : `${amtLabel} has been transferred out of your wallet.`,
       recipientName: user.name,
-      paragraphs: action === 'add'
-        ? ['The funds are available in your wallet right now.']
-        : ['If you did not request this withdrawal, please contact support immediately.'],
+      paragraphs: ['The transaction has been confirmed and your balance has been updated.'],
       highlights: [
-        `Coin: ${current.symbol}`,
         `Amount: ${amtLabel}`,
-        `Balance: ${newBalLabel}`,
+        `Network: ${network}`,
+        `Transaction ID: ${fundingTxnId}`,
         `Date: ${updatedAt}`,
       ],
-      ctaLabel: 'View my wallet',
+      ctaLabel: 'View transaction',
       ctaUrl: await toClientUrl('/app'),
       signatureRole: 'Transfers Team',
     });
