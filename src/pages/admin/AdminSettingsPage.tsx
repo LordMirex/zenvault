@@ -46,6 +46,7 @@ export const AdminSettingsPage = () => {
     fetchedCount: number;
     totalCount: number;
     rateLimitedUntil: number | null;
+    lastError: string | null;
   } | null>(null);
 
   const [generalForm, setGeneralForm] = useState({
@@ -597,12 +598,12 @@ export const AdminSettingsPage = () => {
                     {priceFeedStatus.fetchedCount === priceFeedStatus.totalCount ? 'All assets live' : priceFeedStatus.totalCount - priceFeedStatus.fetchedCount + ' assets missing'}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Rate Limit</p>
-                  <p className={"mt-2 text-xl font-semibold " + (priceFeedStatus.rateLimitedUntil ? 'text-rose-600' : 'text-emerald-600')}>
-                    {priceFeedStatus.rateLimitedUntil ? 'Limited' : 'OK'}
+                <div className={"rounded-lg border px-4 py-3 " + (priceFeedStatus.lastError ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-slate-50')}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status</p>
+                  <p className={"mt-2 text-xl font-semibold " + (priceFeedStatus.lastError ? 'text-rose-600' : 'text-emerald-600')}>
+                    {priceFeedStatus.lastError ? 'Error' : 'OK'}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">{priceFeedStatus.rateLimitedUntil ? 'Backoff active — resumes at ' + new Date(priceFeedStatus.rateLimitedUntil).toLocaleTimeString() : 'No rate limit active'}</p>
+                  <p className="mt-1 text-xs text-slate-400">{priceFeedStatus.lastError ?? (priceFeedStatus.rateLimitedUntil ? 'Backoff until ' + new Date(priceFeedStatus.rateLimitedUntil).toLocaleTimeString() : 'No issues')}</p>
                 </div>
               </div>
             ) : (

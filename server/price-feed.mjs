@@ -10,9 +10,6 @@ const RATE_LIMIT_BACKOFF_MS = 15 * 60 * 1000;
 
 const buildRequestConfig = () => {
   const apiKey = String(process.env.COINGECKO_API_KEY ?? '').trim();
-  if (!apiKey) {
-    console.warn('[PriceFeed] WARNING: COINGECKO_API_KEY is not set. Requests may be rate limited.');
-  }
   return {
     url: `${COINGECKO_BASE}/coins/markets`,
     headers: {
@@ -41,6 +38,7 @@ class PriceFeed {
     this.rateLimitedUntil = null;
     this.lastFetchedCount = 0;
     this.totalCount = SUPPORTED_MARKET_ASSETS.length;
+    this.lastError = null;
   }
 
   async fetchFromCoinGecko() {
@@ -94,6 +92,7 @@ class PriceFeed {
       }
 
       this.rateLimitedUntil = null;
+      this.lastError = null;
       this.marketAssets = marketAssets;
       this.cache = new Map(
         marketAssets.map((asset) => [
@@ -109,9 +108,9 @@ class PriceFeed {
     } catch (error) {
       if (error.message && error.message.includes('429')) {
         this.rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
-        console.warn(`PriceFeed: rate limited by CoinGecko, pausing for 15 minutes`);
+        this.lastError = 'Rate limited — backoff active';
       } else {
-        console.warn('PriceFeed: market update failed', error.message);
+        this.lastError = error.message ?? 'Unknown error';
       }
     } finally {
       this.isFetching = false;
@@ -136,6 +135,7 @@ class PriceFeed {
       fetchedCount: this.lastFetchedCount,
       totalCount: this.totalCount,
       rateLimitedUntil: this.rateLimitedUntil,
+      lastError: this.lastError,
     };
   }
 
