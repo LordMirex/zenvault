@@ -442,7 +442,7 @@ export const AdminSettingsPage = () => {
               <AdminTextInput label="Company Address" value={generalForm.companyAddress} onChange={(event) => setGeneralForm((current) => ({ ...current, companyAddress: event.target.value }))} placeholder="Office or mailing address" />
               <AdminTextInput label="Company Phone" value={generalForm.companyPhone} onChange={(event) => setGeneralForm((current) => ({ ...current, companyPhone: event.target.value }))} placeholder="+1 555 000 0000" />
               <AdminTextInput label="Company Email" value={generalForm.companyEmail} onChange={(event) => setGeneralForm((current) => ({ ...current, companyEmail: event.target.value }))} placeholder="support@example.com" />
-              <AdminButton onClick={saveGeneral} disabled={saving}>{saving ? ‘Saving…’ : ‘Save General Settings’}</AdminButton>
+              <AdminButton onClick={saveGeneral} disabled={saving}>{saving ? 'Saving...' : 'Save General Settings'}</AdminButton>
             </div>
           </AdminCard>
         </div>
@@ -537,7 +537,7 @@ export const AdminSettingsPage = () => {
                 </div>
               </div>
               <div className="md:col-span-2">
-                <AdminButton onClick={saveEmail} disabled={saving}>{saving ? 'Saving…' : 'Save Email Settings'}</AdminButton>
+                <AdminButton onClick={saveEmail} disabled={saving}>{saving ? 'Saving...' : 'Save Email Settings'}</AdminButton>
               </div>
             </div>
           </AdminCard>
@@ -566,7 +566,7 @@ export const AdminSettingsPage = () => {
               </div>
             </div>
             <div className="mt-6 flex justify-end">
-              <AdminButton onClick={saveWalletSettings} disabled={saving}>{saving ? 'Saving…' : 'Save Asset Settings'}</AdminButton>
+              <AdminButton onClick={saveWalletSettings} disabled={saving}>{saving ? 'Saving...' : 'Save Asset Settings'}</AdminButton>
             </div>
           </AdminCard>
 

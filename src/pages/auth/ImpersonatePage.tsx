@@ -18,7 +18,7 @@ export const ImpersonatePage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950">
       <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">
-        Opening session…
+        Opening session...
       </p>
     </div>
   );

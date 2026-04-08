@@ -277,7 +277,7 @@ export const AdminDashboard = () => {
                 label=""
                 value={alertText}
                 onChange={(e) => setAlertText(e.target.value)}
-                placeholder="Type a note and press Enter…"
+                placeholder="Type a note and press Enter..."
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleAddAlert(); }}
               />
               <div className="flex items-end">
