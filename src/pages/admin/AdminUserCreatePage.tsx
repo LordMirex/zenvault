@@ -24,7 +24,6 @@ export const AdminUserCreatePage = () => {
     password: '',
     passcode: '',
     country: '',
-    tier: 'Tier 1',
     status: 'Active',
     riskLevel: 'Medium',
     note: '',
@@ -119,11 +118,6 @@ export const AdminUserCreatePage = () => {
               ))}
             </AdminSelect>
 
-            <AdminSelect label="Tier" value={form.tier} onChange={(event) => updateField('tier', event.target.value)}>
-              <option>Tier 1</option>
-              <option>Tier 2</option>
-              <option>Tier 3</option>
-            </AdminSelect>
             <AdminTextInput
               label="Temporary Password"
               type="password"

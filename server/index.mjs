@@ -483,7 +483,6 @@ const mapAdminUser = (user, options = {}) => {
     email: user.email,
     uuid: user.uuid,
     country: user.country,
-    tier: user.tier,
     status: user.status,
     kycStatus: user.kyc_status,
     riskLevel: user.risk_level,
@@ -712,10 +711,8 @@ const getClientBootstrap = async (userId) => {
       name: user.name,
       email: user.email,
       phone: user.phone,
-      city: user.city,
       uuid: user.uuid,
       country: user.country,
-      tier: user.tier,
       kycStatus: user.kyc_status,
     },
     summary: {
@@ -882,12 +879,12 @@ app.post('/api/auth/signup', async (req, res) => {
 
   await query(
     `INSERT INTO users (
-      id, role, name, email, phone, uuid, country, tier, status, kyc_status, risk_level,
+      id, role, name, email, phone, uuid, country, status, kyc_status, risk_level,
       portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen, note,
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, :phone, :uuid, :country, 'Tier 1', 'Active', 'None', 'Low',
+      :id, 'user', :name, :email, :phone, :uuid, :country, 'Active', 'None', 'Low',
       0, 0, 0, 0, 'Just created', 'New signup awaiting funding.',
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
@@ -1730,7 +1727,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
   const email = String(req.body.email ?? '').trim().toLowerCase();
   const password = String(req.body.password ?? createTemporaryPassword());
   const country = String(req.body.country ?? '');
-  const tier = String(req.body.tier ?? 'Tier 1');
   const status = String(req.body.status ?? 'Active');
   const kycStatus = String(req.body.kycStatus ?? 'None');
   const riskLevel = String(req.body.riskLevel ?? 'Low');
@@ -1756,12 +1752,12 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
 
   await query(
     `INSERT INTO users (
-      id, role, name, email, phone, uuid, country, tier, status, kyc_status, risk_level,
+      id, role, name, email, phone, uuid, country, status, kyc_status, risk_level,
       portfolio_usd, available_usd, portfolio_change_usd, portfolio_change_pct, last_seen, note,
       password_hash, passcode_hash, holdings_json, cards_json, deposit_activity_json, withdrawal_activity_json,
       notifications_json, address_book_json, referrals_json, sessions_json, kyc_checklist_json
     ) VALUES (
-      :id, 'user', :name, :email, '', :uuid, :country, :tier, :status, :kycStatus, :riskLevel,
+      :id, 'user', :name, :email, '', :uuid, :country, :status, :kycStatus, :riskLevel,
       0, 0, 0, 0, 'Just created', :note,
       :passwordHash, :passcodeHash, '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]'
     )`,
@@ -1771,7 +1767,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       email,
       uuid,
       country,
-      tier,
       status,
       kycStatus,
       riskLevel,
@@ -1799,7 +1794,6 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
         `Email: ${email}`,
         `Temporary password: ${password}`,
         `Default passcode: ${passcode || '000000'} (change this after signing in)`,
-        `Account tier: ${tier}`,
       ],
       ctaLabel: 'Sign in to your account',
       ctaUrl: await toClientUrl('/login'),
@@ -2855,9 +2849,7 @@ app.put('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
     name: 'name',
     email: 'email',
     phone: 'phone',
-    city: 'city',
     country: 'country',
-    tier: 'tier',
     status: 'status',
     kycStatus: 'kyc_status',
     riskLevel: 'risk_level',

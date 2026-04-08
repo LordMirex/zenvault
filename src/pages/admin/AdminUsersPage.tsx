@@ -94,7 +94,6 @@ export const AdminUsersPage = () => {
           <thead className="bg-slate-50 text-xs uppercase tracking-[0.18em] text-slate-500">
             <tr>
               <th className="px-5 py-3 font-semibold">User</th>
-              <th className="px-5 py-3 font-semibold">Tier</th>
               <th className="px-5 py-3 font-semibold">Status</th>
               <th className="px-5 py-3 font-semibold">KYC</th>
               <th className="px-5 py-3 font-semibold">Portfolio</th>
@@ -109,7 +108,6 @@ export const AdminUsersPage = () => {
                   <p className="text-xs text-slate-500">{user.email}</p>
                   <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">{user.uuid}</p>
                 </td>
-                <td className="px-5 py-4 text-slate-700">{user.tier}</td>
                 <td className="px-5 py-4">
                   <AdminBadge value={user.status} />
                 </td>

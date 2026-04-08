@@ -180,7 +180,6 @@ export const Settings = () => {
 
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                { label: 'Account tier', value: clientProfile?.tier ?? 'Tier pending' },
                 { label: 'KYC status', value: formatStatus(clientProfile?.kycStatus) },
                 { label: 'Theme mode', value: theme === 'light' ? 'Light' : 'Dark' },
               ].map((item) => (

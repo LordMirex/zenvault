@@ -48,11 +48,9 @@ type ClientBootstrap = {
     name: string;
     email: string;
     phone: string;
-    city: string;
     uuid: string;
     country: string;
 
-    tier: string;
     kycStatus: string;
   };
   summary: {

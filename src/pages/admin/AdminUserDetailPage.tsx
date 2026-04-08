@@ -52,7 +52,6 @@ export const AdminUserDetailPage = () => {
       name: user.name,
       email: user.email,
       country: user.country,
-      tier: user.tier,
       status: user.status,
       kycStatus: user.kycStatus,
       riskLevel: user.riskLevel,
@@ -126,7 +125,6 @@ export const AdminUserDetailPage = () => {
         <InfoTile label="Portfolio" value={formatCompactUsd(user.portfolioUsd)} />
         <InfoTile label="Available" value={formatCompactUsd(user.availableUsd)} />
         <InfoTile label="Risk" value={user.riskLevel} />
-        <InfoTile label="Tier" value={user.tier} />
       </div>
 
       {editForm ? (
@@ -136,12 +134,6 @@ export const AdminUserDetailPage = () => {
             <AdminTextInput label="Full Name" value={editForm.name} onChange={(e) => updateField('name', e.target.value)} />
             <AdminTextInput label="Email" type="email" value={editForm.email} onChange={(e) => updateField('email', e.target.value)} />
             <AdminTextInput label="Country" value={editForm.country} onChange={(e) => updateField('country', e.target.value)} />
-            <AdminSelect label="Tier" value={editForm.tier} onChange={(e) => updateField('tier', e.target.value)}>
-              <option>Tier 1</option>
-              <option>Tier 2</option>
-              <option>Tier 3</option>
-              <option>VIP</option>
-            </AdminSelect>
             <AdminSelect label="Status" value={editForm.status} onChange={(e) => updateField('status', e.target.value)}>
               <option>Active</option>
               <option>Suspended</option>
@@ -176,7 +168,6 @@ export const AdminUserDetailPage = () => {
           <AdminCard className="p-6">
             <h3 className="text-lg font-semibold text-slate-900">Account State</h3>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <InfoTile label="Tier" value={user.tier} />
               <InfoTile label="Country" value={user.country} />
               <InfoTile label="Last Seen" value={user.lastSeen} />
             </div>

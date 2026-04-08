@@ -36,7 +36,6 @@ export type AdminUser = {
   email: string;
   uuid: string;
   country: string;
-  tier: string;
   status: AdminUserStatus;
   kycStatus: AdminKycStatus;
   riskLevel: AdminRiskLevel;
