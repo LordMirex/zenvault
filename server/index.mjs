@@ -3099,7 +3099,7 @@ const startServer = async () => {
     };
 
     void runPriceTask();
-    setInterval(runPriceTask, 60000);
+    setInterval(runPriceTask, priceFeed.getIntervalMs());
   });
 };
 

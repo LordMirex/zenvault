@@ -9,6 +9,7 @@ channel = "stable-25_05"
 
 [userenv.shared]
 NODE_ENV = "development"
+COINGECKO_API_KEY = "CG-oRB3cqTuSgNQrcT7SmFU9W5o"
 
 [workflows]
 runButton = "Project"

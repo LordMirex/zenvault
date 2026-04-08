@@ -3,28 +3,21 @@ import {
   getSupportedMarketAssetIds,
 } from './assets.mjs';
 
-const COINGECKO_PUBLIC_BASE = 'https://api.coingecko.com/api/v3';
-const COINGECKO_PRO_BASE = 'https://pro-api.coingecko.com/api/v3';
+const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const DEFAULT_ICON = '/crypto/btc-icon.png';
+const FETCH_INTERVAL_MS = 15 * 60 * 1000;
+const RATE_LIMIT_BACKOFF_MS = 15 * 60 * 1000;
 
 const buildRequestConfig = () => {
-  const proKey = String(process.env.COINGECKO_PRO_API_KEY ?? '').trim();
-  if (proKey) {
-    return {
-      url: `${COINGECKO_PRO_BASE}/coins/markets`,
-      headers: {
-        accept: 'application/json',
-        'x-cg-pro-api-key': proKey,
-      },
-    };
+  const apiKey = String(process.env.COINGECKO_API_KEY ?? '').trim();
+  if (!apiKey) {
+    console.warn('[PriceFeed] WARNING: COINGECKO_API_KEY is not set. Requests may be rate limited.');
   }
-
-  const demoKey = String(process.env.COINGECKO_DEMO_API_KEY ?? '').trim();
   return {
-    url: `${COINGECKO_PUBLIC_BASE}/coins/markets`,
+    url: `${COINGECKO_BASE}/coins/markets`,
     headers: {
       accept: 'application/json',
-      ...(demoKey ? { 'x-cg-demo-api-key': demoKey } : {}),
+      ...(apiKey ? { 'x-cg-demo-api-key': apiKey } : {}),
     },
   };
 };
@@ -50,11 +43,12 @@ class PriceFeed {
 
   async fetchFromCoinGecko() {
     const { url, headers } = buildRequestConfig();
+    const assetIds = getSupportedMarketAssetIds();
     const params = new URLSearchParams({
       vs_currency: 'usd',
-      ids: getSupportedMarketAssetIds().join(','),
+      ids: assetIds.join(','),
       order: 'market_cap_desc',
-      per_page: String(SUPPORTED_MARKET_ASSETS.length),
+      per_page: String(assetIds.length),
       page: '1',
       sparkline: 'false',
       price_change_percentage: '24h',
@@ -110,13 +104,12 @@ class PriceFeed {
       );
       this.lastUpdatedAt = new Date();
       console.log(
-        `PriceFeed: updated ${marketAssets.length} supported assets at ${this.lastUpdatedAt.toISOString()}`,
+        `PriceFeed: updated ${marketAssets.length} assets at ${this.lastUpdatedAt.toISOString()}`,
       );
     } catch (error) {
       if (error.message && error.message.includes('429')) {
-        const backoffMs = 5 * 60 * 1000;
-        this.rateLimitedUntil = Date.now() + backoffMs;
-        console.warn(`PriceFeed: rate limited by CoinGecko, pausing updates for 5 minutes`);
+        this.rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
+        console.warn(`PriceFeed: rate limited by CoinGecko, pausing for 15 minutes`);
       } else {
         console.warn('PriceFeed: market update failed', error.message);
       }
@@ -135,6 +128,10 @@ class PriceFeed {
 
   getMarketAssets() {
     return this.marketAssets.map((asset) => ({ ...asset }));
+  }
+
+  getIntervalMs() {
+    return FETCH_INTERVAL_MS;
   }
 }
 
