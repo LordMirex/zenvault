@@ -2518,19 +2518,36 @@ app.post('/api/admin/email/send', requireAuth, requireRole('admin'), async (req,
     return res.status(500).json({ message: `Email delivery is not configured: ${error.message}` });
   }
 
-  const paragraphs = messageToParagraphs(message);
   const brandName = await getBrandName();
   let sentCount = 0;
   let failedCount = 0;
   const failedRecipients = [];
 
+  const applyPlaceholders = (text, recipient) => {
+    const firstName = String(recipient.name ?? '').split(' ')[0];
+    return text
+      .replace(/\{\{name\}\}/gi, recipient.name)
+      .replace(/\{name\}/gi, recipient.name)
+      .replace(/\$user/gi, recipient.name)
+      .replace(/\$name/gi, recipient.name)
+      .replace(/\{\{first_name\}\}/gi, firstName)
+      .replace(/\{first_name\}/gi, firstName)
+      .replace(/\$first_name/gi, firstName)
+      .replace(/\{\{email\}\}/gi, recipient.email)
+      .replace(/\{email\}/gi, recipient.email)
+      .replace(/\$email/gi, recipient.email);
+  };
+
   for (const recipient of recipients) {
     try {
+      const personalizedSubject = applyPlaceholders(subject, recipient);
+      const personalizedMessage = applyPlaceholders(message, recipient);
+      const paragraphs = messageToParagraphs(personalizedMessage);
       await deliverBrandedEmail(client, {
         to: recipient.email,
-        subject,
-        title: subject,
-        preheader: paragraphs[0] ?? subject,
+        subject: personalizedSubject,
+        title: personalizedSubject,
+        preheader: paragraphs[0] ?? personalizedSubject,
         intro: paragraphs[0] ?? '',
         recipientName: recipient.name,
         paragraphs: paragraphs.slice(1),

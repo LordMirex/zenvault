@@ -141,7 +141,23 @@ export const AdminEmailPage = () => {
 
   const selectedUser = adminUsers.find((user) => String(user.id) === compose.userId) ?? null;
   const recipientCount = compose.scope === 'all' ? adminUsers.length : selectedUser ? 1 : 0;
-  const previewRecipient = compose.scope === 'user' ? (selectedUser?.name ?? 'Client') : 'Client';
+  const previewRecipient = compose.scope === 'user' ? (selectedUser?.name ?? 'Client') : (adminUsers[0]?.name ?? 'Client');
+  const previewEmail = compose.scope === 'user' ? (selectedUser?.email ?? 'client@example.com') : (adminUsers[0]?.email ?? 'client@example.com');
+
+  const applyPreviewPlaceholders = (text: string) => {
+    const firstName = previewRecipient.split(' ')[0];
+    return text
+      .replace(/\{\{name\}\}/gi, previewRecipient)
+      .replace(/\{name\}/gi, previewRecipient)
+      .replace(/\$user/gi, previewRecipient)
+      .replace(/\$name/gi, previewRecipient)
+      .replace(/\{\{first_name\}\}/gi, firstName)
+      .replace(/\{first_name\}/gi, firstName)
+      .replace(/\$first_name/gi, firstName)
+      .replace(/\{\{email\}\}/gi, previewEmail)
+      .replace(/\{email\}/gi, previewEmail)
+      .replace(/\$email/gi, previewEmail);
+  };
 
   useEffect(() => {
     if (!adminUsers.length) return;
@@ -149,6 +165,9 @@ export const AdminEmailPage = () => {
       setCompose((current) => ({ ...current, userId: String(adminUsers[0]?.id ?? '') }));
     }
   }, [adminUsers, compose.userId]);
+
+  const rawSubject = compose.subject || 'Subject preview';
+  const rawMessage = compose.message || 'Your message appears here.\n\nAdd a second paragraph to see the body layout.';
 
   const previewHtml = buildPreviewHtml({
     siteName,
@@ -159,8 +178,8 @@ export const AdminEmailPage = () => {
     companyPhone,
     companyEmail,
     fromName,
-    subject: compose.subject || 'Subject preview',
-    message: compose.message || 'Your message appears here.\n\nAdd a second paragraph to see the body layout.',
+    subject: applyPreviewPlaceholders(rawSubject),
+    message: applyPreviewPlaceholders(rawMessage),
     recipientName: previewRecipient,
   });
 
@@ -269,13 +288,18 @@ export const AdminEmailPage = () => {
                 placeholder="Operations update from the desk"
               />
 
-              <AdminTextArea
-                label="Message"
-                rows={10}
-                value={compose.message}
-                onChange={(event) => setCompose((current) => ({ ...current, message: event.target.value }))}
-                placeholder={`Write your message here.\n\nSeparate paragraphs with a blank line. The first paragraph becomes the top intro in the branded email.`}
-              />
+              <div>
+                <AdminTextArea
+                  label="Message"
+                  rows={10}
+                  value={compose.message}
+                  onChange={(event) => setCompose((current) => ({ ...current, message: event.target.value }))}
+                  placeholder={`Write your message here.\n\nSeparate paragraphs with a blank line. The first paragraph becomes the top intro in the branded email.`}
+                />
+                <p className="mt-1.5 text-xs text-slate-400">
+                  Placeholders replaced per recipient: <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-slate-600">$user</code> or <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-slate-600">{'{name}'}</code> → full name &middot; <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-slate-600">$email</code> → email address
+                </p>
+              </div>
 
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-slate-500">
