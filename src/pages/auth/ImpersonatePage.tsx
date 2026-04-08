@@ -9,9 +9,9 @@ export const ImpersonatePage = () => {
     const token = searchParams.get('token');
     if (token) {
       setImpersonationToken(token);
-      window.location.href = '/app';
+      window.location.replace('/app');
     } else {
-      window.location.href = '/login';
+      window.location.replace('/login');
     }
   }, []);
 

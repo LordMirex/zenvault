@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, KeyRound, Coins, CreditCard, LogIn } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { apiRequest } from '../../lib/api';
+import { apiRequest, setImpersonationToken } from '../../lib/api';
 import { formatCompactUsd } from '../../lib/format';
 import {
   AdminActionBar,
@@ -29,7 +29,8 @@ export const AdminUsersPage = () => {
     setLoginAsError('');
     try {
       const { token } = await apiRequest<{ token: string }>(`/api/admin/impersonate/${userId}`, { method: 'POST' });
-      window.location.href = `/impersonate?token=${encodeURIComponent(token)}`;
+      setImpersonationToken(token);
+      window.location.href = '/app';
     } catch (err) {
       setLoginAsError(err instanceof Error ? err.message : `Failed to open session for ${name}.`);
       setLoginAsBusy(null);
