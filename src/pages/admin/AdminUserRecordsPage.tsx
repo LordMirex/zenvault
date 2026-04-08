@@ -87,8 +87,10 @@ export const AdminUserRecordsPage = () => {
 
   const getLivePrice = (holdingId: string): number => {
     const h = user.holdings.find((x) => x.id === holdingId);
-    if (!h || h.balance <= 0 || h.valueUsd <= 0) return 0;
-    return h.valueUsd / h.balance;
+    if (!h) return 0;
+    if (h.price > 0) return h.price;
+    if (h.balance > 0 && h.valueUsd > 0) return h.valueUsd / h.balance;
+    return 0;
   };
 
   const handleUsdChange = (holdingId: string, raw: string) => {
@@ -363,9 +365,7 @@ export const AdminUserRecordsPage = () => {
             {user.holdings.map((holding, index) => {
               const isOpen = openHoldingId === holding.id;
               const form = holdingForms[holding.id] ?? { usdInput: '', tokenInput: '', activeField: null };
-              const livePrice = holding.balance > 0 && holding.valueUsd > 0
-                ? holding.valueUsd / holding.balance
-                : 0;
+              const livePrice = getLivePrice(holding.id);
               const usdLocked = form.activeField === 'token';
               const tokenLocked = form.activeField === 'usd';
               const hasValue = form.usdInput || form.tokenInput;

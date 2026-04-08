@@ -11,6 +11,7 @@ export type AdminHolding = {
   icon: string;
   balance: number;
   valueUsd: number;
+  price: number;
   address: string;
   status: 'Enabled' | 'Watch' | 'Paused';
 };

@@ -450,6 +450,7 @@ const buildAdminHoldings = (user, { walletSettings = {}, marketAssets = [] } = {
     icon: holding.icon,
     balance: Number(holding.balance ?? 0),
     valueUsd: Number(holding.valueUsd ?? 0),
+    price: Number(holding.price ?? 0),
     address: String(holding.address ?? '').trim(),
     status: holding.status ?? (holding.enabledByDefault ? 'Enabled' : 'Paused'),
   }));
@@ -2010,28 +2011,27 @@ app.put('/api/admin/users/:userId/assets/:assetId', requireAuth, requireRole('ad
     await sendSystemEmailSafely({
       logContext: `admin wallet update email to ${user.email}`,
       to: user.email,
-      subject: action === 'add' ? `${formatAmountLabel(amount)} ${current.symbol} has been added to your wallet` : `${formatAmountLabel(amount)} ${current.symbol} has been removed from your wallet`,
-      title: action === 'add' ? `${current.symbol} credited` : `${current.symbol} debited`,
-      preheader: `${formatAmountLabel(amount)} ${current.symbol} ${action === 'add' ? 'was added to' : 'was removed from'} your wallet.`,
+      subject: action === 'add' ? `You received ${formatAmountLabel(amount)} ${current.symbol}` : `${formatAmountLabel(amount)} ${current.symbol} removed from your wallet`,
+      title: action === 'add' ? `${current.symbol} deposit received` : `${current.symbol} removed from wallet`,
+      preheader: action === 'add' ? `${formatAmountLabel(amount)} ${current.symbol} has arrived in your wallet.` : `${formatAmountLabel(amount)} ${current.symbol} was removed from your wallet.`,
       intro:
         action === 'add'
-          ? `${formatAmountLabel(amount)} ${current.symbol} has been credited to your wallet by our operations team.`
-          : `${formatAmountLabel(amount)} ${current.symbol} has been debited from your wallet by our operations team.`,
+          ? `${formatAmountLabel(amount)} ${current.symbol} has been deposited into your wallet and is now available.`
+          : `${formatAmountLabel(amount)} ${current.symbol} has been removed from your wallet.`,
       recipientName: user.name,
       paragraphs: [
-        'Your wallet balance has been updated and the change is reflected in your account right now.',
-        'If you have any questions about this transaction, contact support and reference the transaction timestamp below.',
+        'Your wallet balance has been updated and the change is now reflected in your account.',
+        'If you did not expect this transaction, please contact our support team immediately.',
       ],
       highlights: [
         `Asset: ${current.symbol}`,
         `Amount: ${formatAmountLabel(amount)} ${current.symbol}`,
         `New balance: ${formatAmountLabel(updatedAsset.balance)} ${current.symbol}`,
-        `Processed at: ${updatedAt}`,
+        `Date: ${updatedAt}`,
       ],
       ctaLabel: 'View my wallet',
       ctaUrl: await toClientUrl('/app'),
-      signatureName: req.user.name,
-      signatureRole: 'Wallet Operations',
+      signatureRole: 'Transfers Team',
     });
   }
 
