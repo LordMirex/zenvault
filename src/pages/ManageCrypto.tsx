@@ -40,8 +40,8 @@ export const ManageCrypto = () => {
                 Choose which live assets should appear on your dashboard
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-gray-400 md:text-base">
-                The admin controls which coins are active across the platform. Here, you only decide which of those active
-                coins should be shown in your personal dashboard portfolio.
+                The platform controls which coins are available. Here, you decide which of those coins
+                should appear in your personal dashboard portfolio.
               </p>
             </div>
           </div>
@@ -140,7 +140,7 @@ export const ManageCrypto = () => {
               {[
                 `${visibleCount} asset${visibleCount === 1 ? '' : 's'} currently contribute to your dashboard portfolio`,
                 'Hidden assets stay active in the wallet, but they no longer appear on the main dashboard table',
-                'Live prices continue updating for all active assets the admin keeps enabled',
+                'Live prices continue updating for all platform-enabled assets',
               ].map((detail) => (
                 <div key={detail} className="rounded-[1.5rem] border border-gray-800 bg-dark-800/70 p-4 text-sm text-gray-400">
                   {detail}

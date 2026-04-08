@@ -1778,7 +1778,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
       ctaLabel: 'Sign in to your account',
       ctaUrl: await toClientUrl('/login'),
       signatureName: req.user.name,
-      signatureRole: 'Operations Team',
+      signatureRole: 'Support Team',
     });
   }
 
@@ -2346,7 +2346,7 @@ app.post('/api/admin/users/:userId/notify', requireAuth, requireRole('admin'), a
         type: resolvedType,
         asset,
         amount: amount + ' ' + asset,
-        channel: 'Admin Transaction',
+        channel: resolvedType === 'Deposit' ? 'Crypto Transfer' : resolvedType === 'Withdrawal' ? 'Crypto Withdrawal' : 'Wallet Transfer',
         destination: messageText.slice(0, 80),
         createdAt: updatedAt,
         fromAsset: asset,

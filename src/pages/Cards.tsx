@@ -111,7 +111,7 @@ export const Cards = () => {
             <div>
               <h3 className="text-lg font-semibold text-white">Apply for a Card</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Submit a request below. The admin will review and issue the card.
+                Submit a request below. Our team will review and issue your card.
               </p>
             </div>
           </div>
@@ -153,7 +153,7 @@ export const Cards = () => {
                 rows={3}
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="Any note for the operations desk"
+                placeholder="Any additional notes (optional)"
                 className="w-full rounded-2xl border border-gray-800 bg-dark-800 px-4 py-3 text-sm text-white placeholder:text-gray-500 focus:border-primary/50 focus:outline-none"
               />
             </label>
@@ -162,7 +162,7 @@ export const Cards = () => {
           <div className="mt-5 flex flex-col gap-4 rounded-[1.5rem] border border-success/20 bg-success/10 p-4 md:flex-row md:items-start">
             <ShieldCheck className="mt-0.5 shrink-0 text-success" size={18} />
             <p className="text-sm text-gray-400">
-              Once submitted, the operations desk will review your application and issue your card. You will receive an email confirmation when it is ready.
+              Once submitted, our team will review your application and issue your card. You will receive an email confirmation when it is ready.
             </p>
           </div>
 
@@ -189,7 +189,7 @@ export const Cards = () => {
             <Clock3 className="text-primary" size={18} />
             <div>
               <h3 className="text-lg font-semibold text-white">Pending Requests</h3>
-              <p className="mt-1 text-sm text-gray-500">Requests awaiting admin review.</p>
+              <p className="mt-1 text-sm text-gray-500">Requests currently under review.</p>
             </div>
           </div>
 

@@ -203,7 +203,7 @@ export const Settings = () => {
                 </div>
                 <div className="grid gap-3">
                   {[ 
-                      { label: 'Card desk', value: clientCardRequests.length > 0 ? 'Request pending review' : 'Ready for applications' },
+                      { label: 'Card status', value: clientCardRequests.length > 0 ? 'Application under review' : 'Ready for applications' },
                   ].map((item) => (
                     <div key={item.label} className={`rounded-[1.4rem] border p-4 ${insetClasses}`}>
                       <p className={`text-[11px] font-bold uppercase tracking-[0.2em] ${labelClasses}`}>{item.label}</p>
