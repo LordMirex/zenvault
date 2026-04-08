@@ -1711,6 +1711,10 @@ app.get('/api/admin/bootstrap', requireAuth, requireRole('admin'), async (_req, 
   return res.json(await getAdminBootstrap());
 });
 
+app.get('/api/admin/price-feed/status', requireAuth, requireRole('admin'), (_req, res) => {
+  return res.json(priceFeed.getStatus());
+});
+
 // FIX: sendSystemEmailSafely was missing }); and route itself was missing });
 app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) => {
   const name = String(req.body.name ?? '').trim();

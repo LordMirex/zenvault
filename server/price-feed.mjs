@@ -39,6 +39,8 @@ class PriceFeed {
     this.lastUpdatedAt = null;
     this.isFetching = false;
     this.rateLimitedUntil = null;
+    this.lastFetchedCount = 0;
+    this.totalCount = SUPPORTED_MARKET_ASSETS.length;
   }
 
   async fetchFromCoinGecko() {
@@ -103,9 +105,7 @@ class PriceFeed {
         ]),
       );
       this.lastUpdatedAt = new Date();
-      console.log(
-        `PriceFeed: updated ${marketAssets.length} assets at ${this.lastUpdatedAt.toISOString()}`,
-      );
+      this.lastFetchedCount = marketAssets.length;
     } catch (error) {
       if (error.message && error.message.includes('429')) {
         this.rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
@@ -128,6 +128,15 @@ class PriceFeed {
 
   getMarketAssets() {
     return this.marketAssets.map((asset) => ({ ...asset }));
+  }
+
+  getStatus() {
+    return {
+      lastUpdatedAt: this.lastUpdatedAt ? this.lastUpdatedAt.toISOString() : null,
+      fetchedCount: this.lastFetchedCount,
+      totalCount: this.totalCount,
+      rateLimitedUntil: this.rateLimitedUntil,
+    };
   }
 
   getIntervalMs() {

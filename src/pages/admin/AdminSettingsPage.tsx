@@ -16,6 +16,18 @@ const tabs = [
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
+
+const timeAgo = (isoString: string | null): string => {
+  if (!isoString) return 'Never';
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const secs = Math.floor(diffMs / 1000);
+  if (secs < 60) return secs + 's ago';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return mins + ' min' + (mins !== 1 ? 's' : '') + ' ago';
+  const hrs = Math.floor(mins / 60);
+  return hrs + ' hr' + (hrs !== 1 ? 's' : '') + ' ago';
+};
+
 export const AdminSettingsPage = () => {
   const location = useLocation();
   const { adminSettings, saveAdminSettings, adminAssetCatalog } = useAuth();
@@ -28,6 +40,13 @@ export const AdminSettingsPage = () => {
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
   const hasSavedMailPassword = Boolean(adminSettings?.email?.mailPasswordMasked);
+
+  const [priceFeedStatus, setPriceFeedStatus] = useState<{
+    lastUpdatedAt: string | null;
+    fetchedCount: number;
+    totalCount: number;
+    rateLimitedUntil: number | null;
+  } | null>(null);
 
   const [generalForm, setGeneralForm] = useState({
     siteName: '',
@@ -132,6 +151,17 @@ export const AdminSettingsPage = () => {
     : location.pathname.includes('/wallets')
       ? 'wallets'
       : 'general';
+
+  useEffect(() => {
+    if (currentTab !== 'wallets') return;
+    const token = getAccessToken();
+    fetch(`${API_BASE}/api/admin/price-feed/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => setPriceFeedStatus(data))
+      .catch(() => {});
+  }, [currentTab]);
 
   const saveGeneral = async () => {
     setSaving(true);
@@ -546,6 +576,40 @@ export const AdminSettingsPage = () => {
 
       {currentTab === 'wallets' && (
         <div className="space-y-6">
+          <AdminCard className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Price Feed Status</h3>
+                <p className="mt-1 text-sm text-slate-500">CoinGecko live price data — updates every 15 minutes.</p>
+              </div>
+            </div>
+            {priceFeedStatus ? (
+              <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Last Fetch</p>
+                  <p className="mt-2 text-xl font-semibold text-slate-900">{timeAgo(priceFeedStatus.lastUpdatedAt)}</p>
+                  <p className="mt-1 text-xs text-slate-400">{priceFeedStatus.lastUpdatedAt ? new Date(priceFeedStatus.lastUpdatedAt).toLocaleTimeString() : '—'}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Assets Fetched</p>
+                  <p className="mt-2 text-xl font-semibold text-slate-900">{priceFeedStatus.fetchedCount} / {priceFeedStatus.totalCount}</p>
+                  <p className={"mt-1 text-xs font-medium " + (priceFeedStatus.fetchedCount === priceFeedStatus.totalCount ? 'text-emerald-600' : 'text-amber-600')}>
+                    {priceFeedStatus.fetchedCount === priceFeedStatus.totalCount ? 'All assets live' : priceFeedStatus.totalCount - priceFeedStatus.fetchedCount + ' assets missing'}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Rate Limit</p>
+                  <p className={"mt-2 text-xl font-semibold " + (priceFeedStatus.rateLimitedUntil ? 'text-rose-600' : 'text-emerald-600')}>
+                    {priceFeedStatus.rateLimitedUntil ? 'Limited' : 'OK'}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">{priceFeedStatus.rateLimitedUntil ? 'Backoff active — resumes at ' + new Date(priceFeedStatus.rateLimitedUntil).toLocaleTimeString() : 'No rate limit active'}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-400">Loading...</p>
+            )}
+          </AdminCard>
+
           <AdminCard className="p-6">
             <h3 className="text-lg font-semibold text-slate-900">Asset Activation</h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
