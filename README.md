@@ -30,7 +30,10 @@ Create a `.env` file in the project root:
 ```
 DATABASE_URL=postgresql://user:password@localhost:5432/zenvault
 JWT_SECRET=replace-with-a-strong-random-secret-at-least-32-chars
+COINGECKO_API_KEY=your-coingecko-demo-api-key
 ```
+
+Get a free CoinGecko Demo API key at [coingecko.com/en/api](https://www.coingecko.com/en/api). Without it, price fetches are unauthenticated and will hit rate limits quickly.
 
 ---
 
@@ -58,6 +61,7 @@ In your web service on Render, go to **Environment** → **Add Environment Varia
 | `DATABASE_URL` | Paste the connection string from Step 1 | **Required** — deployment will fail without this |
 | `JWT_SECRET` | Any random 40+ character string | Generate one at [randomkeygen.com](https://randomkeygen.com) |
 | `NODE_ENV` | `production` | Required |
+| `COINGECKO_API_KEY` | Your CoinGecko Demo API key | **Required** — without this the price feed will hit rate limits and stop updating; get one free at [coingecko.com/en/api](https://www.coingecko.com/en/api) |
 | `ALLOWED_ORIGINS` | Your custom domain(s) — see note below | Only needed if using a custom domain |
 
 > **About `ALLOWED_ORIGINS`**: Your Render subdomain (e.g. `https://zenvault.onrender.com`) is automatically allowed — you do not need to add it here. Only add this variable when you connect a custom domain (e.g. `https://zenvault.one`). If you have both `www` and non-`www`, include both separated by a comma:
@@ -136,6 +140,7 @@ Go to the Node project → **Config** in AAPanel and set every variable below. M
 | `DATABASE_URL` | Your PostgreSQL connection string | Server won't start without it |
 | `JWT_SECRET` | Any random string, at least 32 characters | Auth will be broken without it |
 | `NODE_ENV` | `production` | Enables production mode |
+| `COINGECKO_API_KEY` | Your CoinGecko Demo API key | **Required** — without this the price feed will be rate-limited and stop updating; get one free at [coingecko.com/en/api](https://www.coingecko.com/en/api) |
 | `ALLOWED_ORIGINS` | `https://zenvault.one,https://www.zenvault.one` | **Critical — see note below** |
 
 > **Why `ALLOWED_ORIGINS` is required on VPS (not optional)**
@@ -225,4 +230,4 @@ scripts/
 - **Email Notifications** — admin is emailed when users submit withdrawals
 - **Broadcast Email** — send to all users or specific users
 - **Settings** — branding, SMTP config, wallet assets
-- **Live Prices** — CoinGecko feed updated every 60 seconds
+- **Live Prices** — CoinGecko feed updated every 15 minutes (38 assets, single bulk API call, 15-minute rate-limit backoff)
