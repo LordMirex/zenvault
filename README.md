@@ -123,12 +123,11 @@ Render's free tier spins down after 15 minutes of inactivity. Use a free cron jo
 
 ## Login Credentials (Seed Data)
 
+Only the admin account is seeded. No demo/test users are created on first boot.
+
 | Role | Email | Password | Passcode |
 |---|---|---|---|
-| Admin | support@developerplug.com | 12345678 | 123456 |
-| Power User | ofofonobs@gmail.com | 12345678 | 123456 |
-| Review User | c0d3g0d.01@gmail.com | 12345678 | 123456 |
-| Growth User | ava.martins@qfstrading.com | 12345678 | 123456 |
+| Admin | wilburpace01@gmail.com | 12345678 | 123456 |
 
 ---
 
