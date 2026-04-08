@@ -28,7 +28,9 @@ import {
   AUTH_EXPIRED_EVENT,
   apiRequest,
   clearStoredAuth,
+  exitImpersonation,
   getAccessToken,
+  isImpersonating,
   setAccessToken,
 } from '../lib/api';
 
@@ -360,6 +362,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     const handleAuthExpired = () => {
+      if (isImpersonating()) {
+        return;
+      }
       clearStoredAuth();
       resetAuthState();
     };
@@ -481,6 +486,12 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   };
 
   const logout = async () => {
+    if (isImpersonating()) {
+      exitImpersonation();
+      window.location.replace('/admin/dashboard');
+      return;
+    }
+
     try {
       if (getAccessToken()) {
         await apiRequest('/api/auth/logout', { method: 'POST' });
