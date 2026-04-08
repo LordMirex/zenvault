@@ -58,8 +58,7 @@ const buildPreviewHtml = ({
     .map((item) => item.replace(/\r?\n/g, ' ').trim())
     .filter(Boolean);
 
-  const intro = paragraphs[0] ?? 'Your message preview appears here.';
-  const bodyParagraphs = paragraphs.slice(1);
+  const preheader = paragraphs[0] ?? subject ?? 'Your message preview appears here.';
   const greeting = recipientName ? `Hello ${recipientName},` : 'Hello,';
   const safeLogoUrl = resolveAssetUrl(siteUrl, logoUrl);
   const footerLines = [footerSummary, companyAddress, companyPhone, companyEmail, siteUrl].filter(Boolean);
@@ -77,7 +76,7 @@ const buildPreviewHtml = ({
   </head>
   <body style="margin:0;padding:0;background:#f6efe5;font-family:Arial,Helvetica,sans-serif;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-      ${escapeHtml(intro)}
+      ${escapeHtml(preheader)}
     </div>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6efe5;padding:32px 16px;">
       <tr>
@@ -91,13 +90,12 @@ const buildPreviewHtml = ({
                 </div>
                 ${safeLogoUrl ? `<div style="margin:18px 0 0;"><img src="${escapeHtml(safeLogoUrl)}" alt="${escapeHtml(siteName)}" style="max-height:44px;width:auto;display:block;" /></div>` : ''}
                 <h1 style="margin:20px 0 0;color:#ffffff;font-size:32px;line-height:1.15;">${escapeHtml(subject || 'Email Preview')}</h1>
-                <p style="margin:14px 0 0;color:#e8dccb;font-size:15px;line-height:1.7;">${escapeHtml(intro)}</p>
               </td>
             </tr>
             <tr>
               <td style="padding:36px;">
-                <p style="margin:0 0 16px;color:#111111;font-size:17px;font-weight:700;">${escapeHtml(greeting)}</p>
-                ${bodyParagraphs.map((paragraph) => `<p style="margin:0 0 16px;color:#3f3a31;font-size:16px;line-height:1.78;">${escapeHtml(paragraph)}</p>`).join('')}
+                <p style="margin:0 0 20px;color:#111111;font-size:17px;font-weight:700;">${escapeHtml(greeting)}</p>
+                ${paragraphs.map((paragraph) => `<p style="margin:0 0 16px;color:#3f3a31;font-size:16px;line-height:1.78;">${escapeHtml(paragraph)}</p>`).join('')}
                 <p style="margin:24px 0 0;color:#3f3a31;font-size:15px;line-height:1.72;">${signature}</p>
               </td>
             </tr>
