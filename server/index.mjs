@@ -855,7 +855,6 @@ app.post('/api/auth/signup', async (req, res) => {
   const fullName = String(req.body.fullName ?? '').trim();
   const email = String(req.body.email ?? '').trim().toLowerCase();
   const phone = String(req.body.phone ?? '').trim();
-  const city = String(req.body.city ?? '').trim();
   const country = String(req.body.country ?? '').trim();
   const passcode = String(req.body.passcode ?? '').replace(/\D/g, '');
   const password = String(req.body.password ?? '');
@@ -1056,10 +1055,10 @@ app.post('/api/client/kyc/submit', requireAuth, requireRole('user'), (req, res) 
       await sendSystemEmailSafely({
         logContext: `kyc submission email to ${req.user.email}`,
         to: req.user.email,
-        subject: `We received your verification documents`,
+        subject: `${brandName} — We received your verification documents`,
         title: 'Documents received',
-        preheader: 'Your verification documents have been submitted and are under review.',
-        intro: 'Thank you for submitting your verification documents. Our compliance team will review them shortly.',
+        preheader: `Your ${brandName} verification documents have been submitted and are under review.`,
+        intro: `Thank you for submitting your verification documents to ${brandName}. Our compliance team will review them shortly.`,
         recipientName: req.user.name,
         paragraphs: [
           'Your documents are now securely stored and attached to your account. You can view the submission status at any time from the KYC section of your dashboard.',
@@ -1800,7 +1799,7 @@ app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res)
         `Email: ${email}`,
         `Temporary password: ${password}`,
         `Default passcode: ${passcode || '000000'} (change this after signing in)`,
-        `Account plan: ${plan}`,
+        `Account tier: ${tier}`,
       ],
       ctaLabel: 'Sign in to your account',
       ctaUrl: await toClientUrl('/login'),
