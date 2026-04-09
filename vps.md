@@ -43,7 +43,10 @@ PORT=10000
 DATABASE_URL=<your-render-postgres-external-url>
 JWT_SECRET=<your-jwt-secret>
 CLIENT_ORIGIN=https://zenvault.one
+COINGECKO_API_KEY=<your-coingecko-demo-api-key>
 ```
+
+> Get a free CoinGecko Demo API key at [coingecko.com/en/api](https://www.coingecko.com/en/api). Without it, live crypto prices will hit rate limits quickly and stop updating.
 
 ---
 
