@@ -166,6 +166,9 @@ export const createMailClient = async () => {
     connectionTimeout: 10000,
     greetingTimeout: 8000,
     socketTimeout: 15000,
+    tls: {
+      rejectUnauthorized: false,
+    },
   };
 
   if (mailUsername || mailPassword) {
