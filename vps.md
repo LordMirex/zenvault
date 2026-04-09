@@ -63,24 +63,40 @@ pm2 startup
 
 ---
 
-## 4. Seed Email Settings (first run only)
+## 4. Email Configuration
 
-If the database `settings` table is empty, seed the Gmail SMTP config:
+Email settings are stored in the **database**, not in `.env`. The app reads SMTP config from the `settings` table at runtime.
+
+### Managing Email via Admin Panel (recommended)
+After the app is running, go to **Admin → Settings → Email** to enter and update SMTP credentials through the UI. Use the **Send Test Email** button to verify the connection.
+
+### Seeding Email on First Run (if settings table is empty)
+If the admin panel isn't accessible yet or the DB is freshly provisioned, seed via terminal:
 
 ```bash
+cd /www/wwwroot/zenvault
 node -e "
 import('./server/data/seed.mjs').then(m => m.seedEmailSettings({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
   user: 'your@gmail.com',
-  pass: 'your-app-password',
+  pass: 'your-gmail-app-password',
   from: 'your@gmail.com'
 }));
 "
 ```
 
-> This is safe — it only seeds when the table is empty and won't overwrite existing settings.
+> This is safe — it only seeds when the table is empty and will not overwrite existing settings.
+
+### Gmail App Password
+Gmail requires an **App Password** (not your regular Gmail password):
+1. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+2. Generate a password for "Mail"
+3. Use that 16-character password as `pass`
+
+### Important: Render vs VPS
+Render **blocks outbound SMTP** at the network level — email will not work there. Email only works from the VPS deployment.
 
 ---
 
