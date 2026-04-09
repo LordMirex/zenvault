@@ -3090,6 +3090,26 @@ app.put('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (re
   return res.json(mapAdminUser(updatedUser, { walletSettings: settingsWallets, marketAssets }));
 });
 
+app.delete('/api/admin/users/:userId', requireAuth, requireRole('admin'), async (req, res) => {
+  const userId = Number(req.params.userId ?? 0);
+  const user = await queryOne('SELECT * FROM users WHERE id = :id AND role = :role', { id: userId, role: 'user' });
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found.' });
+  }
+
+  await query('DELETE FROM kyc_cases WHERE user_id = :id', { id: userId });
+  await query('DELETE FROM transactions WHERE user_id = :id', { id: userId });
+  await query('DELETE FROM users WHERE id = :id', { id: userId });
+
+  await appendAdminTimelineEntry(
+    `${req.user.name} permanently deleted user ${user.name}`,
+    `User ID ${userId} (${user.email}) and all associated records were removed.`,
+  );
+
+  return res.status(204).end();
+});
+
 app.use((error, _req, res, next) => {
   if (!error) {
     return next();

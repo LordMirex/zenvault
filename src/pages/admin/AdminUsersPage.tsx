@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, KeyRound, Coins, CreditCard, LogIn } from 'lucide-react';
+import { Eye, KeyRound, Coins, CreditCard, LogIn, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest, setImpersonationToken } from '../../lib/api';
 import { formatCompactUsd } from '../../lib/format';
@@ -18,11 +18,14 @@ import {
 } from '../../components/admin/AdminUi';
 
 export const AdminUsersPage = () => {
-  const { adminUsers } = useAuth();
+  const { adminUsers, refreshBootstrap } = useAuth();
   const [search, setSearch] = useState('');
   const [kycFilter, setKycFilter] = useState('all');
   const [loginAsError, setLoginAsError] = useState('');
   const [loginAsBusy, setLoginAsBusy] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const handleLoginAs = async (userId: string, name: string) => {
     setLoginAsBusy(userId);
@@ -34,6 +37,20 @@ export const AdminUsersPage = () => {
     } catch (err) {
       setLoginAsError(err instanceof Error ? err.message : `Failed to open session for ${name}.`);
       setLoginAsBusy(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setDeleteError('');
+    try {
+      await apiRequest(`/api/admin/users/${deleteTarget.id}`, { method: 'DELETE' });
+      setDeleteTarget(null);
+      await refreshBootstrap();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete user.');
+      setDeleteBusy(false);
     }
   };
 
@@ -58,6 +75,37 @@ export const AdminUsersPage = () => {
       />
 
       {loginAsError && <AdminNotice tone="danger">{loginAsError}</AdminNotice>}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-900">Delete User</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Are you sure you want to permanently delete <span className="font-semibold">{deleteTarget.name}</span>?
+              This will remove their account, transactions, and KYC records. This cannot be undone.
+            </p>
+            {deleteError && <p className="mt-3 text-sm font-medium text-rose-600">{deleteError}</p>}
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setDeleteTarget(null); setDeleteError(''); }}
+                disabled={deleteBusy}
+                className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDelete()}
+                disabled={deleteBusy}
+                className="flex-1 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+              >
+                {deleteBusy ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AdminCard className="p-5">
         <div className="grid gap-4 md:grid-cols-4">
@@ -128,6 +176,12 @@ export const AdminUsersPage = () => {
                       tone="slate"
                       onClick={() => void handleLoginAs(user.id, user.name)}
                       disabled={loginAsBusy === user.id}
+                    />
+                    <AdminIconAction
+                      icon={Trash2}
+                      label={`Delete ${user.name}`}
+                      tone="rose"
+                      onClick={() => setDeleteTarget({ id: user.id, name: user.name })}
                     />
                   </AdminActionBar>
                 </td>
