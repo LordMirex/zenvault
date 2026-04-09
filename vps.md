@@ -124,7 +124,7 @@ Restart Apache:
 Make sure DNS has propagated first:
 
 ```bash
-curl -s "https://dns.google/resolve?name=zenvault.one&type=A" | grep -o '"data":"[^"]*"'
+ -s "https://dns.google/resolve?name=zenvault.one&type=A" | grep -o '"data":"[^"]*"'
 ```
 
 Then run Certbot:
