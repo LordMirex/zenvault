@@ -1,6 +1,7 @@
 node_modules
 _archive
 attached_assets
+dist
 .env
 # SQLite files — no longer used (migrated to PostgreSQL)
 *.db

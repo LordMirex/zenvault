@@ -12,3 +12,9 @@ id = "O6rstfeZ-xsfrw_tCLcbG"
 uri = "file://deploy.zip"
 type = "unspecified"
 title = "ZenVault — Final Fix (JS path changed)"
+
+[[outputs]]
+id = "GNBoC1-bTq9PWSLJZsvEG"
+uri = "file://exports/dist.zip"
+type = "unspecified"
+title = "dist.zip — Pre-built frontend (upload to cPanel)"
