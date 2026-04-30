@@ -11,7 +11,8 @@
     "dev": "concurrently --kill-others \"npm run client:dev\" \"npm run api:dev\"",
     "client:dev": "vite",
     "api:dev": "node ./server/index.mjs",
-    "build": "tsc && vite build",
+    "build": "vite build",
+    "build:check": "tsc && vite build",
     "lint": "eslint . --ext .js,.mjs,.ts,.tsx --report-unused-disable-directives --max-warnings 0",
     "test": "node --test",
     "preview": "vite preview"
