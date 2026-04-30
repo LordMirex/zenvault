@@ -37,19 +37,11 @@ outputType = "webview"
 
 [[ports]]
 localPort = 4000
-externalPort = 80
-
-[[ports]]
-localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 5001
 externalPort = 3000
 
 [[ports]]
-localPort = 5002
-externalPort = 3001
+localPort = 5000
+externalPort = 80
 
 [postMerge]
 path = "scripts/post-merge.sh"
